@@ -1,0 +1,67 @@
+import type { Truck, Transaction, TruckStatus, TransactionType, Worker, WorkerStatus, Payroll } from '@prisma/client'
+
+export type { Truck, Transaction, TruckStatus, TransactionType, Worker, WorkerStatus, Payroll }
+
+export type CreateTruckInput = {
+  plate: string
+  brand: string
+  model: string
+  year: number
+  status?: TruckStatus
+}
+
+export type CreateTransactionInput = {
+  truckId: string
+  type: TransactionType
+  amount: number
+  description: string
+  date: Date
+  category?: string
+}
+
+export type TransactionWithTruck = Transaction & {
+  truck: Truck
+}
+
+export type DashboardSummary = {
+  income: number
+  expenses: number
+  netProfit: number
+  transactionCount: number
+}
+
+export type CreateWorkerInput = Omit<Worker, 'id' | 'createdAt' | 'updatedAt' | 'payrolls'>
+
+export type UpdateWorkerInput = Partial<CreateWorkerInput>
+
+export type WorkerWithTruck = Worker & {
+  truck: Truck | null
+}
+
+export type WorkerWithPayrolls = Worker & {
+  payrolls: Payroll[]
+}
+
+// --- Payroll Types ---
+
+export type PayrollWithWorker = Payroll & {
+  worker: Worker
+}
+
+export type MonthlyPayrollSummary = {
+  totalGross: number
+  totalDeductions: number
+  totalNet: number
+  workerCount: number
+}
+
+export type PayrollCalculation = {
+  baseSalary: number
+  irpfPercent: number
+  irpfAmount: number
+  socialSecurityPercent: number
+  socialSecurityAmount: number
+  otherDeductions: number
+  grossPay: number
+  netPay: number
+}

@@ -1,13 +1,135 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "sqlite"
+}
+
+model Truck {
+  id           String        @id @default(uuid())
+  plate        String        @unique
+  brand        String
+  model        String
+  year         Int
+  status       TruckStatus   @default(ACTIVE)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[]
+  workers      Worker[]
+
+  @@index([status])
+  @@index([plate])
+}
+
+model Transaction {
+  id          String          @id @default(uuid())
+  truckId     String
+  truck       Truck           @relation(fields: [truckId], references: [id], onDelete: Cascade)
+  type        TransactionType
+  amount      Float
+  description String
+  date        DateTime
+  category    String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([truckId])
+  @@index([type])
+  @@index([date])
+}
+
+model Worker {
+  id          String       @id @default(uuid())
+  name        String
+  dni         String       @unique
+  position    String
+  baseSalary  Float
+  startDate   DateTime
+  endDate     DateTime?
+  status      WorkerStatus @default(ACTIVE)
+  truckId     String?
+  truck       Truck?       @relation(fields: [truckId], references: [id], onDelete: SetNull)
+  payrolls    Payroll[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([status])
+  @@index([dni])
+  @@index([truckId])
+}
+
+model Payroll {
+  id                    String   @id @default(uuid())
+  workerId              String
+  worker                Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  month                 Int      // 1-12
+  year                  Int
+  baseSalary            Float
+  irpfPercent           Float    @default(0)  // IRPF deduction %
+  irpfAmount            Float    @default(0)
+  socialSecurityPercent Float    @default(6.35)  // Seguridad Social worker %
+  socialSecurityAmount  Float    @default(0)
+  otherDeductions       Float    @default(0)
+  otherDeductionsDesc   String?
+  grossPay              Float
+  netPay                Float
+  paidAt                DateTime?
+  notes                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([workerId, month, year])
+  @@index([workerId])
+  @@index([month, year])
+}
+
+enum TruckStatus {
+  ACTIVE
+  MAINTENANCE
+  INACTIVE
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum WorkerStatus {
+  ACTIVE
+  INACTIVE
+  ON_LEAVE
+}
+
+model User {
+  id                    String              @id @default(uuid())
+  name                  String
+  email                 String              @unique
+  password              String
+  role                  UserRole            @default(USER)
+  passwordResetTokens   PasswordResetToken[]
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  @@index([email])
+  @@index([role])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+enum UserRole {
+  USER
+  ADMIN
 }
