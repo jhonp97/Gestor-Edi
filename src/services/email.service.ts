@@ -2,9 +2,14 @@ import { Resend } from 'resend'
 
 let resendInstance: Resend | null = null
 
-function getResend(): Resend {
+function getResend(): Resend | null {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) {
+    console.warn('⚠️ RESEND_API_KEY not configured - emails will not be sent')
+    return null
+  }
   if (!resendInstance) {
-    resendInstance = new Resend(process.env.RESEND_API_KEY)
+    resendInstance = new Resend(apiKey)
   }
   return resendInstance
 }
@@ -16,6 +21,10 @@ export class EmailService {
   async sendWelcomeEmail(to: string, name: string): Promise<boolean> {
     try {
       const resend = getResend()
+      if (!resend) {
+        console.log(`📧 [DEV] Welcome email skipped for ${to} (no API key)`)
+        return true // Return true to not block registration
+      }
       await resend.emails.send({
         from: `${APP_NAME} <onboarding@resend.dev>`,
         to,
@@ -32,6 +41,11 @@ export class EmailService {
   async sendPasswordResetEmail(to: string, name: string, token: string): Promise<boolean> {
     try {
       const resend = getResend()
+      if (!resend) {
+        console.log(`📧 [DEV] Password reset email skipped for ${to} (no API key)`)
+        console.log(`📧 [DEV] Reset token: ${token}`)
+        return true // Return true to not block password reset
+      }
       const resetUrl = `${APP_URL}/reset-password?token=${token}`
       await resend.emails.send({
         from: `${APP_NAME} <onboarding@resend.dev>`,

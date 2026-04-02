@@ -35,8 +35,8 @@ export default function LoginPage() {
         return
       }
 
-      router.push('/dashboard')
-      router.refresh()
+      // Force full page reload to ensure cookie is set
+      window.location.href = '/dashboard'
     } catch {
       setError('Error de conexión')
     } finally {

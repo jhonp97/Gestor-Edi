@@ -55,25 +55,28 @@ export function middleware(request: NextRequest) {
     "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none';"
   )
 
-  // Rate limiting (uses forwarded-for header or fallback)
-  const ip =
-    request.headers.get('x-forwarded-for') ??
-    request.headers.get('x-real-ip') ??
-    '127.0.0.1'
-  const now = Date.now()
-  const windowMs = 60 * 60 * 1000 // 1 hour
-  const limit = 100
+  // Rate limiting (skip in development/test, uses forwarded-for header or fallback)
+  const isDev = process.env.NODE_ENV !== 'production'
+  if (!isDev) {
+    const ip =
+      request.headers.get('x-forwarded-for') ??
+      request.headers.get('x-real-ip') ??
+      '127.0.0.1'
+    const now = Date.now()
+    const windowMs = 60 * 60 * 1000 // 1 hour
+    const limit = 100
 
-  const entry = rateLimitMap.get(ip)
-  if (!entry || now > entry.reset) {
-    rateLimitMap.set(ip, { count: 1, reset: now + windowMs })
-  } else if (entry.count >= limit) {
-    return new NextResponse('Too Many Requests', {
-      status: 429,
-      headers: { 'Retry-After': String(Math.ceil((entry.reset - now) / 1000)) },
-    })
-  } else {
-    entry.count++
+    const entry = rateLimitMap.get(ip)
+    if (!entry || now > entry.reset) {
+      rateLimitMap.set(ip, { count: 1, reset: now + windowMs })
+    } else if (entry.count >= limit) {
+      return new NextResponse('Too Many Requests', {
+        status: 429,
+        headers: { 'Retry-After': String(Math.ceil((entry.reset - now) / 1000)) },
+      })
+    } else {
+      entry.count++
+    }
   }
 
   // Skip auth check for public routes

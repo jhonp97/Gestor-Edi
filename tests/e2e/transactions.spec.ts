@@ -1,15 +1,24 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('Transacciones', () => {
-  test('debería cargar la lista de transacciones', async ({ page }) => {
-    await page.goto('/transactions')
+  test.beforeEach(async ({ page }) => {
+    // Login before each test
+    await page.goto('/login')
+    await page.getByLabel('Email').fill('admin@flota.com')
+    await page.getByLabel('Contraseña').fill('admin123')
+    await page.getByRole('button', { name: /iniciar sesión/i }).click()
+    await page.waitForURL('/dashboard')
 
-    await expect(page).toHaveTitle(/Transacciones/i)
+    // Navigate to transactions
+    await page.goto('/transactions')
+  })
+
+  test('debería cargar la lista de transacciones', async ({ page }) => {
+    await expect(page).toHaveTitle(/Flota Camiones/i)
+    await expect(page.getByRole('heading', { name: /transacciones/i })).toBeVisible()
   })
 
   test('debería poder navegar a agregar transacción', async ({ page }) => {
-    await page.goto('/transactions')
-
     const addButton = page.getByRole('button', { name: /Agregar Transacción/i })
     await expect(addButton).toBeVisible()
 
@@ -19,8 +28,6 @@ test.describe('Transacciones', () => {
   })
 
   test('debería validar campos del formulario', async ({ page }) => {
-    await page.goto('/transactions')
-
     const addButton = page.getByRole('button', { name: /Agregar Transacción/i })
     await addButton.click()
 

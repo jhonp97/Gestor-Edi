@@ -1,25 +1,33 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('Dashboard', () => {
-  test('debería cargar la página principal', async ({ page }) => {
-    await page.goto('/')
+  test.beforeEach(async ({ page }) => {
+    // Login before each test
+    await page.goto('/login')
+    await page.getByLabel('Email').fill('admin@flota.com')
+    await page.getByLabel('Contraseña').fill('admin123')
+    await page.getByRole('button', { name: /iniciar sesión/i }).click()
+    await page.waitForURL('/dashboard')
+  })
 
+  test('debería cargar la página del dashboard', async ({ page }) => {
     await expect(page).toHaveTitle(/Flota Camiones/i)
   })
 
   test('debería mostrar las tarjetas de resumen', async ({ page }) => {
-    await page.goto('/')
-
-    // Check that summary cards are visible (they render with card data-slot)
+    // Check that summary cards are visible
     const cards = page.getByTestId('card')
     await expect(cards.first()).toBeVisible()
   })
 
   test('debería tener navegación funcional', async ({ page }) => {
-    await page.goto('/')
-
-    // Check navigation links exist
-    const navLinks = page.locator('nav a, a[href*="trucks"], a[href*="transactions"]')
+    // Check navigation links exist in sidebar
+    const navLinks = page.locator('nav a')
     await expect(navLinks.first()).toBeVisible()
+  })
+
+  test('debería mostrar saludo personalizado', async ({ page }) => {
+    // Should show user greeting in header
+    await expect(page.getByText(/hola/i)).toBeVisible()
   })
 })
