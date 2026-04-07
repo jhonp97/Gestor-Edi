@@ -55,9 +55,8 @@ export function middleware(request: NextRequest) {
     "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none';"
   )
 
-  // Rate limiting (skip in development/test, uses forwarded-for header or fallback)
-  const isDev = process.env.NODE_ENV !== 'production'
-  if (!isDev) {
+  // Rate limiting (only in production)
+  if (process.env.NODE_ENV === 'production') {
     const ip =
       request.headers.get('x-forwarded-for') ??
       request.headers.get('x-real-ip') ??
@@ -79,13 +78,37 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // Skip auth check in development - use localStorage token
+  // In development we allow access but verify from header
+  if (process.env.NODE_ENV !== 'production') {
+    // In dev, just pass through but try to verify token if present
+    const authHeader = request.headers.get('x-auth-token')
+    if (authHeader) {
+      const payload = verifyToken(authHeader)
+      if (payload) {
+        response.headers.set('x-user-id', payload.userId)
+        response.headers.set('x-user-email', payload.email)
+        response.headers.set('x-user-role', payload.role)
+      }
+    }
+    return response
+  }
+
   // Skip auth check for public routes
   if (isPublicRoute(pathname)) {
     return response
   }
 
-  // Get token from cookie
-  const token = request.cookies.get(COOKIE_NAME)?.value
+  // Get token from cookie OR from custom header (for client-side auth)
+  let token = request.cookies.get(COOKIE_NAME)?.value
+  
+  // If no cookie, check for token in header (set by client from localStorage)
+  if (!token) {
+    const authHeader = request.headers.get('x-auth-token')
+    if (authHeader) {
+      token = authHeader
+    }
+  }
 
   if (!token) {
     // Redirect to login

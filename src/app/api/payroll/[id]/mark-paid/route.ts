@@ -1,10 +1,12 @@
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 
-export async function POST(request: Request) {
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const body = await request.json()
-    const { id } = body
+    const { id } = await params
 
     if (!id) {
       return Response.json({ error: 'ID requerido' }, { status: 400 })

@@ -35,39 +35,44 @@ Call log:
       - generic [ref=e11]: Crear Cuenta
       - generic [ref=e12]: Completá tus datos para registrarte
     - generic [ref=e14]:
-      - generic [ref=e15]:
-        - text: Nombre
-        - textbox "Nombre" [active] [ref=e16]:
-          - /placeholder: Tu nombre
-      - generic [ref=e17]:
-        - text: Email
-        - textbox "Email" [ref=e18]:
-          - /placeholder: tu@email.com
-          - text: admin@flota.com
-      - generic [ref=e19]:
-        - text: Contraseña
-        - generic [ref=e20]:
-          - textbox "Contraseña" [ref=e21]:
-            - /placeholder: Mínimo 8 caracteres
-            - text: TestPassword123
-          - button "Mostrar contraseña" [ref=e22]:
-            - img [ref=e23]
-      - generic [ref=e26]:
-        - text: Repetir Contraseña
-        - generic [ref=e27]:
-          - textbox "Repetir Contraseña" [ref=e28]:
-            - /placeholder: Repetí tu contraseña
-            - text: TestPassword123
-          - button "Mostrar contraseña" [ref=e29]:
-            - img [ref=e30]
-      - button "Crear Cuenta" [ref=e33]
-    - paragraph [ref=e35]:
+      - button "Registrate con Google" [ref=e15]:
+        - img
+        - text: Registrate con Google
+      - generic [ref=e20]: o
+      - generic [ref=e21]:
+        - generic [ref=e22]:
+          - text: Nombre
+          - textbox "Nombre" [active] [ref=e23]:
+            - /placeholder: Tu nombre
+        - generic [ref=e24]:
+          - text: Email
+          - textbox "Email" [ref=e25]:
+            - /placeholder: tu@email.com
+            - text: admin@flota.com
+        - generic [ref=e26]:
+          - text: Contraseña
+          - generic [ref=e27]:
+            - textbox "Contraseña" [ref=e28]:
+              - /placeholder: Mínimo 8 caracteres
+              - text: TestPassword123
+            - button "Mostrar contraseña" [ref=e29]:
+              - img [ref=e30]
+        - generic [ref=e33]:
+          - text: Repetir Contraseña
+          - generic [ref=e34]:
+            - textbox "Repetir Contraseña" [ref=e35]:
+              - /placeholder: Repetí tu contraseña
+              - text: TestPassword123
+            - button "Mostrar contraseña" [ref=e36]:
+              - img [ref=e37]
+        - button "Crear Cuenta" [ref=e40]
+    - paragraph [ref=e42]:
       - text: ¿Ya tenés cuenta?
-      - link "Iniciar sesión" [ref=e36]:
+      - link "Iniciar sesión" [ref=e43]:
         - /url: /login
-  - button "Open Next.js Dev Tools" [ref=e42] [cursor=pointer]:
-    - img [ref=e43]
-  - alert [ref=e48]
+  - button "Open Next.js Dev Tools" [ref=e49] [cursor=pointer]:
+    - img [ref=e50]
+  - alert [ref=e55]
 ```
 
 # Test source
@@ -121,8 +126,8 @@ Call log:
   46  |     await expect(page.getByText('Crear Cuenta').first()).toBeVisible()
   47  |     await expect(page.getByLabel('Nombre')).toBeVisible()
   48  |     await expect(page.getByLabel('Email')).toBeVisible()
-  49  |     await expect(page.getByLabel('Contraseña', { exact: true })).toBeVisible()
-  50  |     await expect(page.getByLabel('Repetir Contraseña')).toBeVisible()
+  49  |     await expect(page.locator('#password')).toBeVisible()
+  50  |     await expect(page.locator('#confirmPassword')).toBeVisible()
   51  |   })
   52  | 
   53  |   test('debería mostrar error si las contraseñas no coinciden', async ({ page }) => {
@@ -130,8 +135,8 @@ Call log:
   55  | 
   56  |     await page.getByLabel('Nombre').fill('Test User')
   57  |     await page.getByLabel('Email').fill(uniqueEmail())
-  58  |     await page.getByLabel('Contraseña', { exact: true }).fill('Password123')
-  59  |     await page.getByLabel('Repetir Contraseña').fill('DifferentPassword')
+  58  |     await page.locator('#password').fill('Password123')
+  59  |     await page.locator('#confirmPassword').fill('DifferentPassword')
   60  |     await page.getByRole('button', { name: /crear cuenta/i }).click()
   61  | 
   62  |     await expect(page.getByText(/las contraseñas no coinciden/i)).toBeVisible()
@@ -142,8 +147,8 @@ Call log:
   67  | 
   68  |     await page.getByLabel('Nombre').fill('Test User')
   69  |     await page.getByLabel('Email').fill('admin@flota.com')
-  70  |     await page.getByLabel('Contraseña', { exact: true }).fill('TestPassword123')
-  71  |     await page.getByLabel('Repetir Contraseña').fill('TestPassword123')
+  70  |     await page.locator('#password').fill('TestPassword123')
+  71  |     await page.locator('#confirmPassword').fill('TestPassword123')
   72  |     await page.getByRole('button', { name: /crear cuenta/i }).click()
   73  | 
 > 74  |     await expect(page.getByText(/email ya está registrado/i)).toBeVisible()
@@ -153,7 +158,7 @@ Call log:
   77  |   test('debería mostrar el toggle de visibilidad de contraseña', async ({ page }) => {
   78  |     await page.goto('/register')
   79  | 
-  80  |     const passwordInput = page.getByLabel('Contraseña', { exact: true })
+  80  |     const passwordInput = page.locator('#password')
   81  |     const toggleButton = page.locator('button[aria-label*="contraseña"]').first()
   82  | 
   83  |     // Initially password type
@@ -186,8 +191,8 @@ Call log:
   110 |     await page.goto('/register')
   111 |     await page.getByLabel('Nombre').fill('Usuario Test')
   112 |     await page.getByLabel('Email').fill(email)
-  113 |     await page.getByLabel('Contraseña', { exact: true }).fill(password)
-  114 |     await page.getByLabel('Repetir Contraseña').fill(password)
+  113 |     await page.locator('#password').fill(password)
+  114 |     await page.locator('#confirmPassword').fill(password)
   115 | 
   116 |     // Click submit and verify form submits (button changes state)
   117 |     const submitButton = page.getByRole('button', { name: /crear cuenta/i })
@@ -214,14 +219,14 @@ Call log:
   138 | 
   139 |     await expect(page.getByText('Iniciar Sesión').first()).toBeVisible()
   140 |     await expect(page.getByLabel('Email')).toBeVisible()
-  141 |     await expect(page.getByLabel('Contraseña', { exact: true })).toBeVisible()
+  141 |     await expect(page.locator('#password')).toBeVisible()
   142 |   })
   143 | 
   144 |   test('debería mostrar error con credenciales inválidas', async ({ page }) => {
   145 |     await page.goto('/login')
   146 | 
   147 |     await page.getByLabel('Email').fill('admin@flota.com')
-  148 |     await page.getByLabel('Contraseña', { exact: true }).fill('wrongpassword')
+  148 |     await page.locator('#password').fill('wrongpassword')
   149 |     await page.getByRole('button', { name: /iniciar sesión/i }).click()
   150 | 
   151 |     await expect(page.getByText(/email o contraseña incorrectos/i)).toBeVisible()
@@ -231,7 +236,7 @@ Call log:
   155 |     await page.goto('/login')
   156 | 
   157 |     await page.getByLabel('Email').fill('nonexistent@test.com')
-  158 |     await page.getByLabel('Contraseña', { exact: true }).fill('somepassword')
+  158 |     await page.locator('#password').fill('somepassword')
   159 |     await page.getByRole('button', { name: /iniciar sesión/i }).click()
   160 | 
   161 |     await expect(page.getByText(/email o contraseña incorrectos/i)).toBeVisible()

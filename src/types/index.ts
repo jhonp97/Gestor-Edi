@@ -48,6 +48,11 @@ export type PayrollWithWorker = Payroll & {
   worker: Worker
 }
 
+export type PayrollWithExtras = Payroll & {
+  bonuses: number
+  bonusesDesc: string | null
+}
+
 export type MonthlyPayrollSummary = {
   totalGross: number
   totalDeductions: number
@@ -61,7 +66,10 @@ export type PayrollCalculation = {
   irpfAmount: number
   socialSecurityPercent: number
   socialSecurityAmount: number
+  bonuses: number
+  bonusesDesc: string | null
   otherDeductions: number
+  otherDeductionsDesc: string | null
   grossPay: number
   netPay: number
 }

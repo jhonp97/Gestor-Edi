@@ -87,16 +87,21 @@ export function WorkerTable({ workers, trucks }: WorkerTableProps) {
                   <td className="py-3">
                     <div className="flex gap-2">
                       <Link href={`/workers/${worker.id}`}>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" title="Ver detalles">
                           <Edit className="size-4" />
                         </Button>
                       </Link>
                       <Button
                         variant="ghost"
                         size="icon"
+                        title="Eliminar trabajador"
                         onClick={async () => {
-                          if (confirm(`¿Eliminar a ${worker.name}?`)) {
-                            await fetch(`/api/workers/${worker.id}`, { method: 'DELETE' })
+                          if (confirm(`¿Eliminar a ${worker.name}? Esta acción no se puede deshacer.`)) {
+                            const token = localStorage.getItem('auth-token')
+                            await fetch(`/api/workers/${worker.id}`, { 
+                              method: 'DELETE',
+                              headers: token ? { 'x-auth-token': token } : {}
+                            })
                             window.location.reload()
                           }
                         }}

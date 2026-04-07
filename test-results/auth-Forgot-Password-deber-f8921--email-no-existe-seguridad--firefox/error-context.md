@@ -60,14 +60,14 @@ Call log:
   138 | 
   139 |     await expect(page.getByText('Iniciar Sesión').first()).toBeVisible()
   140 |     await expect(page.getByLabel('Email')).toBeVisible()
-  141 |     await expect(page.getByLabel('Contraseña', { exact: true })).toBeVisible()
+  141 |     await expect(page.locator('#password')).toBeVisible()
   142 |   })
   143 | 
   144 |   test('debería mostrar error con credenciales inválidas', async ({ page }) => {
   145 |     await page.goto('/login')
   146 | 
   147 |     await page.getByLabel('Email').fill('admin@flota.com')
-  148 |     await page.getByLabel('Contraseña', { exact: true }).fill('wrongpassword')
+  148 |     await page.locator('#password').fill('wrongpassword')
   149 |     await page.getByRole('button', { name: /iniciar sesión/i }).click()
   150 | 
   151 |     await expect(page.getByText(/email o contraseña incorrectos/i)).toBeVisible()
@@ -77,7 +77,7 @@ Call log:
   155 |     await page.goto('/login')
   156 | 
   157 |     await page.getByLabel('Email').fill('nonexistent@test.com')
-  158 |     await page.getByLabel('Contraseña', { exact: true }).fill('somepassword')
+  158 |     await page.locator('#password').fill('somepassword')
   159 |     await page.getByRole('button', { name: /iniciar sesión/i }).click()
   160 | 
   161 |     await expect(page.getByText(/email o contraseña incorrectos/i)).toBeVisible()
@@ -105,7 +105,7 @@ Call log:
   183 |     await page.goto('/login')
   184 | 
   185 |     await page.getByLabel('Email').fill('admin@flota.com')
-  186 |     await page.getByLabel('Contraseña', { exact: true }).fill('admin123')
+  186 |     await page.locator('#password').fill('admin123')
   187 | 
   188 |     const submitButton = page.getByRole('button', { name: /iniciar sesión/i })
   189 |     

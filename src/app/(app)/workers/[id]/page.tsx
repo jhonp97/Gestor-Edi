@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { DeleteWorkerButton } from '@/components/workers/delete-worker-button'
 import { ArrowLeft, Truck } from 'lucide-react'
 
 const statusLabels: Record<string, string> = {
@@ -133,23 +134,7 @@ export default async function WorkerDetailPage({
         <Link href={`/workers/${worker.id}/edit`}>
           <Button>Editar Trabajador</Button>
         </Link>
-        <form
-          action={async () => {
-            'use server'
-            await prisma.worker.delete({ where: { id } })
-          }}
-        >
-          <Button
-            variant="destructive"
-            onClick={(e) => {
-              if (!confirm(`¿Eliminar a ${worker.name}? Esta acción no se puede deshacer.`)) {
-                e.preventDefault()
-              }
-            }}
-          >
-            Eliminar
-          </Button>
-        </form>
+        <DeleteWorkerButton workerId={worker.id} workerName={worker.name} />
       </div>
     </div>
   )

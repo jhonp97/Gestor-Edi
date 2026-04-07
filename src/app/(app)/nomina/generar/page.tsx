@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { ArrowLeft, Loader2, Plus, Minus } from 'lucide-react'
 import Link from 'next/link'
 
 const MONTH_NAMES = [
@@ -23,8 +23,11 @@ interface PreviewWorker {
   dni: string
   position: string
   baseSalary: number
+  bonusAmount: number
   irpfAmount: number
   ssAmount: number
+  otherDeductionsAmount: number
+  grossPay: number
   netPay: number
 }
 
@@ -33,6 +36,15 @@ export default function GeneratePayrollPage() {
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [year, setYear] = useState(new Date().getFullYear())
   const [irpfPercent, setIrpfPercent] = useState('15')
+  
+  // Bonuses/Extras
+  const [bonusPercent, setBonusPercent] = useState('0')
+  const [bonusDesc, setBonusDesc] = useState('')
+  
+  // Other deductions
+  const [otherDeductionsPercent, setOtherDeductionsPercent] = useState('0')
+  const [otherDeductionsDesc, setOtherDeductionsDesc] = useState('')
+  
   const [preview, setPreview] = useState<PreviewWorker[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -44,8 +56,19 @@ export default function GeneratePayrollPage() {
     setSuccess('')
 
     const irpf = parseFloat(irpfPercent)
+    const bonus = parseFloat(bonusPercent)
+    const otherDed = parseFloat(otherDeductionsPercent)
+    
     if (isNaN(irpf) || irpf < 0 || irpf > 100) {
       setError('El % IRPF debe estar entre 0 y 100')
+      return
+    }
+    if (isNaN(bonus) || bonus < 0 || bonus > 100) {
+      setError('El % de bonos debe estar entre 0 y 100')
+      return
+    }
+    if (isNaN(otherDed) || otherDed < 0 || otherDed > 100) {
+      setError('El % de otras deducciones debe estar entre 0 y 100')
       return
     }
 
@@ -55,17 +78,24 @@ export default function GeneratePayrollPage() {
       .then((workers) => {
         const activeWorkers = workers.filter((w: { status: string }) => w.status === 'ACTIVE')
         const calculated = activeWorkers.map((w: { id: string; name: string; dni: string; position: string; baseSalary: number }) => {
+          const bonusAmount = Math.round(w.baseSalary * (bonus / 100) * 100) / 100
+          const grossPay = Math.round((w.baseSalary + bonusAmount) * 100) / 100
           const irpfAmount = Math.round(w.baseSalary * (irpf / 100) * 100) / 100
           const ssAmount = Math.round(w.baseSalary * (SS_PERCENT / 100) * 100) / 100
-          const netPay = Math.round((w.baseSalary - irpfAmount - ssAmount) * 100) / 100
+          const otherDeductionsAmount = Math.round(w.baseSalary * (otherDed / 100) * 100) / 100
+          const netPay = Math.round((grossPay - irpfAmount - ssAmount - otherDeductionsAmount) * 100) / 100
+          
           return {
             id: w.id,
             name: w.name,
             dni: w.dni,
             position: w.position,
             baseSalary: w.baseSalary,
+            bonusAmount,
             irpfAmount,
             ssAmount,
+            otherDeductionsAmount,
+            grossPay,
             netPay,
           }
         })
@@ -87,6 +117,10 @@ export default function GeneratePayrollPage() {
           month,
           year,
           irpfPercent: parseFloat(irpfPercent),
+          bonusPercent: parseFloat(bonusPercent) || 0,
+          bonusDesc: bonusDesc,
+          otherDeductionsPercent: parseFloat(otherDeductionsPercent) || 0,
+          otherDeductionsDesc: otherDeductionsDesc,
         }),
       })
 
@@ -133,52 +167,122 @@ export default function GeneratePayrollPage() {
           <CardTitle>Parámetros</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap items-end gap-4">
-            <div>
-              <Label htmlFor="month">Mes</Label>
-              <select
-                id="month"
-                value={month}
-                onChange={(e) => setMonth(parseInt(e.target.value))}
-                className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {MONTH_NAMES.map((name, i) =>
-                  i > 0 ? (
-                    <option key={i} value={i}>
-                      {name}
+          <div className="space-y-6">
+            {/* Period */}
+            <div className="flex flex-wrap items-end gap-4">
+              <div>
+                <Label htmlFor="month">Mes</Label>
+                <select
+                  id="month"
+                  value={month}
+                  onChange={(e) => setMonth(parseInt(e.target.value))}
+                  className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {MONTH_NAMES.map((name, i) =>
+                    i > 0 ? (
+                      <option key={i} value={i}>
+                        {name}
+                      </option>
+                    ) : null,
+                  )}
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="year">Año</Label>
+                <select
+                  id="year"
+                  value={year}
+                  onChange={(e) => setYear(parseInt(e.target.value))}
+                  className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {Array.from({ length: 7 }, (_, i) => 2024 + i).map((y) => (
+                    <option key={y} value={y}>
+                      {y}
                     </option>
-                  ) : null,
-                )}
-              </select>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div>
-              <Label htmlFor="year">Año</Label>
-              <select
-                id="year"
-                value={year}
-                onChange={(e) => setYear(parseInt(e.target.value))}
-                className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {Array.from({ length: 7 }, (_, i) => 2024 + i).map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
+
+            {/* Deductions */}
+            <div className="border-t pt-4">
+              <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+                <Minus className="size-4" />
+                Deducciones
+              </h3>
+              <div className="flex flex-wrap items-end gap-4">
+                <div>
+                  <Label htmlFor="irpf">% IRPF</Label>
+                  <Input
+                    id="irpf"
+                    type="number"
+                    value={irpfPercent}
+                    onChange={(e) => setIrpfPercent(e.target.value)}
+                    className="w-24"
+                    min="0"
+                    max="100"
+                    step="0.5"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="otherDed">% Otras Deducciones</Label>
+                  <Input
+                    id="otherDed"
+                    type="number"
+                    value={otherDeductionsPercent}
+                    onChange={(e) => setOtherDeductionsPercent(e.target.value)}
+                    className="w-24"
+                    min="0"
+                    max="100"
+                    step="0.5"
+                    placeholder="0"
+                  />
+                </div>
+                <div className="flex-1 min-w-[200px]">
+                  <Label htmlFor="otherDedDesc">Descripción Otras Deducciones</Label>
+                  <Input
+                    id="otherDedDesc"
+                    value={otherDeductionsDesc}
+                    onChange={(e) => setOtherDeductionsDesc(e.target.value)}
+                    placeholder="Ej: Anticipo, etc."
+                  />
+                </div>
+              </div>
             </div>
-            <div>
-              <Label htmlFor="irpf">% IRPF</Label>
-              <Input
-                id="irpf"
-                type="number"
-                value={irpfPercent}
-                onChange={(e) => setIrpfPercent(e.target.value)}
-                className="w-24"
-                min="0"
-                max="100"
-                step="0.5"
-              />
+
+            {/* Bonuses */}
+            <div className="border-t pt-4">
+              <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+                <Plus className="size-4" />
+                Extras / Bonificaciones
+              </h3>
+              <div className="flex flex-wrap items-end gap-4">
+                <div>
+                  <Label htmlFor="bonus">% Bono</Label>
+                  <Input
+                    id="bonus"
+                    type="number"
+                    value={bonusPercent}
+                    onChange={(e) => setBonusPercent(e.target.value)}
+                    className="w-24"
+                    min="0"
+                    max="100"
+                    step="0.5"
+                    placeholder="0"
+                  />
+                </div>
+                <div className="flex-1 min-w-[200px]">
+                  <Label htmlFor="bonusDesc">Descripción Bono</Label>
+                  <Input
+                    id="bonusDesc"
+                    value={bonusDesc}
+                    onChange={(e) => setBonusDesc(e.target.value)}
+                    placeholder="Ej: Productividad, viáticos, etc."
+                  />
+                </div>
+              </div>
             </div>
+
             <Button onClick={handlePreview} variant="outline">
               Vista Previa
             </Button>
@@ -201,9 +305,12 @@ export default function GeneratePayrollPage() {
                     <th className="pb-3 pr-4 font-medium text-muted-foreground">Trabajador</th>
                     <th className="pb-3 pr-4 font-medium text-muted-foreground">DNI</th>
                     <th className="pb-3 pr-4 font-medium text-muted-foreground">Puesto</th>
-                    <th className="pb-3 pr-4 font-medium text-muted-foreground text-right">Salario Base</th>
+                    <th className="pb-3 pr-4 font-medium text-muted-foreground text-right">Base</th>
+                    <th className="pb-3 pr-4 font-medium text-muted-foreground text-right">Bono</th>
+                    <th className="pb-3 pr-4 font-medium text-muted-foreground text-right">Bruto</th>
                     <th className="pb-3 pr-4 font-medium text-muted-foreground text-right">IRPF</th>
-                    <th className="pb-3 pr-4 font-medium text-muted-foreground text-right">Seg. Social</th>
+                    <th className="pb-3 pr-4 font-medium text-muted-foreground text-right">SS</th>
+                    <th className="pb-3 pr-4 font-medium text-muted-foreground text-right">Otros</th>
                     <th className="pb-3 font-medium text-muted-foreground text-right">Neto</th>
                   </tr>
                 </thead>
@@ -216,11 +323,20 @@ export default function GeneratePayrollPage() {
                       <td className="py-3 pr-4 text-right">
                         ${w.baseSalary.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                       </td>
+                      <td className="py-3 pr-4 text-right text-green-600">
+                        +${w.bonusAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="py-3 pr-4 text-right font-medium">
+                        ${w.grossPay.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                      </td>
                       <td className="py-3 pr-4 text-right text-destructive">
                         -${w.irpfAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                       </td>
                       <td className="py-3 pr-4 text-right text-destructive">
                         -${w.ssAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="py-3 pr-4 text-right text-destructive">
+                        -${w.otherDeductionsAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                       </td>
                       <td className="py-3 text-right font-semibold">
                         ${w.netPay.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
@@ -236,11 +352,20 @@ export default function GeneratePayrollPage() {
                     <td className="py-3 pr-4 text-right">
                       ${preview.reduce((s, w) => s + w.baseSalary, 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                     </td>
+                    <td className="py-3 pr-4 text-right text-green-600">
+                      +${preview.reduce((s, w) => s + w.bonusAmount, 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="py-3 pr-4 text-right">
+                      ${preview.reduce((s, w) => s + w.grossPay, 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    </td>
                     <td className="py-3 pr-4 text-right text-destructive">
                       -${preview.reduce((s, w) => s + w.irpfAmount, 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                     </td>
                     <td className="py-3 pr-4 text-right text-destructive">
                       -${preview.reduce((s, w) => s + w.ssAmount, 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="py-3 pr-4 text-right text-destructive">
+                      -${preview.reduce((s, w) => s + w.otherDeductionsAmount, 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                     </td>
                     <td className="py-3 text-right">
                       ${preview.reduce((s, w) => s + w.netPay, 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}

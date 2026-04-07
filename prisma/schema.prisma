@@ -70,8 +70,15 @@ model Payroll {
   irpfAmount            Float    @default(0)
   socialSecurityPercent Float    @default(6.35)  // Seguridad Social worker %
   socialSecurityAmount  Float    @default(0)
+  
+  // Deducciones adicionales
   otherDeductions       Float    @default(0)
   otherDeductionsDesc   String?
+  
+  // Extras/Bonificaciones
+  bonuses               Float    @default(0)
+  bonusesDesc           String?
+  
   grossPay              Float
   netPay                Float
   paidAt                DateTime?
@@ -105,14 +112,35 @@ model User {
   id                    String              @id @default(uuid())
   name                  String
   email                 String              @unique
-  password              String
+  password              String?             // nullable para OAuth users
   role                  UserRole            @default(USER)
+  image                 String?             // Google profile picture
   passwordResetTokens   PasswordResetToken[]
+  accounts              Account[]
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
 
   @@index([email])
   @@index([role])
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String  // "google"
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model PasswordResetToken {

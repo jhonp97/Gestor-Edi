@@ -46,8 +46,8 @@ test.describe('Registro', () => {
     await expect(page.getByText('Crear Cuenta').first()).toBeVisible()
     await expect(page.getByLabel('Nombre')).toBeVisible()
     await expect(page.getByLabel('Email')).toBeVisible()
-    await expect(page.getByLabel('Contraseña', { exact: true })).toBeVisible()
-    await expect(page.getByLabel('Repetir Contraseña')).toBeVisible()
+    await expect(page.locator('#password')).toBeVisible()
+    await expect(page.locator('#confirmPassword')).toBeVisible()
   })
 
   test('debería mostrar error si las contraseñas no coinciden', async ({ page }) => {
@@ -55,8 +55,8 @@ test.describe('Registro', () => {
 
     await page.getByLabel('Nombre').fill('Test User')
     await page.getByLabel('Email').fill(uniqueEmail())
-    await page.getByLabel('Contraseña', { exact: true }).fill('Password123')
-    await page.getByLabel('Repetir Contraseña').fill('DifferentPassword')
+    await page.locator('#password').fill('Password123')
+    await page.locator('#confirmPassword').fill('DifferentPassword')
     await page.getByRole('button', { name: /crear cuenta/i }).click()
 
     await expect(page.getByText(/las contraseñas no coinciden/i)).toBeVisible()
@@ -67,8 +67,8 @@ test.describe('Registro', () => {
 
     await page.getByLabel('Nombre').fill('Test User')
     await page.getByLabel('Email').fill('admin@flota.com')
-    await page.getByLabel('Contraseña', { exact: true }).fill('TestPassword123')
-    await page.getByLabel('Repetir Contraseña').fill('TestPassword123')
+    await page.locator('#password').fill('TestPassword123')
+    await page.locator('#confirmPassword').fill('TestPassword123')
     await page.getByRole('button', { name: /crear cuenta/i }).click()
 
     await expect(page.getByText(/email ya está registrado/i)).toBeVisible()
@@ -77,7 +77,7 @@ test.describe('Registro', () => {
   test('debería mostrar el toggle de visibilidad de contraseña', async ({ page }) => {
     await page.goto('/register')
 
-    const passwordInput = page.getByLabel('Contraseña', { exact: true })
+    const passwordInput = page.locator('#password')
     const toggleButton = page.locator('button[aria-label*="contraseña"]').first()
 
     // Initially password type
@@ -110,8 +110,8 @@ test.describe('Registro', () => {
     await page.goto('/register')
     await page.getByLabel('Nombre').fill('Usuario Test')
     await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Contraseña', { exact: true }).fill(password)
-    await page.getByLabel('Repetir Contraseña').fill(password)
+    await page.locator('#password').fill(password)
+    await page.locator('#confirmPassword').fill(password)
 
     // Click submit and verify form submits (button changes state)
     const submitButton = page.getByRole('button', { name: /crear cuenta/i })
@@ -138,14 +138,14 @@ test.describe('Login', () => {
 
     await expect(page.getByText('Iniciar Sesión').first()).toBeVisible()
     await expect(page.getByLabel('Email')).toBeVisible()
-    await expect(page.getByLabel('Contraseña', { exact: true })).toBeVisible()
+    await expect(page.locator('#password')).toBeVisible()
   })
 
   test('debería mostrar error con credenciales inválidas', async ({ page }) => {
     await page.goto('/login')
 
     await page.getByLabel('Email').fill('admin@flota.com')
-    await page.getByLabel('Contraseña', { exact: true }).fill('wrongpassword')
+    await page.locator('#password').fill('wrongpassword')
     await page.getByRole('button', { name: /iniciar sesión/i }).click()
 
     await expect(page.getByText(/email o contraseña incorrectos/i)).toBeVisible()
@@ -155,7 +155,7 @@ test.describe('Login', () => {
     await page.goto('/login')
 
     await page.getByLabel('Email').fill('nonexistent@test.com')
-    await page.getByLabel('Contraseña', { exact: true }).fill('somepassword')
+    await page.locator('#password').fill('somepassword')
     await page.getByRole('button', { name: /iniciar sesión/i }).click()
 
     await expect(page.getByText(/email o contraseña incorrectos/i)).toBeVisible()
@@ -183,7 +183,7 @@ test.describe('Login', () => {
     await page.goto('/login')
 
     await page.getByLabel('Email').fill('admin@flota.com')
-    await page.getByLabel('Contraseña', { exact: true }).fill('admin123')
+    await page.locator('#password').fill('admin123')
 
     const submitButton = page.getByRole('button', { name: /iniciar sesión/i })
     

@@ -6,7 +6,15 @@ const SS_PERCENT = 6.35
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { month, year, irpfPercent } = body
+    const { 
+      month, 
+      year, 
+      irpfPercent,
+      bonusPercent = 0,
+      otherDeductionsPercent = 0,
+      bonusDesc = '',
+      otherDeductionsDesc = ''
+    } = body
 
     if (!month || !year) {
       return Response.json(
@@ -40,22 +48,32 @@ export async function POST(request: Request) {
         continue
       }
 
+      // Calculate amounts
       const irpfAmount = Math.round(worker.baseSalary * (irpf / 100) * 100) / 100
       const ssAmount = Math.round(worker.baseSalary * (SS_PERCENT / 100) * 100) / 100
-      const grossPay = worker.baseSalary
-      const netPay = Math.round((grossPay - irpfAmount - ssAmount) * 100) / 100
+      const bonusAmount = Math.round(worker.baseSalary * (bonusPercent / 100) * 100) / 100
+      const otherDedAmount = Math.round(worker.baseSalary * (otherDeductionsPercent / 100) * 100) / 100
+      
+      // Gross = base + bonuses
+      const grossPay = Math.round((worker.baseSalary + bonusAmount) * 100) / 100
+      
+      // Net = gross - all deductions
+      const netPay = Math.round((grossPay - irpfAmount - ssAmount - otherDedAmount) * 100) / 100
 
       const payroll = await prisma.payroll.create({
         data: {
           workerId: worker.id,
           month,
           year,
-          baseSalary: grossPay,
+          baseSalary: worker.baseSalary,
           irpfPercent: irpf,
           irpfAmount,
           socialSecurityPercent: SS_PERCENT,
           socialSecurityAmount: ssAmount,
-          otherDeductions: 0,
+          bonuses: bonusAmount,
+          bonusesDesc: bonusDesc || undefined,
+          otherDeductions: otherDedAmount,
+          otherDeductionsDesc: otherDeductionsDesc || undefined,
           grossPay,
           netPay,
         },

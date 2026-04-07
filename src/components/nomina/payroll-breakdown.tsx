@@ -7,6 +7,8 @@ interface PayrollBreakdownProps {
 
 export function PayrollBreakdown({ payroll }: PayrollBreakdownProps) {
   const totalDeductions = payroll.irpfAmount + payroll.socialSecurityAmount + payroll.otherDeductions
+  const bonuses = (payroll as any).bonuses ?? 0
+  const bonusesDesc = (payroll as any).bonusesDesc ?? null
 
   return (
     <Card>
@@ -27,6 +29,16 @@ export function PayrollBreakdown({ payroll }: PayrollBreakdownProps) {
                   ${payroll.baseSalary.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                 </span>
               </div>
+              {bonuses > 0 && (
+                <div className="flex justify-between py-1 text-green-600">
+                  <span>
+                    Bonificaciones {bonusesDesc ? `(${bonusesDesc})` : ''}
+                  </span>
+                  <span>
+                    +${bonuses.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between py-1 border-t pt-1 font-semibold">
                 <span>Total Bruto</span>
                 <span>

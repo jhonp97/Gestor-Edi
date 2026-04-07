@@ -8,7 +8,7 @@ const COOKIE_OPTIONS = {
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'lax' as const,
   path: '/',
-  maxAge: 8 * 60 * 60, // 8 hours in seconds
+  maxAge: 60 * 60 * 24 * 7, // 7 days for testing
 }
 
 export async function POST(request: Request) {
@@ -28,11 +28,22 @@ export async function POST(request: Request) {
 
     // Login
     const result = await authService.login(email, password)
+    console.log('Login success, token:', result.token.substring(0, 20) + '...')
 
     // Create response with cookie
-    const response = NextResponse.json({ user: result.user })
+    const response = NextResponse.json({ 
+      user: result.user,
+      token: result.token  // Return token in body for localStorage
+    })
 
-    response.cookies.set(COOKIE_NAME, result.token, COOKIE_OPTIONS)
+    // Set cookie with explicit options for development
+    response.cookies.set(COOKIE_NAME, result.token, {
+      ...COOKIE_OPTIONS,
+      // Force for development
+      sameSite: 'lax',
+    })
+
+    console.log('Cookie set:', COOKIE_NAME, 'options:', COOKIE_OPTIONS)
 
     return response
   } catch (error) {

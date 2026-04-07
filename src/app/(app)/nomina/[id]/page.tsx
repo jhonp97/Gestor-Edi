@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PayrollBreakdown } from '@/components/nomina/payroll-breakdown'
-import { ArrowLeft, Download, CheckCircle } from 'lucide-react'
+import { MarkAsPaidButton } from '@/components/nomina/mark-as-paid-button'
+import { ArrowLeft, Download } from 'lucide-react'
 
 const MONTH_NAMES = [
   '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -51,29 +52,9 @@ export default async function PayrollDetailPage({
               Descargar PDF
             </Button>
           </a>
-          {/* Mark as paid */}
+          {/* Mark as paid - Client Component */}
           {!payroll.paidAt && (
-            <form
-              action={async () => {
-                'use server'
-                await prisma.payroll.update({
-                  where: { id },
-                  data: { paidAt: new Date() },
-                })
-              }}
-            >
-              <Button
-                type="submit"
-                onClick={(e) => {
-                  if (!confirm('¿Marcar esta nómina como pagada?')) {
-                    e.preventDefault()
-                  }
-                }}
-              >
-                <CheckCircle className="mr-2 size-4" />
-                Marcar como Pagado
-              </Button>
-            </form>
+            <MarkAsPaidButton payrollId={payroll.id} workerName={payroll.worker.name} />
           )}
         </div>
       </div>

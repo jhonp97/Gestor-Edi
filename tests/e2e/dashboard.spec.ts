@@ -5,7 +5,7 @@ test.describe('Dashboard', () => {
     // Login before each test
     await page.goto('/login')
     await page.getByLabel('Email').fill('admin@flota.com')
-    await page.getByLabel('Contraseña').fill('admin123')
+    await page.locator('#password').fill('admin123')
     await page.getByRole('button', { name: /iniciar sesión/i }).click()
     await page.waitForURL('/dashboard')
   })
