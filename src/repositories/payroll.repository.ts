@@ -51,8 +51,10 @@ export class PayrollRepository extends BaseRepository {
     irpfAmount: number
     socialSecurityPercent: number
     socialSecurityAmount: number
+    bonuses?: number
+    bonusesDesc?: string | null
     otherDeductions: number
-    otherDeductionsDesc?: string
+    otherDeductionsDesc?: string | null
     grossPay: number
     netPay: number
     notes?: string

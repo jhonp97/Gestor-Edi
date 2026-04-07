@@ -17,11 +17,12 @@ export class PayrollService {
     baseSalary: number,
     irpfPercent: number,
     ssPercent: number = 6.35,
+    bonuses: number = 0,
     otherDeductions: number = 0,
   ): PayrollCalculation {
     const irpfAmount = baseSalary * (irpfPercent / 100)
     const socialSecurityAmount = baseSalary * (ssPercent / 100)
-    const grossPay = baseSalary
+    const grossPay = baseSalary + bonuses
     const netPay = grossPay - irpfAmount - socialSecurityAmount - otherDeductions
 
     return {
@@ -30,7 +31,10 @@ export class PayrollService {
       irpfAmount: Math.round(irpfAmount * 100) / 100,
       socialSecurityPercent: ssPercent,
       socialSecurityAmount: Math.round(socialSecurityAmount * 100) / 100,
+      bonuses,
+      bonusesDesc: null,
       otherDeductions,
+      otherDeductionsDesc: null,
       grossPay: Math.round(grossPay * 100) / 100,
       netPay: Math.round(netPay * 100) / 100,
     }
@@ -40,6 +44,8 @@ export class PayrollService {
     month: number,
     year: number,
     irpfPercent: number = 15,
+    bonusPercent: number = 0,
+    otherDeductionsPercent: number = 0,
   ): Promise<PayrollWithWorker[]> {
     const validated = generatePayrollSchema.parse({ month, year, irpfPercent })
 
@@ -57,6 +63,9 @@ export class PayrollService {
       const calc = this.calculatePayroll(
         worker.baseSalary,
         validated.irpfPercent,
+        6.35,
+        worker.baseSalary * (bonusPercent / 100),
+        worker.baseSalary * (otherDeductionsPercent / 100),
       )
 
       const payroll = await this.repo.create({
@@ -68,6 +77,7 @@ export class PayrollService {
         irpfAmount: calc.irpfAmount,
         socialSecurityPercent: calc.socialSecurityPercent,
         socialSecurityAmount: calc.socialSecurityAmount,
+        bonuses: calc.bonuses,
         otherDeductions: calc.otherDeductions,
         grossPay: calc.grossPay,
         netPay: calc.netPay,
@@ -152,8 +162,9 @@ export class PayrollService {
     const calc = this.calculatePayroll(
       validated.baseSalary,
       validated.irpfPercent,
-      validated.socialSecurityPercent,
-      validated.otherDeductions,
+      validated.socialSecurityPercent || 6.35,
+      0, // bonuses
+      validated.otherDeductions || 0,
     )
 
     const payroll = await this.repo.create({
@@ -165,6 +176,7 @@ export class PayrollService {
       irpfAmount: calc.irpfAmount,
       socialSecurityPercent: calc.socialSecurityPercent,
       socialSecurityAmount: calc.socialSecurityAmount,
+      bonuses: 0,
       otherDeductions: calc.otherDeductions,
       otherDeductionsDesc: validated.otherDeductionsDesc,
       grossPay: calc.grossPay,

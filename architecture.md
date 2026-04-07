@@ -1,7 +1,7 @@
 # Flota Camiones PWA — Architecture Document
 
-> **Last updated**: 2026-04-01
-> **Status**: Active Development — Scaffold + Foundation complete
+> **Last updated**: 2026-04-07
+> **Status**: Active Development — Auth + Offline + Payroll Enhanced
 > **Author**: AI Software Architect
 
 ---
@@ -355,31 +355,127 @@ pnpm typecheck              # TypeScript check
 |--------|--------|-------------|
 | scaffold-project | ✅ COMPLETED | Greenfield scaffold with testing, CI/CD, OWASP (55 tests, 40/40 tasks) |
 | ui-overhaul-and-workers | ✅ COMPLETED | Professional UI, worker CRUD, payroll system with Spanish deductions, PDF generation |
-
-### scaffold-project Phases
-- ✅ Phase 1: Scaffold (Next.js, Prisma, Shadcn, configs) — 8/8 tasks
-- ✅ Phase 2: Foundation (DB, repos, services, security, UI, PWA) — 14/14 tasks
-- ✅ Phase 3: Testing Infrastructure (Vitest, Playwright, 55 tests) — 13/13 tasks
-- ✅ Phase 4: CI/CD Pipeline (GitHub Actions, Dependabot) — 5/5 tasks
-- ✅ Verify: 30 specs validated, critical issues fixed
-- ✅ Archive: Change closed and persisted
-
-### ui-overhaul-and-workers Phases
-- ✅ Phase 1: UI Overhaul (navy blue theme, Recharts dashboard, professional sidebar)
-- ✅ Phase 2: Worker Module (CRUD for workers — already existed)
-- ✅ Phase 3: Payroll Module (Spanish payroll: IRPF + Seg.Social, monthly generation)
-- ✅ Phase 4: PDF Generation (@react-pdf/renderer, nomina receipts)
-- ✅ Fix: WorkerTable client component (was missing 'use client')
+| auth-google-oauth | ✅ COMPLETED | JWT auth with cookies, Google OAuth integration (NextAuth v5), login/register pages |
+| payroll-extras | ✅ COMPLETED | Payroll with bonuses and additional deductions |
+| pwa-offline | ✅ COMPLETED | PWA with offline support using IndexedDB for token storage |
 
 ### Current State
 - 22 routes built
 - 55 unit tests passing
 - Lint + typecheck + build all clean
 - DB seeded: 3 trucks, 20 transactions, 4 workers, 3 payrolls
+- PWA installable
+- Offline support via IndexedDB
 
 ---
 
-## 13. Known Issues & Gotchas
+## 13. Authentication System
+
+### Architecture
+```
+User Login → API /api/auth/login → JWT Token
+                                        ↓
+                    ┌─────────────────────┴─────────────────────┐
+                    ↓                                           ↓
+            HTTP-Only Cookie                           IndexedDB (offline)
+            (secure, HTTP-only)                        (x-auth-token header)
+                    ↓                                           ↓
+            Middleware validates                    Works when offline
+            Cookie + x-auth-token header
+```
+
+### Implementation Details
+| Component | File | Description |
+|-----------|------|-------------|
+| Auth Service | `src/services/auth.service.ts` | JWT generation/validation with bcrypt |
+| Login API | `src/app/api/auth/login/route.ts` | Returns token in body + sets HTTP-only cookie |
+| Register API | `src/app/api/auth/register/route.ts` | Creates user with hashed password |
+| Session API | `src/app/api/auth/session/route.ts` | Returns current user from token |
+| Middleware | `src/middleware.ts` | Validates cookie OR x-auth-token header |
+| NextAuth | `src/lib/auth.ts` | NextAuth v5 configuration with Google provider |
+| Offline Auth | `src/lib/offline.ts` | IndexedDB storage for offline token access |
+
+### Environment Variables (for Google OAuth)
+```env
+NEXTAUTH_SECRET=your-generated-secret
+NEXTAUTH_URL=http://localhost:3000
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+```
+
+### Key Security Rules
+1. JWT stored in HTTP-only cookie when online
+2. Token also stored in IndexedDB for offline (sent via x-auth-token header)
+3. Middleware checks both cookie AND x-auth-token header
+4. Development mode: auth check skipped (for testing)
+5. Production mode: full auth enforcement
+
+---
+
+## 14. Offline Support System
+
+### Strategy: Hybrid Approach
+- **Online**: Use HTTP-only cookies for security
+- **Offline**: Use IndexedDB to store token, send via x-auth-token header
+
+### IndexedDB Storage
+```typescript
+// src/lib/offline.ts
+Database: 'flota-auth-db'
+Store: 'auth'
+Key: 'jwt-token'
+```
+
+### Flow
+1. User logs in → Token saved to IndexedDB automatically
+2. User goes offline → Token retrieved from IndexedDB
+3. Requests include `x-auth-token` header
+4. Middleware validates header in offline mode
+5. User comes back online → Normal cookie auth resumes
+
+### Benefits
+- Secure: Token still protected (not in localStorage)
+- Works offline: Can make authenticated requests
+- Seamless: Transparent to user
+
+---
+
+## 15. Payroll System Enhancements
+
+### New Fields (v2)
+| Field | Type | Description |
+|-------|------|-------------|
+| bonuses | Float | Extra payments (productivity, travel, etc.) |
+| bonusesDesc | String? | Description of bonuses |
+| otherDeductions | Float | Additional deductions |
+| otherDeductionsDesc | String? | Description of deductions |
+
+### Generation Form
+- IRPF percentage (tax withholding)
+- Other deductions percentage + description
+- Bonuses percentage + description
+- Preview table shows all calculations before generating
+
+### PDF Generation
+- Detailed salary breakdown
+- Shows: base salary, bonuses, gross, deductions (IRPF, SS, other), net pay
+- Downloadable from nomina detail page
+
+---
+
+## 16. Truck Card Enhancements
+
+### Stats Display
+Each truck card now shows:
+- Ingresos (income): Sum of INCOME transactions
+- Gastos (expenses): Sum of EXPENSE transactions  
+- Balance (net): Ingresos - Gastos
+
+Implementation: `src/app/(app)/trucks/page.tsx` fetches transactions and calculates stats per truck.
+
+---
+
+## 17. Known Issues & Gotchas
 
 1. **Prisma 7.x**: `url` goes in `prisma.config.ts`, NOT in `schema.prisma`
 2. **Prisma 7.x**: Both `prisma.ts` AND `seed.ts` must use the driver adapter (`@prisma/adapter-better-sqlite3`) — `new PrismaClient()` alone throws error

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Truck } from 'lucide-react'
+import { saveTokenForOffline } from '@/lib/offline'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -44,10 +45,11 @@ export default function LoginPage() {
         return
       }
 
-      // Login exitoso - guardar token en localStorage y redirigir
+      // Login exitoso - guardar token para offline y redirigir
       if (data.token) {
-        localStorage.setItem('auth-token', data.token)
-        console.log('Token saved to localStorage, redirecting...')
+        // Save to IndexedDB for offline access
+        await saveTokenForOffline(data.token)
+        console.log('Token saved for offline access, redirecting...')
       }
       
       // Forzar redirect sin esperar
