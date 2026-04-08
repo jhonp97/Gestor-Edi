@@ -1,12 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
-  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     // Check auth on mount and navigation
@@ -19,7 +18,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (!token && !isPublicRoute) {
         router.push('/login')
-        return false
+        return
       }
       
       // Inject token into all fetch requests
@@ -37,21 +36,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         return originalFetch(url, options)
       }
-
-      return true
     }
 
     checkAuth()
-    setIsLoading(false)
   }, [pathname, router])
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1e3a5f]"></div>
-      </div>
-    )
-  }
 
   return <>{children}</>
 }

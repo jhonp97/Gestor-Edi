@@ -4,8 +4,18 @@ import { PrismaAdapter } from '@auth/prisma-adapter'
 import { prisma } from './prisma'
 import type { UserRole } from '@prisma/client'
 
-// Cast to avoid version mismatch between next-auth and prisma-adapter
-const prismaAdapter = PrismaAdapter(prisma) as any
+// Extended user type for role access
+interface UserWithRole {
+  id: string
+  role?: UserRole
+  email?: string | null
+  name?: string | null
+  image?: string | null
+}
+
+// Use type assertion to avoid type issues with prisma adapter
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const prismaAdapter: any = PrismaAdapter(prisma)
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: prismaAdapter,
@@ -23,7 +33,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Add user ID and role to token on first sign in
       if (account && user) {
         token.id = user.id
-        token.role = (user as any).role || 'USER'
+        token.role = (user as UserWithRole).role || 'USER'
       }
       return token
     },

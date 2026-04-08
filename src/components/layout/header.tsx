@@ -58,7 +58,7 @@ export function Header() {
   async function handleLogout() {
     setLoggingOut(true)
     try {
-      await get('/api/auth/logout', { method: 'POST' } as any)
+      await get<{ success?: boolean }>('/api/auth/logout', { method: 'POST' })
       router.push('/login')
       router.refresh()
     } catch {

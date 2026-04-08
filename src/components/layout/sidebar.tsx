@@ -28,7 +28,7 @@ export function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [user, setUser] = useState<SessionUser | null>(null)
   const [loggingOut, setLoggingOut] = useState(false)
-  const { get, isOnline } = useApi()
+  const { get } = useApi()
 
   useEffect(() => {
     get<{ user: SessionUser }>('/api/auth/session')
@@ -41,7 +41,7 @@ export function Sidebar() {
   async function handleLogout() {
     setLoggingOut(true)
     try {
-      await get('/api/auth/logout', { method: 'POST' } as any)
+      await get<{ success?: boolean }>('/api/auth/logout', { method: 'POST' })
       router.push('/login')
       router.refresh()
     } catch {

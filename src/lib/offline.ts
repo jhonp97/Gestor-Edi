@@ -6,7 +6,7 @@
  * Cookies are still used for HTTP-only secure sessions when online.
  */
 
-import { useState, useEffect } from 'react'
+import { useSyncExternalStore } from 'react'
 
 const DB_NAME = 'flota-auth-db'
 const STORE_NAME = 'auth'
@@ -118,24 +118,20 @@ export async function authFetchWithOffline(
   )
 }
 
-// Hook to check online/offline status
+// Hook to check online/offline status using useSyncExternalStore
+function subscribeToOnline(callback: () => void) {
+  window.addEventListener('online', callback)
+  window.addEventListener('offline', callback)
+  return () => {
+    window.removeEventListener('online', callback)
+    window.removeEventListener('offline', callback)
+  }
+}
+
+function getOnlineSnapshot() {
+  return typeof navigator !== 'undefined' ? navigator.onLine : true
+}
+
 export function useNetworkStatus() {
-  const [isOnline, setIsOnline] = useState(true)
-
-  useEffect(() => {
-    setIsOnline(navigator.onLine)
-
-    const handleOnline = () => setIsOnline(true)
-    const handleOffline = () => setIsOnline(false)
-
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-
-    return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
-    }
-  }, [])
-
-  return isOnline
+  return useSyncExternalStore(subscribeToOnline, getOnlineSnapshot, () => true)
 }

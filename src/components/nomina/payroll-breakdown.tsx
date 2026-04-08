@@ -1,14 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { PayrollWithWorker } from '@/types'
+import type { PayrollWithWorker, PayrollWithExtras } from '@/types'
 
 interface PayrollBreakdownProps {
-  payroll: PayrollWithWorker
+  payroll: PayrollWithWorker & Partial<PayrollWithExtras>
 }
 
 export function PayrollBreakdown({ payroll }: PayrollBreakdownProps) {
-  const totalDeductions = payroll.irpfAmount + payroll.socialSecurityAmount + payroll.otherDeductions
-  const bonuses = (payroll as any).bonuses ?? 0
-  const bonusesDesc = (payroll as any).bonusesDesc ?? null
+  const totalDeductions = payroll.irpfAmount + payroll.socialSecurityAmount + (payroll.otherDeductions ?? 0)
+  const bonuses = payroll.bonuses ?? 0
+  const bonusesDesc = payroll.bonusesDesc ?? null
 
   return (
     <Card>
