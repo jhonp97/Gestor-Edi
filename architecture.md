@@ -1,7 +1,7 @@
 # Flota Camiones PWA — Architecture Document
 
-> **Last updated**: 2026-04-07
-> **Status**: Active Development — Auth + Offline + Payroll Enhanced
+> **Last updated**: 2026-04-08
+> **Status**: Production Ready — All CI/CD Green ✅
 > **Author**: AI Software Architect
 
 ---
@@ -13,17 +13,20 @@
 **Who**: Single user, aged 50+. Needs simple, accessible UI with large fonts, clear buttons, high contrast.
 
 **Core Features**:
-- Dashboard: income/expense summary, net profit per month
-- Truck management: register trucks with plate, brand, model
+- Dashboard: income/expense summary, net profit per month, charts
+- Truck management: register trucks with plate, brand, model, stats (income/expense/balance)
 - Transaction tracking: income and expenses per truck, categorized
+- Worker management: CRUD for workers with payroll system
+- Payroll: generate monthly payslips with IRPF, Social Security, bonuses, deductions
+- PDF payslips: downloadable salary certificates
 - Offline support: works without internet, syncs when reconnected
 - PWA: installable on mobile as native-like app
+- Authentication: JWT + Google OAuth (NextAuth v5)
 
 **Deferred** (future changes):
-- Monthly reports (PDF/Excel)
-- Payroll simulation
-- Multi-user authentication (planned: HttpOnly cookies + bcrypt, NO localStorage)
-- Production deployment
+- Multi-user isolation (currently single-user, shared data)
+- Production deployment (Vercel/Railway)
+- Reports module (monthly summary, export CSV/Excel)
 
 ---
 
@@ -361,11 +364,13 @@ pnpm typecheck              # TypeScript check
 
 ### Current State
 - 22 routes built
-- 55 unit tests passing
-- Lint + typecheck + build all clean
+- 55 unit tests passing ✅
+- Lint + typecheck + build all clean ✅
+- CI/CD pipeline: Quality → Test → Build → Audit (all green ✅)
 - DB seeded: 3 trucks, 20 transactions, 4 workers, 3 payrolls
 - PWA installable
 - Offline support via IndexedDB
+- Login supports Enter key ✅
 
 ---
 
