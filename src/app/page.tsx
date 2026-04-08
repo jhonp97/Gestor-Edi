@@ -3,8 +3,8 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import jwt from 'jsonwebtoken'
 import { Button } from '@/components/ui/button'
-import { 
-  Truck, BarChart3, Users, Banknote, Receipt, Wifi, 
+import {
+  Truck, BarChart3, Users, Banknote, Receipt, Wifi,
   ChevronRight, Shield, TrendingUp, CheckCircle2,
   Mail, Phone, MapPin
 } from 'lucide-react'
@@ -37,9 +37,11 @@ export default async function HomePage() {
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#1e3a5f] to-[#2d5a8e]">
-                <Truck className="size-5 text-white" />
-              </div>
+              <Link href="/">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#1e3a5f] to-[#2d5a8e]">
+                  <Truck className="size-5 text-white" />
+                </div>
+              </Link>
               <span className="text-xl font-bold text-[#1e3a5f]">Flota Camiones</span>
             </div>
             <div className="flex items-center gap-3">
@@ -96,7 +98,7 @@ export default async function HomePage() {
                   </Button>
                 </Link>
                 <Link href="#features">
-                  <Button size="lg" variant="outline" className="w-full border-white/30 text-white hover:bg-white/10 sm:w-auto text-base">
+                  <Button size="lg" variant="outline" className="w-full border-white/30 text-[#1e3a5f] hover:bg-white/10 sm:w-auto text-base">
                     Ver Funcionalidades
                   </Button>
                 </Link>
@@ -168,7 +170,7 @@ export default async function HomePage() {
         {/* Wave divider */}
         <div className="absolute bottom-0 left-0 right-0">
           <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0 120L60 110C120 100 240 80 360 70C480 60 600 60 720 65C840 70 960 80 1080 85C1200 90 1320 90 1380 90L1440 90V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z" fill="white"/>
+            <path d="M0 120L60 110C120 100 240 80 360 70C480 60 600 60 720 65C840 70 960 80 1080 85C1200 90 1320 90 1380 90L1440 90V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z" fill="white" />
           </svg>
         </div>
       </section>
@@ -351,7 +353,7 @@ export default async function HomePage() {
                 </Button>
               </Link>
               <Link href="/login">
-                <Button size="lg" variant="outline" className="w-full border-white/30 text-white hover:bg-white/10 sm:w-auto text-lg">
+                <Button size="lg" variant="outline" className="w-full border-white/30 text-[#1e3a5f] hover:bg-white/10 sm:w-auto text-lg">
                   Ya tengo cuenta
                 </Button>
               </Link>
