@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Truck } from 'lucide-react'
-import { saveTokenForOffline } from '@/lib/offline'
+import { useApi } from '@/hooks/use-api'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -18,6 +18,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const { post, isOnline } = useApi()
 
   async function handleGoogleSignIn() {
     setGoogleLoading(true)
@@ -30,29 +31,15 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      })
+      const data = await post<{ token?: string; error?: string }>('/api/auth/login', { email, password })
 
-      const data = await res.json()
-      console.log('Login response:', res.status, data)
-
-      if (!res.ok) {
-        setError(data.error || 'Error al iniciar sesión')
+      if (data.error) {
+        setError(data.error)
         setLoading(false)
         return
       }
 
-      // Login exitoso - guardar token para offline y redirigir
-      if (data.token) {
-        // Save to IndexedDB for offline access
-        await saveTokenForOffline(data.token)
-        console.log('Token saved for offline access, redirecting...')
-      }
-      
-      // Forzar redirect sin esperar
+      // Login exitoso - redirigir (el token ya se guarda en apiFetch)
       window.location.href = '/dashboard'
       return
     } catch (err) {

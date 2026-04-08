@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { LayoutDashboard, Truck, Receipt, Users, Banknote, Menu, X, Shield, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
+import { useApi } from '@/hooks/use-api'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -27,20 +28,20 @@ export function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [user, setUser] = useState<SessionUser | null>(null)
   const [loggingOut, setLoggingOut] = useState(false)
+  const { get, isOnline } = useApi()
 
   useEffect(() => {
-    fetch('/api/auth/session')
-      .then((res) => res.json())
+    get<{ user: SessionUser }>('/api/auth/session')
       .then((data) => {
-        if (data.user) setUser(data.user)
+        if (data?.user) setUser(data.user)
       })
       .catch(() => {})
-  }, [])
+  }, [get])
 
   async function handleLogout() {
     setLoggingOut(true)
     try {
-      await fetch('/api/auth/logout', { method: 'POST' })
+      await get('/api/auth/logout', { method: 'POST' } as any)
       router.push('/login')
       router.refresh()
     } catch {

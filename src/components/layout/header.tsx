@@ -6,6 +6,7 @@ import { Wifi, WifiOff, LogOut } from 'lucide-react'
 import { useSyncExternalStore } from 'react'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { useApi } from '@/hooks/use-api'
 
 function subscribeToOnlineState(callback: () => void) {
   window.addEventListener('online', callback)
@@ -42,22 +43,22 @@ export function Header() {
   const router = useRouter()
   const [user, setUser] = useState<SessionUser | null>(null)
   const [loggingOut, setLoggingOut] = useState(false)
+  const { get } = useApi()
 
   const currentPage = pageLabels[pathname] || pageLabels[pathname.split('/').slice(0, 2).join('/')] || 'Página'
 
   useEffect(() => {
-    fetch('/api/auth/session')
-      .then((res) => res.json())
+    get<{ user: SessionUser }>('/api/auth/session')
       .then((data) => {
-        if (data.user) setUser(data.user)
+        if (data?.user) setUser(data.user)
       })
       .catch(() => {})
-  }, [])
+  }, [get])
 
   async function handleLogout() {
     setLoggingOut(true)
     try {
-      await fetch('/api/auth/logout', { method: 'POST' })
+      await get('/api/auth/logout', { method: 'POST' } as any)
       router.push('/login')
       router.refresh()
     } catch {
