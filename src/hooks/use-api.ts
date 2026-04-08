@@ -72,14 +72,24 @@ export async function apiFetch(
   )
 }
 
+// Helper to safely parse JSON
+async function safeParseJSON(response: Response): Promise<unknown> {
+  const text = await response.text()
+  try {
+    return JSON.parse(text)
+  } catch {
+    return { error: text }
+  }
+}
+
 // Hook para hacer requests con soporte offline
 export function useApi() {
   const isOnline = useNetworkStatus()
 
   const get = useCallback(async <T>(url: string, options?: RequestInit): Promise<T> => {
     const res = await apiFetch(url, { method: 'GET', ...options })
-    if (!res.ok) throw new Error(await res.text())
-    return res.json()
+    if (!res.ok) throw new Error(JSON.stringify(await safeParseJSON(res)))
+    return res.json() as T
   }, [])
 
   const post = useCallback(async <T>(url: string, body: unknown, options?: RequestInit): Promise<T> => {
@@ -88,8 +98,8 @@ export function useApi() {
       body: JSON.stringify(body),
       ...options,
     })
-    if (!res.ok) throw new Error(await res.text())
-    return res.json()
+    if (!res.ok) throw new Error(JSON.stringify(await safeParseJSON(res)))
+    return res.json() as T
   }, [])
 
   const put = useCallback(async <T>(url: string, body: unknown): Promise<T> => {
@@ -97,14 +107,14 @@ export function useApi() {
       method: 'PUT',
       body: JSON.stringify(body),
     })
-    if (!res.ok) throw new Error(await res.text())
-    return res.json()
+    if (!res.ok) throw new Error(JSON.stringify(await safeParseJSON(res)))
+    return res.json() as T
   }, [])
 
   const del = useCallback(async <T>(url: string): Promise<T> => {
     const res = await apiFetch(url, { method: 'DELETE' })
-    if (!res.ok) throw new Error(await res.text())
-    return res.json()
+    if (!res.ok) throw new Error(JSON.stringify(await safeParseJSON(res)))
+    return res.json() as T
   }, [])
 
   return { get, post, put, del, isOnline }

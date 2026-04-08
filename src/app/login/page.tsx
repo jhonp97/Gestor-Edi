@@ -51,8 +51,27 @@ export default function LoginPage() {
       // Login exitoso - redirigir
       window.location.href = '/dashboard'
       return
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Login error:', err)
+      // Try to parse error response
+      if (err instanceof Error && err.message) {
+        try {
+          const errorData = JSON.parse(err.message)
+          if (errorData.error) {
+            if (errorData.field === 'email') {
+              setEmailError(errorData.error)
+            } else if (errorData.field === 'password') {
+              setPasswordError(errorData.error)
+            } else {
+              setError(errorData.error)
+            }
+            setLoading(false)
+            return
+          }
+        } catch {
+          // Not JSON, continue to generic error
+        }
+      }
       setError('Error de conexión')
       setLoading(false)
     }
