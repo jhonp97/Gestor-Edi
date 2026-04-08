@@ -54,18 +54,18 @@ export class AuthService {
     // Find user
     const user = await userRepo.findByEmail(email)
     if (!user) {
-      throw new AuthError('INVALID_CREDENTIALS', 'Email o contraseña incorrectos')
+      throw new AuthError('EMAIL_NOT_FOUND', 'No existe ninguna cuenta con este email')
     }
 
     // OAuth users don't have password
     if (!user.password) {
-      throw new AuthError('INVALID_CREDENTIALS', 'Este email está registrado con Google. Iniciá sesión con Google.')
+      throw new AuthError('EMAIL_NOT_FOUND', 'Este email está registrado con Google. Iniciá sesión con Google.')
     }
 
     // Verify password - ensure it's a valid bcrypt hash
     const isValid = await bcrypt.compare(password, user.password)
     if (!isValid) {
-      throw new AuthError('INVALID_CREDENTIALS', 'Email o contraseña incorrectos')
+      throw new AuthError('WRONG_PASSWORD', 'La contraseña es incorrecta')
     }
 
     // Generate JWT

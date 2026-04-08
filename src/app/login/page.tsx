@@ -14,6 +14,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [emailError, setEmailError] = useState('')
+  const [passwordError, setPasswordError] = useState('')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const { post } = useApi()
@@ -26,18 +28,27 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    setEmailError('')
+    setPasswordError('')
     setLoading(true)
 
     try {
-      const data = await post<{ token?: string; error?: string }>('/api/auth/login', { email, password })
+      const data = await post<{ token?: string; error?: string; field?: string }>('/api/auth/login', { email, password })
 
       if (data.error) {
-        setError(data.error)
+        // Set inline errors based on field
+        if (data.field === 'email') {
+          setEmailError(data.error)
+        } else if (data.field === 'password') {
+          setPasswordError(data.error)
+        } else {
+          setError(data.error)
+        }
         setLoading(false)
         return
       }
 
-      // Login exitoso - redirigir (el token ya se guarda en apiFetch)
+      // Login exitoso - redirigir
       window.location.href = '/dashboard'
       return
     } catch (err) {
@@ -109,10 +120,16 @@ export default function LoginPage() {
                   type="email"
                   placeholder="tu@email.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => { setEmail(e.target.value); setEmailError('') }}
                   required
                   autoComplete="email"
+                  aria-invalid={emailError ? 'true' : 'false'}
+                  aria-describedby={emailError ? 'email-error' : undefined}
+                  className={emailError ? 'border-red-500 focus-visible:border-red-500' : ''}
                 />
+                {emailError && (
+                  <p id="email-error" className="text-xs text-red-500 mt-1">{emailError}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <label htmlFor="password" className="text-sm font-medium text-[#1e3a5f]">
@@ -122,9 +139,10 @@ export default function LoginPage() {
                   id="password"
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => { setPassword(e.target.value); setPasswordError('') }}
                   required
                   autoComplete="current-password"
+                  error={passwordError}
                 />
               </div>
               <Button

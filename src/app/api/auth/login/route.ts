@@ -33,13 +33,12 @@ export async function POST(request: Request) {
     // Create response with cookie
     const response = NextResponse.json({ 
       user: result.user,
-      token: result.token  // Return token in body for localStorage
+      token: result.token
     })
 
     // Set cookie with explicit options for development
     response.cookies.set(COOKIE_NAME, result.token, {
       ...COOKIE_OPTIONS,
-      // Force for development
       sameSite: 'lax',
     })
 
@@ -48,6 +47,20 @@ export async function POST(request: Request) {
     return response
   } catch (error) {
     if (error instanceof AuthError) {
+      // Determine which field the error applies to
+      if (error.code === 'EMAIL_NOT_FOUND' || error.code === 'EMAIL_EXISTS') {
+        return NextResponse.json({ 
+          error: error.message, 
+          field: 'email' 
+        }, { status: 401 })
+      }
+      if (error.code === 'INVALID_PASSWORD' || error.code === 'WRONG_PASSWORD') {
+        return NextResponse.json({ 
+          error: error.message, 
+          field: 'password' 
+        }, { status: 401 })
+      }
+      // Generic credentials error
       return NextResponse.json({ error: error.message }, { status: 401 })
     }
     console.error('Login error:', error)
