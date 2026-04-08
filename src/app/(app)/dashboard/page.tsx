@@ -6,6 +6,9 @@ import { CategoryChart } from '@/components/dashboard/category-chart'
 import { Card } from '@/components/ui/card'
 import { TrendingUp, TrendingDown, DollarSign, BarChart3 } from 'lucide-react'
 
+// Force dynamic rendering to avoid database access during build
+export const dynamic = 'force-dynamic'
+
 async function getMonthlyData() {
   const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
   const currentYear = new Date().getFullYear()
