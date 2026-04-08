@@ -37,9 +37,6 @@ yarn-error.log*
 pruebas.rest
 *.rest
 
-# pnpm lockfile - regenerate in CI
-pnpm-lock.yaml
-
 
 # prisma
 dev.db
