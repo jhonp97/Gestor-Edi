@@ -6,8 +6,6 @@ import type { AuthTokenPayload } from '@/types/auth'
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET || 'dev-secret-change-in-production'
 const COOKIE_NAME = 'auth-token'
 
-const rateLimitMap = new Map<string, { count: number; reset: number }>()
-
 // Public routes that don't require authentication
 const PUBLIC_ROUTES = [
   '/',
@@ -23,6 +21,8 @@ const PUBLIC_ROUTES = [
 const ADMIN_ROUTES = ['/admin']
 
 function isPublicRoute(pathname: string): boolean {
+  if (pathname.match(/\.(json|png|jpg|ico|svg|webp|txt|xml|js)$/)) return true
+
   return PUBLIC_ROUTES.some(
     (route) => pathname === route || pathname.startsWith('/api/auth/')
   )
@@ -55,30 +55,7 @@ export function middleware(request: NextRequest) {
     "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none';"
   )
 
-  // Rate limiting (only in production)
-  if (process.env.NODE_ENV === 'production') {
-    const ip =
-      request.headers.get('x-forwarded-for') ??
-      request.headers.get('x-real-ip') ??
-      '127.0.0.1'
-    const now = Date.now()
-    const windowMs = 60 * 60 * 1000 // 1 hour
-    const limit = 100
 
-    const entry = rateLimitMap.get(ip)
-    if (!entry || now > entry.reset) {
-      rateLimitMap.set(ip, { count: 1, reset: now + windowMs })
-    } else if (entry.count >= limit) {
-      return new NextResponse('Too Many Requests', {
-        status: 429,
-        headers: { 'Retry-After': String(Math.ceil((entry.reset - now) / 1000)) },
-      })
-    } else {
-      entry.count++
-    }
-  }
-
-  // Skip auth check in development - use localStorage token
   // In development we allow access but verify from header
   if (process.env.NODE_ENV !== 'production') {
     // In dev, just pass through but try to verify token if present
@@ -141,5 +118,7 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|icons).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|icons|manifest.json|sw.js|workbox|offline).*)' 
+  ],
 }
