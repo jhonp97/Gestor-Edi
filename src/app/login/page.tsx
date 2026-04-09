@@ -33,7 +33,7 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const data = await post<{ token?: string; error?: string; field?: string }>('/api/auth/login', { email, password })
+      const data = await post<{ success?: boolean; error?: string; field?: string }>('/api/auth/login', { email, password })
 
       if (data.error) {
         // Set inline errors based on field
@@ -49,7 +49,11 @@ export default function LoginPage() {
       }
 
       // Login exitoso -redirigir
-      window.location.replace('/dashboard')
+      if (data.success) {
+        // Pequeño delay para asegurar que la cookie se procesa
+        await new Promise(resolve => setTimeout(resolve, 100))
+        window.location.href = '/dashboard'
+      }
       return
     } catch (err: unknown) {
       console.error('Login error:', err)

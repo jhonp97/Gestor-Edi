@@ -28,20 +28,18 @@ export async function POST(request: Request) {
 
     // Login
     const result = await authService.login(email, password)
-    console.log('Login success, token:', result.token.substring(0, 20) + '...')
+   
 
     // Create response with cookie
-    const response = NextResponse.json({ 
-      user: result.user
-    })
+    const response = NextResponse.json({ success: true, user: result.user })
 
-    // Set cookie with explicit options for development
-    response.cookies.set(COOKIE_NAME, result.token, {
-      ...COOKIE_OPTIONS,
+    response.cookies.set('auth-token', result.token, {
+      httpOnly: true,
+      secure: true,
       sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
     })
-
-    console.log('Cookie set:', COOKIE_NAME, 'options:', COOKIE_OPTIONS)
 
     return response
   } catch (error) {
