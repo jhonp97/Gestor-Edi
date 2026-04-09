@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import jwt from 'jsonwebtoken'
+import { jwtVerify } from 'jose'
 import type { AuthTokenPayload } from '@/types/auth'
 
-const JWT_SECRET = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET || 'dev-secret-change-in-production'
 const COOKIE_NAME = 'auth-token'
-console.log('[middleware] JWT_SECRET primeros 6 chars:', JWT_SECRET.substring(0, 6))
 
 const PUBLIC_ROUTES = [
   '/',
@@ -30,15 +28,19 @@ function isAdminRoute(pathname: string): boolean {
   return ADMIN_ROUTES.some((route) => pathname.startsWith(route))
 }
 
-function verifyToken(token: string): AuthTokenPayload | null {
+async function verifyToken(token: string): Promise<AuthTokenPayload | null> {
   try {
-    return jwt.verify(token, JWT_SECRET) as AuthTokenPayload
+    const secret = new TextEncoder().encode(
+      process.env.NEXTAUTH_SECRET || 'dev-secret-change-in-production'
+    )
+    const { payload } = await jwtVerify(token, secret)
+    return payload as unknown as AuthTokenPayload
   } catch {
     return null
   }
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   const response = NextResponse.next()
@@ -55,7 +57,7 @@ export function middleware(request: NextRequest) {
   if (process.env.NODE_ENV !== 'production') {
     const authHeader = request.headers.get('x-auth-token')
     if (authHeader) {
-      const payload = verifyToken(authHeader)
+      const payload = await verifyToken(authHeader)
       if (payload) {
         response.headers.set('x-user-id', payload.userId)
         response.headers.set('x-user-email', payload.email)
@@ -69,13 +71,7 @@ export function middleware(request: NextRequest) {
     return response
   }
 
-  // ── Token lookup ──────────────────────────────────────────
   let token = request.cookies.get(COOKIE_NAME)?.value
-
-  // DEBUG — eliminar tras confirmar el problema
-  console.log('[middleware] pathname:', pathname)
-  console.log('[middleware] cookie encontrada:', !!token)
-  console.log('[middleware] cookies disponibles:', request.cookies.getAll().map(c => c.name))
 
   if (!token) {
     const authHeader = request.headers.get('x-auth-token')
@@ -83,17 +79,14 @@ export function middleware(request: NextRequest) {
   }
 
   if (!token) {
-    console.log('[middleware] sin token → redirigiendo al login')
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('callbackUrl', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  const payload = verifyToken(token)
-  console.log('[middleware] token válido:', !!payload)
+  const payload = await verifyToken(token)
 
   if (!payload) {
-    console.log('[middleware] token inválido → redirigiendo al login')
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('callbackUrl', pathname)
     return NextResponse.redirect(loginUrl)
