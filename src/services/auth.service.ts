@@ -149,9 +149,7 @@ export class AuthService {
   }
 
   private generateToken(userId: string, email: string, role: UserRole): string {
-    // DEBUG — eliminar tras confirmar el problema
-    console.log('[auth.service] NEXTAUTH_SECRET definido:', !!process.env.NEXTAUTH_SECRET)
-    console.log('[auth.service] JWT_SECRET primeros 6 chars:', JWT_SECRET.substring(0, 6))
+    
 
     const payload: AuthTokenPayload = { userId, email, role }
     return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRY })
