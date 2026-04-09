@@ -48,7 +48,10 @@ export default function LoginPage() {
         return
       }
 
-      // Login exitoso - redirigir
+      // Login exitoso - guardar token en localStorage como backup y redirigir
+      if (data.token) {
+        localStorage.setItem('auth-token', data.token)
+      }
       window.location.href = '/dashboard'
       return
     } catch (err: unknown) {

@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server'
 import jwt from 'jsonwebtoken'
 import type { AuthTokenPayload } from '@/types/auth'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production'
+const JWT_SECRET = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET || 'dev-secret-change-in-production'
 const COOKIE_NAME = 'auth-token'
 
 const rateLimitMap = new Map<string, { count: number; reset: number }>()
