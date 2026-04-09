@@ -1,0 +1,18 @@
+# Prisma seeds
+prisma/seed-*.js
+
+# Build output
+.next/
+dist/
+build/
+
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+
+# Misc
+*.ico
+*.png
