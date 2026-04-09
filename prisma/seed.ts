@@ -1,9 +1,30 @@
-import { PrismaClient, TruckStatus, TransactionType, WorkerStatus, UserRole } from '@prisma/client'
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
-import bcrypt from 'bcrypt'
+import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
 
-const adapter = new PrismaBetterSqlite3({ url: './dev.db' })
-const prisma = new PrismaClient({ adapter })
+// Enums hardcoded for seed (compatible with PostgreSQL)
+const TruckStatus = {
+  ACTIVE: 'ACTIVE',
+  MAINTENANCE: 'MAINTENANCE',
+  INACTIVE: 'INACTIVE',
+} as const
+
+const TransactionType = {
+  INCOME: 'INCOME',
+  EXPENSE: 'EXPENSE',
+} as const
+
+const WorkerStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  ON_LEAVE: 'ON_LEAVE',
+} as const
+
+const UserRole = {
+  USER: 'USER',
+  ADMIN: 'ADMIN',
+} as const
+
+const prisma = new PrismaClient()
 
 async function main() {
   console.log('🌱 Seeding database...')

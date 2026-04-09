@@ -2,6 +2,9 @@ import { prisma } from '@/lib/prisma'
 import { TruckCard } from '@/components/trucks/truck-card'
 import { TruckForm } from '@/components/trucks/truck-form'
 
+// Force dynamic rendering to avoid build-time database connection
+export const dynamic = 'force-dynamic'
+
 export default async function TrucksPage() {
   const [trucks, transactions] = await Promise.all([
     prisma.truck.findMany({

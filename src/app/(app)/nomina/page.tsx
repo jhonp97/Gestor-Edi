@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Plus, DollarSign, TrendingDown, Wallet, Users } from 'lucide-react'
 import Link from 'next/link'
 
+// Force dynamic rendering to avoid build-time database connection
+export const dynamic = 'force-dynamic'
+
 const MONTH_NAMES = [
   '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',

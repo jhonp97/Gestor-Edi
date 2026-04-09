@@ -3,7 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Truck {
@@ -63,22 +64,17 @@ model Payroll {
   id                    String   @id @default(uuid())
   workerId              String
   worker                Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
-  month                 Int      // 1-12
+  month                 Int
   year                  Int
   baseSalary            Float
-  irpfPercent           Float    @default(0)  // IRPF deduction %
+  irpfPercent           Float    @default(0)
   irpfAmount            Float    @default(0)
-  socialSecurityPercent Float    @default(6.35)  // Seguridad Social worker %
+  socialSecurityPercent Float    @default(6.35)
   socialSecurityAmount  Float    @default(0)
-  
-  // Deducciones adicionales
   otherDeductions       Float    @default(0)
   otherDeductionsDesc   String?
-  
-  // Extras/Bonificaciones
   bonuses               Float    @default(0)
   bonusesDesc           String?
-  
   grossPay              Float
   netPay                Float
   paidAt                DateTime?
@@ -112,9 +108,9 @@ model User {
   id                    String              @id @default(uuid())
   name                  String
   email                 String              @unique
-  password              String?             // nullable para OAuth users
+  password              String?
   role                  UserRole            @default(USER)
-  image                 String?             // Google profile picture
+  image                 String?
   passwordResetTokens   PasswordResetToken[]
   accounts              Account[]
   createdAt             DateTime            @default(now())
@@ -128,7 +124,7 @@ model Account {
   id                String  @id @default(uuid())
   userId            String
   type              String
-  provider          String  // "google"
+  provider          String
   providerAccountId String
   refresh_token     String?
   access_token      String?

@@ -2,6 +2,9 @@ import { prisma } from '@/lib/prisma'
 import { WorkerTable } from '@/components/workers/worker-table'
 import { WorkerForm } from '@/components/workers/worker-form'
 
+// Force dynamic rendering to avoid build-time database connection
+export const dynamic = 'force-dynamic'
+
 export default async function WorkersPage() {
   const [workers, trucks] = await Promise.all([
     prisma.worker.findMany({
