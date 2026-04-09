@@ -7,7 +7,6 @@ import { emailService } from './email.service'
 import type { AuthTokenPayload, AuthSession } from '@/types/auth'
 import type { UserRole } from '@prisma/client'
 
-// auth.service.ts - línea 8
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'dev-secret-change-in-production'
 const JWT_EXPIRY = '8h'
 const BCRYPT_COST = 12
@@ -18,26 +17,21 @@ const tokenRepo = new PasswordResetTokenRepository()
 
 export class AuthService {
   async register(name: string, email: string, password: string): Promise<{ user: AuthSession['user']; token: string }> {
-    // Check if email already exists
     const existing = await userRepo.findByEmail(email)
     if (existing) {
       throw new AuthError('EMAIL_EXISTS', 'Este email ya está registrado')
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, BCRYPT_COST)
 
-    // Create user
     const user = await userRepo.create({
       name,
       email,
       password: hashedPassword,
     })
 
-    // Generate JWT
     const token = this.generateToken(user.id, user.email, user.role)
 
-    // Send welcome email (async, don't block)
     emailService.sendWelcomeEmail(email, name).catch(console.error)
 
     return {
@@ -52,24 +46,20 @@ export class AuthService {
   }
 
   async login(email: string, password: string): Promise<{ user: AuthSession['user']; token: string }> {
-    // Find user
     const user = await userRepo.findByEmail(email)
     if (!user) {
       throw new AuthError('EMAIL_NOT_FOUND', 'No existe ninguna cuenta con este email')
     }
 
-    // OAuth users don't have password
     if (!user.password) {
       throw new AuthError('EMAIL_NOT_FOUND', 'Este email está registrado con Google. Iniciá sesión con Google.')
     }
 
-    // Verify password - ensure it's a valid bcrypt hash
     const isValid = await bcrypt.compare(password, user.password)
     if (!isValid) {
       throw new AuthError('WRONG_PASSWORD', 'La contraseña es incorrecta')
     }
 
-    // Generate JWT
     const token = this.generateToken(user.id, user.email, user.role)
 
     return {
@@ -112,48 +102,34 @@ export class AuthService {
   }
 
   async requestPasswordReset(email: string): Promise<void> {
-    // Always return success to prevent email enumeration
     const user = await userRepo.findByEmail(email)
     if (!user) return
 
-    // Delete any existing tokens for this user
     await tokenRepo.deleteByUserId(user.id)
 
-    // Generate secure token
     const token = crypto.randomBytes(32).toString('hex')
     const expiresAt = new Date(Date.now() + RESET_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000)
 
-    // Save token
     await tokenRepo.create(user.id, token, expiresAt)
-
-    // Send reset email
     await emailService.sendPasswordResetEmail(email, user.name, token)
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
-    // Find token
     const resetToken = await tokenRepo.findByToken(token)
     if (!resetToken) {
       throw new AuthError('INVALID_TOKEN', 'Token inválido o expirado')
     }
 
-    // Check if expired
     if (resetToken.expiresAt < new Date()) {
       throw new AuthError('TOKEN_EXPIRED', 'El token ha expirado')
     }
 
-    // Check if already used
     if (resetToken.used) {
       throw new AuthError('TOKEN_USED', 'Este token ya fue utilizado')
     }
 
-    // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_COST)
-
-    // Update password
     await userRepo.updatePassword(resetToken.userId, hashedPassword)
-
-    // Mark token as used
     await tokenRepo.markAsUsed(resetToken.id)
   }
 
@@ -173,6 +149,10 @@ export class AuthService {
   }
 
   private generateToken(userId: string, email: string, role: UserRole): string {
+    // DEBUG — eliminar tras confirmar el problema
+    console.log('[auth.service] NEXTAUTH_SECRET definido:', !!process.env.NEXTAUTH_SECRET)
+    console.log('[auth.service] JWT_SECRET primeros 6 chars:', JWT_SECRET.substring(0, 6))
+
     const payload: AuthTokenPayload = { userId, email, role }
     return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRY })
   }

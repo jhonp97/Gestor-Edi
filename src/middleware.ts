@@ -5,6 +5,7 @@ import type { AuthTokenPayload } from '@/types/auth'
 
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET || 'dev-secret-change-in-production'
 const COOKIE_NAME = 'auth-token'
+console.log('[middleware] JWT_SECRET primeros 6 chars:', JWT_SECRET.substring(0, 6))
 
 const PUBLIC_ROUTES = [
   '/',
