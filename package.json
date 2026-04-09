@@ -7,8 +7,15 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@prisma/client",
       "@prisma/engines",
+      "esbuild",
       "prisma"
+    ],
+    "ignoredBuiltDependencies": [
+      "msw",
+      "sharp",
+      "unrs-resolver"
     ]
   },
   "scripts": {
