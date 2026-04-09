@@ -32,8 +32,7 @@ export async function POST(request: Request) {
 
     // Create response with cookie
     const response = NextResponse.json({ 
-      user: result.user,
-      token: result.token
+      user: result.user
     })
 
     // Set cookie with explicit options for development

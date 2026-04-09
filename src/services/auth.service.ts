@@ -7,7 +7,7 @@ import { emailService } from './email.service'
 import type { AuthTokenPayload, AuthSession } from '@/types/auth'
 import type { UserRole } from '@prisma/client'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production'
+const JWT_SECRET = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET || 'dev-secret-change-in-production'
 const JWT_EXPIRY = '8h'
 const BCRYPT_COST = 12
 const RESET_TOKEN_EXPIRY_HOURS = 1

@@ -48,11 +48,8 @@ export default function LoginPage() {
         return
       }
 
-      // Login exitoso - guardar token en localStorage como backup y redirigir
-      if (data.token) {
-        localStorage.setItem('auth-token', data.token)
-      }
-      window.location.href = '/dashboard'
+      // Login exitoso -redirigir
+      window.location.replace('/dashboard')
       return
     } catch (err: unknown) {
       console.error('Login error:', err)
