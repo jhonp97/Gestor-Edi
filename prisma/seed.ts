@@ -39,11 +39,18 @@ async function main() {
   console.log('🗑️  Cleaned existing data')
 
   // --- Admin User ---
-  const adminPassword = await bcrypt.hash('admin123', 12)
+  const adminEmail = process.env.ADMIN_EMAIL
+  const adminRawPassword = process.env.ADMIN_PASSWORD
+
+  if (!adminEmail || !adminRawPassword) {
+    throw new Error('❌ ADMIN_EMAIL y ADMIN_PASSWORD deben estar definidos en .env')
+  }
+
+  const adminPassword = await bcrypt.hash(adminRawPassword, 12)
   const admin = await prisma.user.create({
     data: {
       name: 'Admin',
-      email: 'admin@flota.com',
+      email: adminEmail,
       password: adminPassword,
       role: UserRole.ADMIN,
     },
