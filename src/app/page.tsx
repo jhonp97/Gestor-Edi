@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import jwt from 'jsonwebtoken'
+import { jwtVerify } from 'jose'
 import { Button } from '@/components/ui/button'
 import {
   Truck, BarChart3, Users, Banknote, Receipt, Wifi,
@@ -9,15 +9,16 @@ import {
   Mail, Phone, MapPin
 } from 'lucide-react'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production'
-
 async function isAuthenticated(): Promise<boolean> {
   const cookieStore = await cookies()
   const token = cookieStore.get('auth-token')?.value
   if (!token) return false
 
   try {
-    jwt.verify(token, JWT_SECRET)
+    const secret = new TextEncoder().encode(
+      process.env.NEXTAUTH_SECRET || 'dev-secret-change-in-production'
+    )
+    await jwtVerify(token, secret)
     return true
   } catch {
     return false

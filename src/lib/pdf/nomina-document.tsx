@@ -46,7 +46,7 @@ export function NominaDocument({ payroll }: NominaDocumentProps) {
         <View style={styles.header}>
           <View>
             <Text style={styles.title}>RECIBO DE NÓMINA</Text>
-            <Text style={{ color: '#64748b' }}>Flota Camiones PWA</Text>
+            <Text style={{ color: '#64748b' }}>Flota Camiones EDI</Text>
           </View>
           <View style={{ textAlign: 'right' }}>
             <Text>Período: {monthNames[payroll.month]} {payroll.year}</Text>
@@ -142,7 +142,7 @@ export function NominaDocument({ payroll }: NominaDocumentProps) {
 
         {/* Footer */}
         <Text style={styles.footer}>
-          Este documento es un recibo de nómina generado automáticamente por Flota Camiones PWA.
+          Este documento es un recibo de nómina generado automáticamente por Flota Camiones EDI.
         </Text>
       </Page>
     </Document>
