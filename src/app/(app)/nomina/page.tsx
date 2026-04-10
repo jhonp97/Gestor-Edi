@@ -3,6 +3,7 @@ import { PayrollTable } from '@/components/nomina/payroll-table'
 import { PayrollSummaryCard } from '@/components/nomina/payroll-summary'
 import { Button } from '@/components/ui/button'
 import { Plus, DollarSign, TrendingDown, Wallet, Users } from 'lucide-react'
+import { PayrollIndividualDialog } from '@/components/nomina/payroll-individual-dialog'
 import Link from 'next/link'
 
 // Force dynamic rendering to avoid build-time database connection
@@ -57,12 +58,15 @@ export default async function PayrollPage({
             {MONTH_NAMES[month]} {year}
           </p>
         </div>
-        <Link href="/nomina/generar">
-          <Button size="lg">
-            <Plus className="mr-2 size-5" aria-hidden="true" />
-            Generar Nómina
-          </Button>
-        </Link>
+        <div className="flex gap-3">
+          <PayrollIndividualDialog />
+          <Link href="/nomina/generar">
+            <Button size="lg">
+              <Plus className="mr-2 size-5" />
+              Todos los trabajadores
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}

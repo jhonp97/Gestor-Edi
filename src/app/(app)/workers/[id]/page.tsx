@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DeleteWorkerButton } from '@/components/workers/delete-worker-button'
 import { ArrowLeft, Truck } from 'lucide-react'
+import { PayrollIndividualDialog } from '@/components/nomina/payroll-individual-dialog'
 
 const statusLabels: Record<string, string> = {
   ACTIVE: 'Activo',
@@ -134,6 +135,7 @@ export default async function WorkerDetailPage({
         <Link href={`/workers/${worker.id}/edit`}>
           <Button>Editar Trabajador</Button>
         </Link>
+        <PayrollIndividualDialog preselectedWorker={worker} />
         <DeleteWorkerButton workerId={worker.id} workerName={worker.name} />
       </div>
     </div>
