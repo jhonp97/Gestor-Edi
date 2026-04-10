@@ -15,6 +15,7 @@ interface UserData {
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserData[]>([])
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState<string | null>(null)
@@ -26,15 +27,21 @@ export default function AdminUsersPage() {
 
   async function fetchUsers() {
     try {
-      const res = await fetch('/api/admin/users')
-      const data = await res.json()
+      const [usersRes, sessionRes] = await Promise.all([
+        fetch('/api/admin/users'),
+        fetch('/api/auth/session'),
+      ])
 
-      if (!res.ok) {
-        setError(data.error || 'Error al cargar usuarios')
+      const usersData = await usersRes.json()
+      const sessionData = await sessionRes.json()
+
+      if (!usersRes.ok) {
+        setError(usersData.error || 'Error al cargar usuarios')
         return
       }
 
-      setUsers(data.users)
+      setUsers(usersData.users)
+      setCurrentUserId(sessionData?.user?.id || null)
     } catch {
       setError('Error de conexión')
     } finally {
@@ -86,9 +93,7 @@ export default function AdminUsersPage() {
         return
       }
 
-      setUsers(
-        users.map((u) => (u.id === id ? { ...u, role: newRole } : u))
-      )
+      setUsers(users.map((u) => (u.id === id ? { ...u, role: newRole } : u)))
     } catch {
       alert('Error de conexión')
     } finally {
@@ -185,71 +190,82 @@ export default function AdminUsersPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {users.map((user) => (
-                    <tr key={user.id} className="text-sm">
-                      <td className="py-3 font-medium">{user.name}</td>
-                      <td className="py-3 text-muted-foreground">
-                        {user.email}
-                      </td>
-                      <td className="py-3">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${
-                            user.role === 'ADMIN'
-                              ? 'bg-amber-500/10 text-amber-700'
-                              : 'bg-green-500/10 text-green-700'
-                          }`}
-                        >
-                          {user.role === 'ADMIN' ? (
-                            <Shield className="size-3" />
-                          ) : (
-                            <User className="size-3" />
-                          )}
-                          {user.role === 'ADMIN' ? 'Admin' : 'Usuario'}
-                        </span>
-                      </td>
-                      <td className="py-3 text-muted-foreground">
-                        <span className="inline-flex items-center gap-1">
-                          <Calendar className="size-3" />
-                          {new Date(user.createdAt).toLocaleDateString('es-AR')}
-                        </span>
-                      </td>
-                      <td className="py-3 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="xs"
-                            onClick={() =>
-                              changeRole(
-                                user.id,
-                                user.role === 'ADMIN' ? 'USER' : 'ADMIN'
-                              )
-                            }
-                            disabled={changingRole === user.id}
+                  {users.map((user) => {
+                    const isSelf = user.id === currentUserId
+                    return (
+                      <tr key={user.id} className="text-sm">
+                        <td className="py-3 font-medium">{user.name}</td>
+                        <td className="py-3 text-muted-foreground">
+                          {user.email}
+                        </td>
+                        <td className="py-3">
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${
+                              user.role === 'ADMIN'
+                                ? 'bg-amber-500/10 text-amber-700'
+                                : 'bg-green-500/10 text-green-700'
+                            }`}
                           >
                             {user.role === 'ADMIN' ? (
-                              <>
-                                <User className="mr-1 size-3" />
-                                Hacer Usuario
-                              </>
+                              <Shield className="size-3" />
+                            ) : (
+                              <User className="size-3" />
+                            )}
+                            {user.role === 'ADMIN' ? 'Admin' : 'Usuario'}
+                          </span>
+                        </td>
+                        <td className="py-3 text-muted-foreground">
+                          <span className="inline-flex items-center gap-1">
+                            <Calendar className="size-3" />
+                            {new Date(user.createdAt).toLocaleDateString('es-ES')}
+                          </span>
+                        </td>
+                        <td className="py-3 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {isSelf ? (
+                              <span className="text-xs text-muted-foreground italic px-2">
+                                Tú
+                              </span>
                             ) : (
                               <>
-                                <Shield className="mr-1 size-3" />
-                                Hacer Admin
+                                <Button
+                                  variant="outline"
+                                  size="xs"
+                                  onClick={() =>
+                                    changeRole(
+                                      user.id,
+                                      user.role === 'ADMIN' ? 'USER' : 'ADMIN'
+                                    )
+                                  }
+                                  disabled={changingRole === user.id}
+                                >
+                                  {user.role === 'ADMIN' ? (
+                                    <>
+                                      <User className="mr-1 size-3" />
+                                      Hacer Usuario
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Shield className="mr-1 size-3" />
+                                      Hacer Admin
+                                    </>
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="xs"
+                                  onClick={() => deleteUser(user.id, user.name)}
+                                  disabled={deleting === user.id}
+                                >
+                                  <Trash2 className="size-3" />
+                                </Button>
                               </>
                             )}
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="xs"
-                            onClick={() => deleteUser(user.id, user.name)}
-                            disabled={deleting === user.id}
-                          >
-                            <Trash2 className="size-3" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
