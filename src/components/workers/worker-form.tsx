@@ -12,10 +12,26 @@ interface WorkerFormProps {
   trucks: Truck[]
 }
 
+type DocType = 'DNI' | 'NIE' | 'PASAPORTE' | 'OTRO'
+
+const DOC_PATTERNS: Record<DocType, { regex: RegExp | null; placeholder: string; hint: string }> = {
+  DNI:      { regex: /^\d{8}[A-Z]$/,         placeholder: '12345678A',  hint: '8 números + 1 letra' },
+  NIE:      { regex: /^[XYZ]\d{7}[A-Z]$/,    placeholder: 'X1234567A',  hint: 'X/Y/Z + 7 números + 1 letra' },
+  PASAPORTE:{ regex: /^[A-Z0-9]{6,9}$/,       placeholder: 'ABC123456',  hint: '6-9 caracteres alfanuméricos' },
+  OTRO:     { regex: null,                     placeholder: 'Documento',  hint: 'Cualquier formato' },
+}
+
+function validateDoc(type: DocType, value: string): boolean {
+  const pattern = DOC_PATTERNS[type].regex
+  if (!pattern) return value.trim().length > 0
+  return pattern.test(value.toUpperCase())
+}
+
 export function WorkerForm({ trucks }: WorkerFormProps) {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [name, setName] = useState('')
+  const [docType, setDocType] = useState<DocType>('DNI')
   const [dni, setDni] = useState('')
   const [position, setPosition] = useState('')
   const [baseSalary, setBaseSalary] = useState('')
@@ -29,10 +45,8 @@ export function WorkerForm({ trucks }: WorkerFormProps) {
     e.preventDefault()
     setError('')
 
-    // Basic validation
-    const dniRegex = /^\d{8}[A-Z]$/
-    if (!dniRegex.test(dni.toUpperCase())) {
-      setError('DNI inválido. Formato: 12345678A')
+    if (!validateDoc(docType, dni)) {
+      setError(`${docType} inválido. ${DOC_PATTERNS[docType].hint}`)
       return
     }
 
@@ -49,7 +63,7 @@ export function WorkerForm({ trucks }: WorkerFormProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
-          dni: dni.toUpperCase(),
+          dni: docType === 'OTRO' ? dni.trim() : dni.toUpperCase(),
           position,
           baseSalary: Number(baseSalary),
           startDate: new Date(startDate).toISOString(),
@@ -85,9 +99,7 @@ export function WorkerForm({ trucks }: WorkerFormProps) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
       <div>
-        <Label htmlFor="name" className="text-base">
-          Nombre
-        </Label>
+        <Label htmlFor="name" className="text-base">Nombre</Label>
         <Input
           id="name"
           value={name}
@@ -97,23 +109,39 @@ export function WorkerForm({ trucks }: WorkerFormProps) {
           required
         />
       </div>
+
+      <div>
+        <Label htmlFor="docType" className="text-base">Tipo Documento</Label>
+        <select
+          id="docType"
+          value={docType}
+          onChange={(e) => { setDocType(e.target.value as DocType); setDni('') }}
+          className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <option value="DNI">DNI</option>
+          <option value="NIE">NIE</option>
+          <option value="PASAPORTE">Pasaporte</option>
+          <option value="OTRO">Otro</option>
+        </select>
+      </div>
+
       <div>
         <Label htmlFor="dni" className="text-base">
-          DNI
+          {docType === 'OTRO' ? 'Nº Documento' : docType}
         </Label>
         <Input
           id="dni"
           value={dni}
-          onChange={(e) => setDni(e.target.value.toUpperCase())}
-          placeholder="12345678A"
+          onChange={(e) => setDni(docType === 'OTRO' ? e.target.value : e.target.value.toUpperCase())}
+          placeholder={DOC_PATTERNS[docType].placeholder}
           className="text-lg"
           required
         />
+        <p className="text-xs text-muted-foreground mt-1">{DOC_PATTERNS[docType].hint}</p>
       </div>
+
       <div>
-        <Label htmlFor="position" className="text-base">
-          Puesto
-        </Label>
+        <Label htmlFor="position" className="text-base">Puesto</Label>
         <Input
           id="position"
           value={position}
@@ -123,10 +151,9 @@ export function WorkerForm({ trucks }: WorkerFormProps) {
           required
         />
       </div>
+
       <div>
-        <Label htmlFor="baseSalary" className="text-base">
-          Salario Base
-        </Label>
+        <Label htmlFor="baseSalary" className="text-base">Salario Base</Label>
         <Input
           id="baseSalary"
           type="number"
@@ -139,10 +166,9 @@ export function WorkerForm({ trucks }: WorkerFormProps) {
           required
         />
       </div>
+
       <div>
-        <Label htmlFor="startDate" className="text-base">
-          Fecha Inicio
-        </Label>
+        <Label htmlFor="startDate" className="text-base">Fecha Inicio</Label>
         <Input
           id="startDate"
           type="date"
@@ -152,10 +178,9 @@ export function WorkerForm({ trucks }: WorkerFormProps) {
           required
         />
       </div>
+
       <div>
-        <Label htmlFor="status" className="text-base">
-          Estado
-        </Label>
+        <Label htmlFor="status" className="text-base">Estado</Label>
         <select
           id="status"
           value={status}
@@ -167,10 +192,9 @@ export function WorkerForm({ trucks }: WorkerFormProps) {
           <option value="ON_LEAVE">Licencia</option>
         </select>
       </div>
+
       <div>
-        <Label htmlFor="truckId" className="text-base">
-          Camión (opcional)
-        </Label>
+        <Label htmlFor="truckId" className="text-base">Camión (opcional)</Label>
         <select
           id="truckId"
           value={truckId}
@@ -185,6 +209,7 @@ export function WorkerForm({ trucks }: WorkerFormProps) {
           ))}
         </select>
       </div>
+
       <div className="flex gap-2">
         <Button type="submit" size="lg" disabled={loading}>
           {loading ? 'Guardando...' : 'Guardar'}
@@ -199,9 +224,8 @@ export function WorkerForm({ trucks }: WorkerFormProps) {
           Cancelar
         </Button>
       </div>
-      {error && (
-        <p className="w-full text-sm text-destructive">{error}</p>
-      )}
+
+      {error && <p className="w-full text-sm text-destructive">{error}</p>}
     </form>
   )
 }
