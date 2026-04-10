@@ -22,10 +22,10 @@ interface WorkerFormProps {
 type DocType = 'DNI' | 'NIE' | 'PASAPORTE' | 'OTRO'
 
 const DOC_PATTERNS: Record<DocType, { regex: RegExp | null; placeholder: string; hint: string }> = {
-  DNI:       { regex: /^\d{8}[A-Z]$/,       placeholder: '12345678A', hint: '8 números + 1 letra' },
-  NIE:       { regex: /^[XYZ]\d{7}[A-Z]$/,  placeholder: 'X1234567A', hint: 'X/Y/Z + 7 números + 1 letra' },
-  PASAPORTE: { regex: /^[A-Z0-9]{6,9}$/,    placeholder: 'ABC123456', hint: '6-9 caracteres alfanuméricos' },
-  OTRO:      { regex: null,                  placeholder: 'Documento', hint: 'Cualquier formato' },
+  DNI: { regex: /^\d{8}[A-Z]$/, placeholder: '12345678A', hint: '8 números + 1 letra' },
+  NIE: { regex: /^[XYZ]\d{7}[A-Z]$/, placeholder: 'X1234567A', hint: 'X/Y/Z + 7 números + 1 letra' },
+  PASAPORTE: { regex: /^[A-Z0-9]{6,9}$/, placeholder: 'ABC123456', hint: '6-9 caracteres alfanuméricos' },
+  OTRO: { regex: null, placeholder: 'Documento', hint: 'Cualquier formato' },
 }
 
 function validateDoc(type: DocType, value: string): boolean {
@@ -111,8 +111,9 @@ export function WorkerForm({ trucks }: WorkerFormProps) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm() }}>
-      <DialogTrigger asChild>
-        <Button size="lg">
+      
+      <DialogTrigger>
+        <Button size="lg" type="button">
           <Plus className="mr-2 size-5" aria-hidden="true" />
           Nuevo Trabajador
         </Button>
