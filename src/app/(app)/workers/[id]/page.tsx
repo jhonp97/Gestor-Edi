@@ -135,7 +135,13 @@ export default async function WorkerDetailPage({
         <Link href={`/workers/${worker.id}/edit`}>
           <Button>Editar Trabajador</Button>
         </Link>
-        <PayrollIndividualDialog preselectedWorker={worker} />
+        <PayrollIndividualDialog preselectedWorker={{
+          id: worker.id,
+          name: worker.name,
+          dni: worker.dni,
+          position: worker.position,
+          baseSalary: worker.baseSalary,
+        }} />
         <DeleteWorkerButton workerId={worker.id} workerName={worker.name} />
       </div>
     </div>
