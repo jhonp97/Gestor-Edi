@@ -59,11 +59,11 @@ export function TruckForm() {
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm() }}>
-      <DialogTrigger>
-        <Button size="lg" type="button">
-          <Plus className="mr-2 size-5" aria-hidden="true" />
-          Agregar Camión
-        </Button>
+      <DialogTrigger
+        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-11 px-8 bg-primary text-primary-foreground hover:bg-primary/90"
+      >
+        <Plus className="mr-2 size-5" aria-hidden="true" />
+        Agregar Camión
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-md">
