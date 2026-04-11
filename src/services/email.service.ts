@@ -18,25 +18,27 @@ const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'Flota Camiones'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
 export class EmailService {
-  async sendWelcomeEmail(to: string, name: string): Promise<boolean> {
-    try {
-      const resend = getResend()
-      if (!resend) {
-        console.log(`📧 [DEV] Welcome email skipped for ${to} (no API key)`)
-        return true // Return true to not block registration
-      }
-      await resend.emails.send({
-        from: `${APP_NAME} <onboarding@resend.dev>`,
-        to,
-        subject: `¡Bienvenido a ${APP_NAME}!`,
-        html: this.getWelcomeTemplate(name),
-      })
+async sendWelcomeEmail(to: string, name: string): Promise<boolean> {
+  try {
+    const resend = getResend()
+    if (!resend) {
+      console.log(`📧 [DEV] Welcome email skipped for ${to} (no API key)`)
       return true
-    } catch (error) {
-      console.error('Error sending welcome email:', error)
-      return false
     }
+    console.log(`📧 Intentando enviar email a: ${to}`)
+    const result = await resend.emails.send({
+      from: `${APP_NAME} <onboarding@resend.dev>`,
+      to,
+      subject: `¡Bienvenido a ${APP_NAME}!`,
+      html: this.getWelcomeTemplate(name),
+    })
+    console.log(`📧 Resultado Resend:`, JSON.stringify(result))
+    return true
+  } catch (error) {
+    console.error('Error sending welcome email:', error)
+    return false
   }
+}
 
   async sendPasswordResetEmail(to: string, name: string, token: string): Promise<boolean> {
     try {
