@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { jwtVerify } from 'jose'
+import { auth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import {
   Truck, BarChart3, Users, Banknote, Receipt, Wifi,
@@ -10,6 +11,15 @@ import {
 } from 'lucide-react'
 
 async function isAuthenticated(): Promise<boolean> {
+  // 1. Check NextAuth session first (Google OAuth)
+  try {
+    const session = await auth()
+    if (session?.user) return true
+  } catch {
+    // NextAuth not available, try custom JWT
+  }
+
+  // 2. Check custom JWT cookie (email/password login)
   const cookieStore = await cookies()
   const token = cookieStore.get('auth-token')?.value
   if (!token) return false

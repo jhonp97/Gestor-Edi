@@ -42,8 +42,8 @@ export function Sidebar() {
     setLoggingOut(true)
     try {
       await get<{ success?: boolean }>('/api/auth/logout', { method: 'POST' })
-      router.push('/login')
-      router.refresh()
+      // Full page reload to clear both auth systems (custom JWT + NextAuth)
+      window.location.href = '/login'
     } catch {
       setLoggingOut(false)
     }
