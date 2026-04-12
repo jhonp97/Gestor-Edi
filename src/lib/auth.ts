@@ -2,6 +2,7 @@ import NextAuth from 'next-auth'
 import Google from 'next-auth/providers/google'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import { prisma } from './prisma'
+import { emailService } from '@/services/email.service'
 import type { UserRole } from '@prisma/client'
 
 // Extended user type for role access
@@ -11,6 +12,7 @@ interface UserWithRole {
   email?: string | null
   name?: string | null
   image?: string | null
+  createdAt?: Date | string
 }
 
 // Use type assertion to avoid type issues with prisma adapter
@@ -31,6 +33,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   trustHost: true,
   callbacks: {
+    async signIn({ user, account }) {
+      if (account && user.email) {
+        const createdAt = (user as UserWithRole).createdAt
+        if (createdAt) {
+          const created = new Date(createdAt)
+          const isNewUser = Date.now() - created.getTime() < 60_000
+          if (isNewUser) {
+            emailService
+              .sendWelcomeEmail(user.email, user.name || 'Usuario')
+              .catch(console.error)
+          }
+        }
+      }
+      return true
+    },
     async jwt({ token, user, account }) {
       // Add user ID and role to token on first sign in
       if (account && user) {
