@@ -10,7 +10,7 @@ datasource db {
 
 model Truck {
   id             String        @id @default(uuid())
-  plate          String        @unique
+  plate           String
   brand          String
   model          String
   year           Int
@@ -20,12 +20,13 @@ model Truck {
   transactions   Transaction[]
   workers        Worker[]
 
-  organizationId  String?
-  organization    Organization?  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId  String
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([status])
   @@index([plate])
   @@index([organizationId])
+  @@unique([plate, organizationId])
 }
 
 model Transaction {
@@ -40,8 +41,8 @@ model Transaction {
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
-  organizationId  String?
-  organization    Organization?   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId  String
+  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([truckId])
   @@index([type])
@@ -52,7 +53,7 @@ model Transaction {
 model Worker {
   id              String       @id @default(uuid())
   name            String
-  dni             String       @unique
+  dni             String
   position        String
   baseSalary      Float
   startDate       DateTime
@@ -64,13 +65,14 @@ model Worker {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
-  organizationId  String?
-  organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([status])
   @@index([dni])
   @@index([truckId])
   @@index([organizationId])
+  @@unique([dni, organizationId])
 }
 
 model Payroll {
@@ -95,8 +97,8 @@ model Payroll {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
-  organizationId        String?
-  organization          Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId        String
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([workerId, month, year])
   @@index([workerId])
@@ -147,8 +149,8 @@ model User {
   role                  UserRole            @default(USER)
   image                 String?
 
-  organizationId        String?
-  organization          Organization?       @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  organizationId        String
+  organization          Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   ownedOrganization     Organization?       @relation("OrganizationOwner")
 
   passwordResetTokens   PasswordResetToken[]

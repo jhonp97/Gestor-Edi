@@ -22,7 +22,7 @@ export class UserRepository extends BaseRepository {
 
   async create(data: CreateUserInput): Promise<User> {
     return this.prisma.user.create({
-      data,
+      data: data as User & CreateUserInput,
     })
   }
 

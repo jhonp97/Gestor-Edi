@@ -34,7 +34,7 @@ describe('TruckRepository', () => {
     model: 'FH',
     year: 2020,
     status: 'ACTIVE',
-    organizationId: null,
+    organizationId: 'test-org-id',
     createdAt: new Date(),
     updatedAt: new Date(),
   }

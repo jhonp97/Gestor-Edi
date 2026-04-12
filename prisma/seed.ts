@@ -29,12 +29,13 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('🌱 Seeding database...')
 
-  // Clean existing data
+  // Clean existing data (order matters due to FK constraints)
   await prisma.payroll.deleteMany()
   await prisma.transaction.deleteMany()
   await prisma.worker.deleteMany()
   await prisma.truck.deleteMany()
   await prisma.passwordResetToken.deleteMany()
+  await prisma.organization.deleteMany()
   await prisma.user.deleteMany()
   console.log('🗑️  Cleaned existing data')
 
@@ -53,9 +54,29 @@ async function main() {
       email: adminEmail,
       password: adminPassword,
       role: UserRole.ADMIN,
+      organization: {
+        create: {
+          name: "Admin's Fleet",
+          ownerId: '', // placeholder, updated below
+        },
+      },
     },
   })
-  console.log(`✅ Created admin user: ${admin.email}`)
+
+  // Create organization linked to admin
+  const org = await prisma.organization.create({
+    data: {
+      name: "Admin's Fleet",
+      ownerId: admin.id,
+    },
+  })
+
+  await prisma.user.update({
+    where: { id: admin.id },
+    data: { organizationId: org.id },
+  })
+
+  console.log(`✅ Created admin user: ${admin.email} with organization: ${org.name}`)
 
   // --- Trucks ---
   const truck1 = await prisma.truck.create({
@@ -65,6 +86,7 @@ async function main() {
       model: 'FH16',
       year: 2022,
       status: TruckStatus.ACTIVE,
+      organizationId: org.id,
     },
   })
 
@@ -75,6 +97,7 @@ async function main() {
       model: 'R500',
       year: 2021,
       status: TruckStatus.ACTIVE,
+      organizationId: org.id,
     },
   })
 
@@ -85,6 +108,7 @@ async function main() {
       model: 'Actros',
       year: 2020,
       status: TruckStatus.MAINTENANCE,
+      organizationId: org.id,
     },
   })
 
@@ -100,6 +124,7 @@ async function main() {
         description: 'Carga de combustible',
         date: new Date('2025-09-01'),
         category: 'Gasolina',
+        organizationId: org.id,
       },
       {
         truckId: truck1.id,
@@ -108,6 +133,7 @@ async function main() {
         description: 'Peaje ruta 9',
         date: new Date('2025-09-05'),
         category: 'Peajes',
+        organizationId: org.id,
       },
       {
         truckId: truck1.id,
@@ -116,6 +142,7 @@ async function main() {
         description: 'Viaje Buenos Aires - Rosario',
         date: new Date('2025-09-10'),
         category: 'Viaje',
+        organizationId: org.id,
       },
       {
         truckId: truck1.id,
@@ -124,6 +151,7 @@ async function main() {
         description: 'Cambio de frenos',
         date: new Date('2025-09-15'),
         category: 'Reparaciones',
+        organizationId: org.id,
       },
       {
         truckId: truck1.id,
@@ -132,6 +160,7 @@ async function main() {
         description: 'Carga de combustible',
         date: new Date('2025-09-20'),
         category: 'Gasolina',
+        organizationId: org.id,
       },
       {
         truckId: truck1.id,
@@ -140,6 +169,7 @@ async function main() {
         description: 'Viaje Córdoba - Mendoza',
         date: new Date('2025-09-25'),
         category: 'Viaje',
+        organizationId: org.id,
       },
       {
         truckId: truck1.id,
@@ -148,6 +178,7 @@ async function main() {
         description: 'Service 50.000 km',
         date: new Date('2025-09-28'),
         category: 'Mantenimiento',
+        organizationId: org.id,
       },
     ],
   })
@@ -162,6 +193,7 @@ async function main() {
         description: 'Carga de combustible',
         date: new Date('2025-09-02'),
         category: 'Gasolina',
+        organizationId: org.id,
       },
       {
         truckId: truck2.id,
@@ -170,6 +202,7 @@ async function main() {
         description: 'Viaje La Plata - Mar del Plata',
         date: new Date('2025-09-07'),
         category: 'Viaje',
+        organizationId: org.id,
       },
       {
         truckId: truck2.id,
@@ -178,6 +211,7 @@ async function main() {
         description: 'Peaje autopista',
         date: new Date('2025-09-08'),
         category: 'Peajes',
+        organizationId: org.id,
       },
       {
         truckId: truck2.id,
@@ -186,6 +220,7 @@ async function main() {
         description: 'Reemplazo de neumáticos',
         date: new Date('2025-09-12'),
         category: 'Reparaciones',
+        organizationId: org.id,
       },
       {
         truckId: truck2.id,
@@ -194,6 +229,7 @@ async function main() {
         description: 'Viaje Rosario - Tucumán',
         date: new Date('2025-09-18'),
         category: 'Viaje',
+        organizationId: org.id,
       },
       {
         truckId: truck2.id,
@@ -202,6 +238,7 @@ async function main() {
         description: 'Carga de combustible',
         date: new Date('2025-09-22'),
         category: 'Gasolina',
+        organizationId: org.id,
       },
       {
         truckId: truck2.id,
@@ -210,6 +247,7 @@ async function main() {
         description: 'Cambio de aceite y filtros',
         date: new Date('2025-09-30'),
         category: 'Mantenimiento',
+        organizationId: org.id,
       },
     ],
   })
@@ -224,6 +262,7 @@ async function main() {
         description: 'Carga de combustible',
         date: new Date('2025-09-03'),
         category: 'Gasolina',
+        organizationId: org.id,
       },
       {
         truckId: truck3.id,
@@ -232,6 +271,7 @@ async function main() {
         description: 'Viaje Buenos Aires - Santa Fe',
         date: new Date('2025-09-06'),
         category: 'Viaje',
+        organizationId: org.id,
       },
       {
         truckId: truck3.id,
@@ -240,6 +280,7 @@ async function main() {
         description: 'Peaje ruta 8',
         date: new Date('2025-09-06'),
         category: 'Peajes',
+        organizationId: org.id,
       },
       {
         truckId: truck3.id,
@@ -248,6 +289,7 @@ async function main() {
         description: 'Reparación de transmisión',
         date: new Date('2025-09-14'),
         category: 'Reparaciones',
+        organizationId: org.id,
       },
       {
         truckId: truck3.id,
@@ -256,6 +298,7 @@ async function main() {
         description: 'Revisión general y puesta a punto',
         date: new Date('2025-09-20'),
         category: 'Mantenimiento',
+        organizationId: org.id,
       },
       {
         truckId: truck3.id,
@@ -264,6 +307,7 @@ async function main() {
         description: 'Carga de combustible',
         date: new Date('2025-09-25'),
         category: 'Gasolina',
+        organizationId: org.id,
       },
     ],
   })
@@ -280,6 +324,7 @@ async function main() {
       startDate: new Date('2023-01-15'),
       status: WorkerStatus.ACTIVE,
       truckId: truck1.id,
+      organizationId: org.id,
     },
   })
 
@@ -292,6 +337,7 @@ async function main() {
       startDate: new Date('2023-03-01'),
       status: WorkerStatus.ACTIVE,
       truckId: truck2.id,
+      organizationId: org.id,
     },
   })
 
@@ -303,6 +349,7 @@ async function main() {
       baseSalary: 2800.0,
       startDate: new Date('2022-06-10'),
       status: WorkerStatus.ACTIVE,
+      organizationId: org.id,
     },
   })
 
@@ -315,6 +362,7 @@ async function main() {
       startDate: new Date('2024-01-20'),
       status: WorkerStatus.ON_LEAVE,
       truckId: truck3.id,
+      organizationId: org.id,
     },
   })
 
@@ -357,6 +405,7 @@ async function main() {
         grossPay: calc.grossPay,
         netPay: calc.netPay,
         paidAt: pd.workerId === worker1.id ? new Date('2025-10-28') : null,
+        organizationId: org.id,
       },
     })
   }

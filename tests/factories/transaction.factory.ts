@@ -13,7 +13,7 @@ export function createTransaction(overrides: Partial<Transaction> = {}): Transac
     description: overrides.description ?? `Test transaction ${txCounter}`,
     date: overrides.date ?? new Date(),
     category: overrides.category ?? null,
-    organizationId: overrides.organizationId ?? null,
+    organizationId: overrides.organizationId ?? 'test-org-id',
     createdAt: overrides.createdAt ?? new Date(),
     updatedAt: overrides.updatedAt ?? new Date(),
   }

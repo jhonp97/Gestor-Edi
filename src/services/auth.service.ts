@@ -25,24 +25,25 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(password, BCRYPT_COST)
 
+    // Create organization first, then user with orgId
+    const org = await prisma.organization.create({
+      data: {
+        name: `${name}'s Fleet`,
+        ownerId: 'placeholder',
+      },
+    })
+
     const user = await userRepo.create({
       name,
       email,
       password: hashedPassword,
+      organizationId: org.id,
     })
 
-    // Create organization for the new user
-    const org = await prisma.organization.create({
-      data: {
-        name: `${name}'s Fleet`,
-        ownerId: user.id,
-      },
-    })
-
-    // Link user to organization
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { organizationId: org.id },
+    // Update org with correct ownerId
+    await prisma.organization.update({
+      where: { id: org.id },
+      data: { ownerId: user.id },
     })
 
     const token = this.generateToken(user.id, user.email, user.role, org.id)

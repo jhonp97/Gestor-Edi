@@ -24,6 +24,7 @@ export type CreateUserInput = {
   email: string
   password: string
   role?: UserRole
+  organizationId?: string
 }
 
 export type LoginInput = {

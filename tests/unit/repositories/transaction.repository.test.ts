@@ -35,7 +35,7 @@ describe('TransactionRepository', () => {
     model: 'FH',
     year: 2020,
     status: 'ACTIVE',
-    organizationId: null,
+    organizationId: 'test-org-id',
     createdAt: new Date(),
     updatedAt: new Date(),
   }
@@ -48,7 +48,7 @@ describe('TransactionRepository', () => {
     description: 'Test',
     date: new Date(),
     category: null,
-    organizationId: null,
+    organizationId: 'test-org-id',
     createdAt: new Date(),
     updatedAt: new Date(),
     truck: truckFixture,
