@@ -2,22 +2,27 @@ import { BaseRepository } from './base.repository'
 import type { Payroll, PayrollWithWorker, MonthlyPayrollSummary } from '@/types'
 
 export class PayrollRepository extends BaseRepository {
+  constructor(organizationId?: string | null) {
+    super(organizationId)
+  }
+
   async findAll(): Promise<Payroll[]> {
     return this.prisma.payroll.findMany({
+      where: this.tenantFilter(),
       orderBy: [{ year: 'desc' }, { month: 'desc' }],
     })
   }
 
   async findById(id: string): Promise<PayrollWithWorker | null> {
-    return this.prisma.payroll.findUnique({
-      where: { id },
+    return this.prisma.payroll.findFirst({
+      where: { id, ...this.tenantFilter() },
       include: { worker: true },
     })
   }
 
   async findByMonthYear(month: number, year: number): Promise<PayrollWithWorker[]> {
     return this.prisma.payroll.findMany({
-      where: { month, year },
+      where: { month, year, ...this.tenantFilter() },
       include: { worker: true },
       orderBy: { worker: { name: 'asc' } },
     })
@@ -25,7 +30,7 @@ export class PayrollRepository extends BaseRepository {
 
   async findByWorkerId(workerId: string): Promise<Payroll[]> {
     return this.prisma.payroll.findMany({
-      where: { workerId },
+      where: { workerId, ...this.tenantFilter() },
       orderBy: [{ year: 'desc' }, { month: 'desc' }],
     })
   }
@@ -35,9 +40,12 @@ export class PayrollRepository extends BaseRepository {
     month: number,
     year: number,
   ): Promise<Payroll | null> {
-    return this.prisma.payroll.findUnique({
+    return this.prisma.payroll.findFirst({
       where: {
-        workerId_month_year: { workerId, month, year },
+        workerId,
+        month,
+        year,
+        ...this.tenantFilter(),
       },
     })
   }
@@ -60,7 +68,10 @@ export class PayrollRepository extends BaseRepository {
     notes?: string
   }): Promise<Payroll> {
     return this.prisma.payroll.create({
-      data,
+      data: {
+        ...data,
+        organizationId: this.organizationId!,
+      },
     })
   }
 
@@ -77,7 +88,9 @@ export class PayrollRepository extends BaseRepository {
       grossPay: number
       netPay: number
     }>,
-  ): Promise<Payroll> {
+  ): Promise<Payroll | null> {
+    const payroll = await this.findById(id)
+    if (!payroll) return null
     return this.prisma.payroll.update({
       where: { id },
       data,
@@ -85,12 +98,16 @@ export class PayrollRepository extends BaseRepository {
   }
 
   async delete(id: string): Promise<Payroll> {
+    const payroll = await this.findById(id)
+    if (!payroll) throw new Error('Not found')
     return this.prisma.payroll.delete({
       where: { id },
     })
   }
 
-  async markAsPaid(id: string, paidAt: Date): Promise<Payroll> {
+  async markAsPaid(id: string, paidAt: Date): Promise<Payroll | null> {
+    const payroll = await this.findById(id)
+    if (!payroll) return null
     return this.prisma.payroll.update({
       where: { id },
       data: { paidAt },
@@ -99,7 +116,7 @@ export class PayrollRepository extends BaseRepository {
 
   async getMonthlySummary(month: number, year: number): Promise<MonthlyPayrollSummary> {
     const payrolls = await this.prisma.payroll.findMany({
-      where: { month, year },
+      where: { month, year, ...this.tenantFilter() },
       select: {
         grossPay: true,
         netPay: true,
