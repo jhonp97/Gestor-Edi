@@ -6,6 +6,7 @@ export interface AuthTokenPayload {
   userId: string
   email: string
   role: UserRole
+  organizationId?: string
 }
 
 export interface AuthSession {
@@ -14,6 +15,7 @@ export interface AuthSession {
     name: string
     email: string
     role: UserRole
+    organizationId?: string
   }
 }
 

@@ -9,56 +9,68 @@ datasource db {
 }
 
 model Truck {
-  id           String        @id @default(uuid())
-  plate        String        @unique
-  brand        String
-  model        String
-  year         Int
-  status       TruckStatus   @default(ACTIVE)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  transactions Transaction[]
-  workers      Worker[]
+  id             String        @id @default(uuid())
+  plate          String        @unique
+  brand          String
+  model          String
+  year           Int
+  status         TruckStatus   @default(ACTIVE)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  transactions   Transaction[]
+  workers        Worker[]
+
+  organizationId  String?
+  organization    Organization?  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([status])
   @@index([plate])
+  @@index([organizationId])
 }
 
 model Transaction {
-  id          String          @id @default(uuid())
-  truckId     String
-  truck       Truck           @relation(fields: [truckId], references: [id], onDelete: Cascade)
-  type        TransactionType
-  amount      Float
-  description String
-  date        DateTime
-  category    String?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id              String          @id @default(uuid())
+  truckId         String
+  truck           Truck           @relation(fields: [truckId], references: [id], onDelete: Cascade)
+  type            TransactionType
+  amount          Float
+  description     String
+  date            DateTime
+  category        String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  organizationId  String?
+  organization    Organization?   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([truckId])
   @@index([type])
   @@index([date])
+  @@index([organizationId])
 }
 
 model Worker {
-  id          String       @id @default(uuid())
-  name        String
-  dni         String       @unique
-  position    String
-  baseSalary  Float
-  startDate   DateTime
-  endDate     DateTime?
-  status      WorkerStatus @default(ACTIVE)
-  truckId     String?
-  truck       Truck?       @relation(fields: [truckId], references: [id], onDelete: SetNull)
-  payrolls    Payroll[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id              String       @id @default(uuid())
+  name            String
+  dni             String       @unique
+  position        String
+  baseSalary      Float
+  startDate       DateTime
+  endDate         DateTime?
+  status          WorkerStatus @default(ACTIVE)
+  truckId         String?
+  truck           Truck?       @relation(fields: [truckId], references: [id], onDelete: SetNull)
+  payrolls        Payroll[]
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([status])
   @@index([dni])
   @@index([truckId])
+  @@index([organizationId])
 }
 
 model Payroll {
@@ -83,9 +95,30 @@ model Payroll {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
+  organizationId        String?
+  organization          Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   @@unique([workerId, month, year])
   @@index([workerId])
   @@index([month, year])
+  @@index([organizationId])
+}
+
+model Organization {
+  id           String        @id @default(uuid())
+  name         String
+  ownerId      String        @unique
+  owner        User          @relation("OrganizationOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  users        User[]
+  trucks       Truck[]
+  transactions Transaction[]
+  workers      Worker[]
+  payrolls     Payroll[]
+
+  @@index([ownerId])
 }
 
 enum TruckStatus {
@@ -113,6 +146,11 @@ model User {
   password              String?
   role                  UserRole            @default(USER)
   image                 String?
+
+  organizationId        String?
+  organization          Organization?       @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  ownedOrganization     Organization?       @relation("OrganizationOwner")
+
   passwordResetTokens   PasswordResetToken[]
   accounts              Account[]
   createdAt             DateTime            @default(now())
@@ -120,6 +158,7 @@ model User {
 
   @@index([email])
   @@index([role])
+  @@index([organizationId])
 }
 
 model Account {

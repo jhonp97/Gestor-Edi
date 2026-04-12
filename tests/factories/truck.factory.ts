@@ -11,6 +11,7 @@ export function createTruck(overrides: Partial<Truck> = {}): Truck {
     model: overrides.model ?? 'Actros',
     year: overrides.year ?? 2020,
     status: overrides.status ?? 'ACTIVE',
+    organizationId: overrides.organizationId ?? null,
     createdAt: overrides.createdAt ?? new Date(),
     updatedAt: overrides.updatedAt ?? new Date(),
   }

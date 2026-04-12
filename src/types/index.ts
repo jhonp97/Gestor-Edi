@@ -2,6 +2,14 @@ import type { Truck, Transaction, TruckStatus, TransactionType, Worker, WorkerSt
 
 export type { Truck, Transaction, TruckStatus, TransactionType, Worker, WorkerStatus, Payroll }
 
+export type Organization = {
+  id: string
+  name: string
+  ownerId: string
+  createdAt: Date
+  updatedAt: Date
+}
+
 export type CreateTruckInput = {
   plate: string
   brand: string
