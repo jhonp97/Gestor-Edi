@@ -1,15 +1,21 @@
 import { NextResponse } from 'next/server'
+import { getUserFromRequest } from '@/lib/auth-edge'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getUserFromRequest(request)
+    if (!user || !user.organizationId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { id } = await params
-    const truck = await prisma.truck.findUnique({
-      where: { id },
+    const truck = await prisma.truck.findFirst({
+      where: { id, organizationId: user.organizationId },
       include: {
         workers: true,
         transactions: { orderBy: { date: 'desc' } },
@@ -29,9 +35,21 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getUserFromRequest(request)
+    if (!user || !user.organizationId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { id } = await params
     const body = await request.json()
     const { plate, brand, model, year, status } = body
+
+    const existing = await prisma.truck.findFirst({
+      where: { id, organizationId: user.organizationId },
+    })
+    if (!existing) {
+      return NextResponse.json({ error: 'Camión no encontrado' }, { status: 404 })
+    }
 
     const truck = await prisma.truck.update({
       where: { id },
@@ -56,11 +74,24 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getUserFromRequest(request)
+    if (!user || !user.organizationId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { id } = await params
+
+    const existing = await prisma.truck.findFirst({
+      where: { id, organizationId: user.organizationId },
+    })
+    if (!existing) {
+      return NextResponse.json({ error: 'Camión no encontrado' }, { status: 404 })
+    }
+
     await prisma.truck.delete({ where: { id } })
     revalidatePath('/trucks')
     return NextResponse.json({ message: 'Camión eliminado' })

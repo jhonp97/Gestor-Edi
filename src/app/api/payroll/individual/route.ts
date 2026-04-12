@@ -1,10 +1,17 @@
 import { prisma } from '@/lib/prisma'
+import { getUserFromRequest } from '@/lib/auth-edge'
 import { revalidatePath } from 'next/cache'
+import { NextResponse } from 'next/server'
 
 const SS_PERCENT = 6.35
 
 export async function POST(request: Request) {
   try {
+    const user = await getUserFromRequest(request)
+    if (!user || !user.organizationId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const {
       workerId,
@@ -26,9 +33,22 @@ export async function POST(request: Request) {
       )
     }
 
+    // Verify worker belongs to this org
+    const worker = await prisma.worker.findFirst({
+      where: { id: workerId, organizationId: user.organizationId },
+    })
+    if (!worker) {
+      return Response.json({ error: 'Trabajador no encontrado' }, { status: 404 })
+    }
+
     // Check if payroll already exists for this worker/month/year
-    const existing = await prisma.payroll.findUnique({
-      where: { workerId_month_year: { workerId, month, year } },
+    const existing = await prisma.payroll.findFirst({
+      where: {
+        workerId,
+        month,
+        year,
+        organizationId: user.organizationId,
+      },
     })
 
     if (existing) {
@@ -60,6 +80,7 @@ export async function POST(request: Request) {
         grossPay,
         netPay,
         notes: notes || undefined,
+        organizationId: user.organizationId,
       },
       include: { worker: true },
     })

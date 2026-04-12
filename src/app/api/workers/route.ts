@@ -1,12 +1,22 @@
 import { prisma } from '@/lib/prisma'
+import { getUserFromRequest } from '@/lib/auth-edge'
 import { revalidatePath } from 'next/cache'
+import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
   try {
+    const user = await getUserFromRequest(request)
+    if (!user || !user.organizationId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
 
-    const existing = await prisma.worker.findUnique({
-      where: { dni: body.dni.toUpperCase() },
+    const existing = await prisma.worker.findFirst({
+      where: {
+        dni: body.dni.toUpperCase(),
+        organizationId: user.organizationId,
+      },
     })
 
     if (existing) {
@@ -26,6 +36,7 @@ export async function POST(request: Request) {
         endDate: body.endDate ? new Date(body.endDate) : null,
         status: body.status ?? 'ACTIVE',
         truckId: body.truckId || null,
+        organizationId: user.organizationId,
       },
     })
 
@@ -40,8 +51,14 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const user = await getUserFromRequest(request)
+  if (!user || !user.organizationId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const workers = await prisma.worker.findMany({
+    where: { organizationId: user.organizationId },
     orderBy: { createdAt: 'desc' },
   })
   return Response.json(workers)

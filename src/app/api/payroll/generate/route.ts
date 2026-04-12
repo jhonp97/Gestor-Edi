@@ -1,10 +1,17 @@
 import { prisma } from '@/lib/prisma'
+import { getUserFromRequest } from '@/lib/auth-edge'
 import { revalidatePath } from 'next/cache'
+import { NextResponse } from 'next/server'
 
 const SS_PERCENT = 6.35
 
 export async function POST(request: Request) {
   try {
+    const user = await getUserFromRequest(request)
+    if (!user || !user.organizationId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { 
       month, 
@@ -25,7 +32,7 @@ export async function POST(request: Request) {
 
     const irpf = irpfPercent ?? 15
     const activeWorkers = await prisma.worker.findMany({
-      where: { status: 'ACTIVE' },
+      where: { status: 'ACTIVE', organizationId: user.organizationId },
       orderBy: { name: 'asc' },
     })
 
@@ -33,13 +40,12 @@ export async function POST(request: Request) {
     const skipped = []
 
     for (const worker of activeWorkers) {
-      const existing = await prisma.payroll.findUnique({
+      const existing = await prisma.payroll.findFirst({
         where: {
-          workerId_month_year: {
-            workerId: worker.id,
-            month,
-            year,
-          },
+          workerId: worker.id,
+          month,
+          year,
+          organizationId: user.organizationId,
         },
       })
 
@@ -76,6 +82,7 @@ export async function POST(request: Request) {
           otherDeductionsDesc: otherDeductionsDesc || undefined,
           grossPay,
           netPay,
+          organizationId: user.organizationId,
         },
       })
 
