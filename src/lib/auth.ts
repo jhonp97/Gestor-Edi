@@ -16,10 +16,23 @@ interface UserWithRole {
 
 // Use type assertion to avoid type issues with prisma adapter
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const prismaAdapter: any = PrismaAdapter(prisma)
+const originalAdapter: any = PrismaAdapter(prisma)
+
+const adapter = {
+  ...originalAdapter,
+  async createUser(user: any) {
+    const created = await originalAdapter.createUser!(user)
+    if (created.email) {
+      emailService
+        .sendWelcomeEmail(created.email, created.name || 'Usuario')
+        .catch(console.error)
+    }
+    return created
+  },
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: prismaAdapter,
+  adapter,
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -32,23 +45,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   trustHost: true,
   callbacks: {
-    async signIn({ user, account }) {
-      if (account && user.email) {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: user.id },
-          select: { createdAt: true },
-        })
-        if (dbUser) {
-          const isNewUser = Date.now() - dbUser.createdAt.getTime() < 60_000
-          if (isNewUser) {
-            emailService
-              .sendWelcomeEmail(user.email, user.name || 'Usuario')
-              .catch(console.error)
-          }
-        }
-      }
-      return true
-    },
     async jwt({ token, user, account }) {
       // Add user ID and role to token on first sign in
       if (account && user) {
