@@ -12,7 +12,6 @@ interface UserWithRole {
   email?: string | null
   name?: string | null
   image?: string | null
-  createdAt?: Date | string
 }
 
 // Use type assertion to avoid type issues with prisma adapter
@@ -35,10 +34,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async signIn({ user, account }) {
       if (account && user.email) {
-        const createdAt = (user as UserWithRole).createdAt
-        if (createdAt) {
-          const created = new Date(createdAt)
-          const isNewUser = Date.now() - created.getTime() < 60_000
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { createdAt: true },
+        })
+        if (dbUser) {
+          const isNewUser = Date.now() - dbUser.createdAt.getTime() < 60_000
           if (isNewUser) {
             emailService
               .sendWelcomeEmail(user.email, user.name || 'Usuario')
