@@ -18,8 +18,10 @@ interface UserWithRole {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const originalAdapter: any = PrismaAdapter(prisma)
 
-const adapter = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const adapter: any = {
   ...originalAdapter,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async createUser(user: any) {
     const created = await originalAdapter.createUser!(user)
     if (created.email) {

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { LayoutDashboard, Truck, Receipt, Users, Banknote, Menu, X, Shield, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
@@ -24,7 +24,6 @@ interface SessionUser {
 
 export function Sidebar() {
   const pathname = usePathname()
-  const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [user, setUser] = useState<SessionUser | null>(null)
   const [loggingOut, setLoggingOut] = useState(false)

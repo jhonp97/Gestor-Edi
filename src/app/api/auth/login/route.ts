@@ -2,15 +2,6 @@ import { NextResponse } from 'next/server'
 import { authService, AuthError } from '@/services/auth.service'
 import { loginSchema } from '@/schemas/auth.schema'
 
-const COOKIE_NAME = 'auth-token'
-const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
-  path: '/',
-  maxAge: 60 * 60 * 24 * 7, // 7 days for testing
-}
-
 export async function POST(request: Request) {
   try {
     const body = await request.json()

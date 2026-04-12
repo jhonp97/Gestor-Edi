@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { Wifi, WifiOff, LogOut } from 'lucide-react'
 import { useSyncExternalStore } from 'react'
 import { usePathname } from 'next/navigation'
@@ -40,7 +39,6 @@ interface SessionUser {
 export function Header() {
   const isOnline = useSyncExternalStore(subscribeToOnlineState, getOnlineSnapshot, () => true)
   const pathname = usePathname()
-  const router = useRouter()
   const [user, setUser] = useState<SessionUser | null>(null)
   const [loggingOut, setLoggingOut] = useState(false)
   const { get } = useApi()
