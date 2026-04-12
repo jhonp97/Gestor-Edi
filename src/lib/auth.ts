@@ -29,6 +29,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: {
     strategy: 'jwt',
   },
+  trustHost: true,
   callbacks: {
     async jwt({ token, user, account }) {
       // Add user ID and role to token on first sign in

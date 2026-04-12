@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
+import { auth } from '@/lib/auth'
 import type { AuthTokenPayload } from '@/types/auth'
 
 const COOKIE_NAME = 'auth-token'
@@ -40,10 +40,7 @@ async function verifyToken(token: string): Promise<AuthTokenPayload | null> {
   }
 }
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
-
-  const response = NextResponse.next()
+function setSecurityHeaders(response: NextResponse): void {
   response.headers.set('X-Content-Type-Options', 'nosniff')
   response.headers.set('X-Frame-Options', 'DENY')
   response.headers.set('X-XSS-Protection', '1; mode=block')
@@ -53,9 +50,17 @@ export async function middleware(request: NextRequest) {
     'Content-Security-Policy',
     "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none';"
   )
+}
 
+export default auth(async (req) => {
+  const { pathname } = req.nextUrl
+
+  const response = NextResponse.next()
+  setSecurityHeaders(response)
+
+  // Dev mode: only check x-auth-token header for context, skip auth enforcement
   if (process.env.NODE_ENV !== 'production') {
-    const authHeader = request.headers.get('x-auth-token')
+    const authHeader = req.headers.get('x-auth-token')
     if (authHeader) {
       const payload = await verifyToken(authHeader)
       if (payload) {
@@ -67,19 +72,36 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
+  // Public routes always accessible
   if (isPublicRoute(pathname)) {
     return response
   }
 
-  let token = request.cookies.get(COOKIE_NAME)?.value
+  // Check NextAuth session first (Google OAuth, future Credentials)
+  if (req.auth) {
+    const user = req.auth.user
+    response.headers.set('x-user-id', user?.id || '')
+    response.headers.set('x-user-email', user?.email || '')
+    response.headers.set('x-user-role', user?.role || 'USER')
+
+    // Admin route check
+    if (isAdminRoute(pathname) && user?.role !== 'ADMIN') {
+      return NextResponse.redirect(new URL('/dashboard', req.url))
+    }
+
+    return response
+  }
+
+  // Fallback: check custom JWT auth-token cookie (email/password login)
+  let token = req.cookies.get(COOKIE_NAME)?.value
 
   if (!token) {
-    const authHeader = request.headers.get('x-auth-token')
+    const authHeader = req.headers.get('x-auth-token')
     if (authHeader) token = authHeader
   }
 
   if (!token) {
-    const loginUrl = new URL('/login', request.url)
+    const loginUrl = new URL('/login', req.url)
     loginUrl.searchParams.set('callbackUrl', pathname)
     return NextResponse.redirect(loginUrl)
   }
@@ -87,13 +109,13 @@ export async function middleware(request: NextRequest) {
   const payload = await verifyToken(token)
 
   if (!payload) {
-    const loginUrl = new URL('/login', request.url)
+    const loginUrl = new URL('/login', req.url)
     loginUrl.searchParams.set('callbackUrl', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
   if (isAdminRoute(pathname) && payload.role !== 'ADMIN') {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 
   response.headers.set('x-user-id', payload.userId)
@@ -101,7 +123,7 @@ export async function middleware(request: NextRequest) {
   response.headers.set('x-user-role', payload.role)
 
   return response
-}
+})
 
 export const config = {
   matcher: [
