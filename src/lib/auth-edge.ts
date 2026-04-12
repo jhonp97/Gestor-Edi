@@ -19,6 +19,7 @@ export async function getUserFromRequest(request: Request): Promise<AuthTokenPay
         userId: session.user.id,
         email: session.user.email || '',
         role: session.user.role,
+        organizationId: session.user.organizationId,
       }
     }
   } catch {

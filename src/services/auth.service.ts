@@ -4,6 +4,7 @@ import crypto from 'crypto'
 import { UserRepository } from '@/repositories/user.repository'
 import { PasswordResetTokenRepository } from '@/repositories/password-reset-token.repository'
 import { emailService } from './email.service'
+import { prisma } from '@/lib/prisma'
 import type { AuthTokenPayload, AuthSession } from '@/types/auth'
 import type { UserRole } from '@prisma/client'
 
@@ -30,7 +31,21 @@ export class AuthService {
       password: hashedPassword,
     })
 
-    const token = this.generateToken(user.id, user.email, user.role)
+    // Create organization for the new user
+    const org = await prisma.organization.create({
+      data: {
+        name: `${name}'s Fleet`,
+        ownerId: user.id,
+      },
+    })
+
+    // Link user to organization
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { organizationId: org.id },
+    })
+
+    const token = this.generateToken(user.id, user.email, user.role, org.id)
 
     emailService.sendWelcomeEmail(email, name).catch(console.error)
 
@@ -40,6 +55,7 @@ export class AuthService {
         name: user.name,
         email: user.email,
         role: user.role,
+        organizationId: org.id,
       },
       token,
     }
@@ -60,7 +76,7 @@ export class AuthService {
       throw new AuthError('WRONG_PASSWORD', 'La contraseña es incorrecta')
     }
 
-    const token = this.generateToken(user.id, user.email, user.role)
+    const token = this.generateToken(user.id, user.email, user.role, user.organizationId ?? undefined)
 
     return {
       user: {
@@ -68,6 +84,7 @@ export class AuthService {
         name: user.name,
         email: user.email,
         role: user.role,
+        organizationId: user.organizationId ?? undefined,
       },
       token,
     }
@@ -94,6 +111,7 @@ export class AuthService {
           name: user.name,
           email: user.email,
           role: user.role,
+          organizationId: user.organizationId ?? undefined,
         },
       }
     } catch {
@@ -148,10 +166,8 @@ export class AuthService {
     await userRepo.updateRole(id, role)
   }
 
-  private generateToken(userId: string, email: string, role: UserRole): string {
-    
-
-    const payload: AuthTokenPayload = { userId, email, role }
+  private generateToken(userId: string, email: string, role: UserRole, organizationId?: string): string {
+    const payload: AuthTokenPayload = { userId, email, role, organizationId }
     return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRY })
   }
 }

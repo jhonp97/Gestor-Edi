@@ -67,6 +67,9 @@ export default auth(async (req) => {
         response.headers.set('x-user-id', payload.userId)
         response.headers.set('x-user-email', payload.email)
         response.headers.set('x-user-role', payload.role)
+        if (payload.organizationId) {
+          response.headers.set('x-organization-id', payload.organizationId)
+        }
       }
     }
     return response
@@ -83,6 +86,9 @@ export default auth(async (req) => {
     response.headers.set('x-user-id', user?.id || '')
     response.headers.set('x-user-email', user?.email || '')
     response.headers.set('x-user-role', user?.role || 'USER')
+    if (user?.organizationId) {
+      response.headers.set('x-organization-id', user.organizationId)
+    }
 
     // Admin route check
     if (isAdminRoute(pathname) && user?.role !== 'ADMIN') {
@@ -121,6 +127,9 @@ export default auth(async (req) => {
   response.headers.set('x-user-id', payload.userId)
   response.headers.set('x-user-email', payload.email)
   response.headers.set('x-user-role', payload.role)
+  if (payload.organizationId) {
+    response.headers.set('x-organization-id', payload.organizationId)
+  }
 
   return response
 })

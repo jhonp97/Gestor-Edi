@@ -24,6 +24,23 @@ const adapter: any = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async createUser(user: any) {
     const created = await originalAdapter.createUser!(user)
+
+    // Create organization for the new user
+    const org = await prisma.organization.create({
+      data: {
+        name: `${created.name || 'Usuario'}'s Fleet`,
+        ownerId: created.id,
+      },
+    })
+
+    // Link user to organization
+    await prisma.user.update({
+      where: { id: created.id },
+      data: { organizationId: org.id },
+    })
+
+    created.organizationId = org.id
+
     if (created.email) {
       emailService
         .sendWelcomeEmail(created.email, created.name || 'Usuario')
@@ -52,6 +69,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (account && user) {
         token.id = user.id
         token.role = (user as UserWithRole).role || 'USER'
+        // organizationId may come from createUser override (set on created object)
+        token.organizationId = (user as UserWithRole & { organizationId?: string }).organizationId
       }
       return token
     },
@@ -60,6 +79,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token && session.user) {
         session.user.id = token.id as string
         session.user.role = (token.role as UserRole) || 'USER'
+        session.user.organizationId = token.organizationId as string | undefined
       }
       return session
     },
