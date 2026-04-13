@@ -29,7 +29,7 @@ export const resetPasswordSchema = z.object({
 })
 
 export const changeRoleSchema = z.object({
-  role: z.enum(['USER', 'ADMIN']),
+  role: z.enum(['USER', 'ORG_ADMIN', 'PLATFORM_ADMIN']),
 })
 
 export type RegisterInput = z.infer<typeof registerSchema>

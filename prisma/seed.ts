@@ -21,7 +21,8 @@ const WorkerStatus = {
 
 const UserRole = {
   USER: 'USER',
-  ADMIN: 'ADMIN',
+  ORG_ADMIN: 'ORG_ADMIN',
+  PLATFORM_ADMIN: 'PLATFORM_ADMIN',
 } as const
 
 const prisma = new PrismaClient()
@@ -63,7 +64,7 @@ async function main() {
       name: 'Admin',
       email: adminEmail,
       password: adminPassword,
-      role: UserRole.ADMIN,
+      role: UserRole.ORG_ADMIN,
       organizationId: org.id,
     },
   })

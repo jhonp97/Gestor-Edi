@@ -54,6 +54,7 @@ model Worker {
   id              String       @id @default(uuid())
   name            String
   dni             String
+  dniHash         String?
   position        String
   baseSalary      Float
   startDate       DateTime
@@ -70,9 +71,10 @@ model Worker {
 
   @@index([status])
   @@index([dni])
+  @@index([dniHash])
   @@index([truckId])
   @@index([organizationId])
-  @@unique([dni, organizationId])
+  @@unique([dniHash, organizationId])
 }
 
 model Payroll {
@@ -119,8 +121,44 @@ model Organization {
   transactions Transaction[]
   workers      Worker[]
   payrolls     Payroll[]
+  consentLogs  ConsentLog[]
+  auditLogs    AuditLog[]
 
   @@index([ownerId])
+}
+
+model ConsentLog {
+  id             String   @id @default(uuid())
+  userId         String?
+  user           User?    @relation(fields: [userId], references: [id])
+  categories     Json     // { analytics: bool, marketing: bool }
+  ip             String?
+  userAgent      String?
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
+  @@index([organizationId])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id             String      @id @default(uuid())
+  action         AuditAction
+  userId         String?
+  user           User?       @relation(fields: [userId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  details        Json?
+  ip             String?
+  userAgent      String?
+  createdAt      DateTime    @default(now())
+
+  @@index([userId])
+  @@index([organizationId])
+  @@index([action])
+  @@index([createdAt])
 }
 
 enum TruckStatus {
@@ -155,6 +193,10 @@ model User {
 
   passwordResetTokens   PasswordResetToken[]
   accounts              Account[]
+  consentLogs           ConsentLog[]
+  auditLogs             AuditLog[]
+  deletedAt             DateTime?
+  deletionRequestedAt   DateTime?
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
 
@@ -198,5 +240,15 @@ model PasswordResetToken {
 
 enum UserRole {
   USER
-  ADMIN
+  ORG_ADMIN
+  PLATFORM_ADMIN
+}
+
+enum AuditAction {
+  DATA_EXPORT
+  DATA_DELETE_REQUEST
+  ORG_UPDATE
+  ROLE_CHANGE
+  PLATFORM_ADMIN_WRITE
+  CONSENT_CHANGE
 }

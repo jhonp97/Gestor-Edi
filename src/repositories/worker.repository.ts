@@ -1,7 +1,10 @@
 import { BaseRepository } from './base.repository'
+import { getEncryptionService } from '@/services/encryption.service'
 import type { Worker, CreateWorkerInput, UpdateWorkerInput } from '@/types'
 
 export class WorkerRepository extends BaseRepository {
+  private encryption = getEncryptionService()
+
   constructor(organizationId?: string | null) {
     super(organizationId)
   }
@@ -19,9 +22,11 @@ export class WorkerRepository extends BaseRepository {
     })
   }
 
-  async findByDni(dni: string): Promise<Worker | null> {
+  async findByDni(plaintextDni: string): Promise<Worker | null> {
+    // Use dniHash for exact-match lookup since dni is encrypted
+    const dniHash = this.encryption.hashWorkerDni(plaintextDni)
     return this.prisma.worker.findFirst({
-      where: { dni, ...this.tenantFilter() },
+      where: { dniHash, ...this.tenantFilter() },
     })
   }
 
@@ -40,9 +45,14 @@ export class WorkerRepository extends BaseRepository {
   }
 
   async create(data: CreateWorkerInput): Promise<Worker> {
+    // Encrypt DNI before storing
+    const { dni: encryptedDni, dniHash } = await this.encryption.encryptWorkerDni(data.dni)
+    
     return this.prisma.worker.create({
       data: {
         ...data,
+        dni: encryptedDni,
+        dniHash,
         organizationId: this.organizationId!,
       },
     })
@@ -51,9 +61,25 @@ export class WorkerRepository extends BaseRepository {
   async update(id: string, data: UpdateWorkerInput): Promise<Worker | null> {
     const worker = await this.findById(id)
     if (!worker) return null
+
+    // If DNI is being updated, encrypt it
+    const updateData = { ...data }
+    if (data.dni) {
+      const { dni: encryptedDni, dniHash } = await this.encryption.encryptWorkerDni(data.dni)
+      updateData.dni = encryptedDni
+      // Add dniHash to the update data
+      return this.prisma.worker.update({
+        where: { id },
+        data: {
+          ...updateData,
+          dniHash,
+        },
+      })
+    }
+
     return this.prisma.worker.update({
       where: { id },
-      data,
+      data: updateData,
     })
   }
 

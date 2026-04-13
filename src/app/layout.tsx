@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { OfflineBanner } from "@/components/shared/offline-banner";
 import { InstallPrompt } from "@/components/shared/install-prompt";
+import { Footer } from "@/components/layout/footer";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -43,8 +44,9 @@ export default function RootLayout({
       lang="es"
       className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full font-sans">
+      <body className="min-h-full font-sans flex flex-col">
         {children}
+        <Footer />
         <OfflineBanner />
         <InstallPrompt />
       </body>

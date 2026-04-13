@@ -16,6 +16,8 @@ export function createUser(overrides: Partial<User> & { organizationId: string }
     organizationId: overrides.organizationId,
     createdAt: overrides.createdAt ?? new Date(),
     updatedAt: overrides.updatedAt ?? new Date(),
+    deletedAt: overrides.deletedAt ?? null,
+    deletionRequestedAt: overrides.deletionRequestedAt ?? null,
   }
 }
 

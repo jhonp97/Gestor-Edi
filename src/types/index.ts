@@ -2,6 +2,11 @@ import type { Truck, Transaction, TruckStatus, TransactionType, Worker, WorkerSt
 
 export type { Truck, Transaction, TruckStatus, TransactionType, Worker, WorkerStatus, Payroll }
 
+// Worker type now includes dniHash (encrypted at app level)
+export type WorkerWithEncryption = Worker & {
+  dniHash: string | null
+}
+
 export type Organization = {
   id: string
   name: string
@@ -38,9 +43,9 @@ export type DashboardSummary = {
   transactionCount: number
 }
 
-export type CreateWorkerInput = Omit<Worker, 'id' | 'createdAt' | 'updatedAt' | 'payrolls'>
+export type CreateWorkerInput = Omit<Worker, 'id' | 'createdAt' | 'updatedAt' | 'payrolls' | 'organizationId' | 'dniHash'>
 
-export type UpdateWorkerInput = Partial<CreateWorkerInput>
+export type UpdateWorkerInput = Partial<Omit<Worker, 'id' | 'createdAt' | 'updatedAt' | 'payrolls' | 'organizationId' | 'dniHash'>>
 
 export type WorkerWithTruck = Worker & {
   truck: Truck | null

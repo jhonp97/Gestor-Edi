@@ -9,7 +9,7 @@ interface UserData {
   id: string
   name: string
   email: string
-  role: 'USER' | 'ADMIN'
+  role: 'USER' | 'ORG_ADMIN' | 'PLATFORM_ADMIN'
   createdAt: string
 }
 
@@ -76,7 +76,7 @@ export default function AdminUsersPage() {
     }
   }
 
-  async function changeRole(id: string, newRole: 'USER' | 'ADMIN') {
+  async function changeRole(id: string, newRole: 'USER' | 'ORG_ADMIN' | 'PLATFORM_ADMIN') {
     setChangingRole(id)
 
     try {
@@ -159,7 +159,7 @@ export default function AdminUsersPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">
-                {users.filter((u) => u.role === 'ADMIN').length}
+                {users.filter((u) => u.role === 'ORG_ADMIN' || u.role === 'PLATFORM_ADMIN').length}
               </p>
               <p className="text-sm text-muted-foreground">Administradores</p>
             </div>
@@ -201,17 +201,21 @@ export default function AdminUsersPage() {
                         <td className="py-3">
                           <span
                             className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${
-                              user.role === 'ADMIN'
+                              user.role === 'PLATFORM_ADMIN'
+                                ? 'bg-red-500/10 text-red-700'
+                                : user.role === 'ORG_ADMIN'
                                 ? 'bg-amber-500/10 text-amber-700'
                                 : 'bg-green-500/10 text-green-700'
                             }`}
                           >
-                            {user.role === 'ADMIN' ? (
+                            {user.role === 'PLATFORM_ADMIN' ? (
+                              <Shield className="size-3" />
+                            ) : user.role === 'ORG_ADMIN' ? (
                               <Shield className="size-3" />
                             ) : (
                               <User className="size-3" />
                             )}
-                            {user.role === 'ADMIN' ? 'Admin' : 'Usuario'}
+                            {user.role === 'PLATFORM_ADMIN' ? 'Admin Plataforma' : user.role === 'ORG_ADMIN' ? 'Admin' : 'Usuario'}
                           </span>
                         </td>
                         <td className="py-3 text-muted-foreground">
@@ -234,20 +238,20 @@ export default function AdminUsersPage() {
                                   onClick={() =>
                                     changeRole(
                                       user.id,
-                                      user.role === 'ADMIN' ? 'USER' : 'ADMIN'
+                                      user.role === 'ORG_ADMIN' || user.role === 'PLATFORM_ADMIN' ? 'USER' : 'ORG_ADMIN'
                                     )
                                   }
                                   disabled={changingRole === user.id}
                                 >
-                                  {user.role === 'ADMIN' ? (
+                                  {user.role === 'USER' ? (
                                     <>
-                                      <User className="mr-1 size-3" />
-                                      Hacer Usuario
+                                      <Shield className="mr-1 size-3" />
+                                      Hacer Admin Org
                                     </>
                                   ) : (
                                     <>
-                                      <Shield className="mr-1 size-3" />
-                                      Hacer Admin
+                                      <User className="mr-1 size-3" />
+                                      Hacer Usuario
                                     </>
                                   )}
                                 </Button>

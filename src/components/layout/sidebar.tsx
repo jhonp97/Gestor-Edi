@@ -115,8 +115,8 @@ export function Sidebar() {
             )
           })}
 
-          {/* Admin link - only for ADMIN users */}
-          {user?.role === 'ADMIN' && (
+          {/* Admin link - solo para PLATFORM_ADMIN */}
+          {user?.role === 'PLATFORM_ADMIN' && (
             <Link
               href="/admin/users"
               className={cn(

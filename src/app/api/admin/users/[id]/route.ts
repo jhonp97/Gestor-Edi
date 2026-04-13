@@ -9,7 +9,7 @@ export async function PATCH(
 ) {
   try {
     const user = await getUserFromRequest(request)
-    if (!user || user.role !== 'ADMIN') {
+    if (!user || user.role !== 'PLATFORM_ADMIN') {
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
     }
 
@@ -34,7 +34,7 @@ export async function DELETE(
 ) {
   try {
     const user = await getUserFromRequest(request)
-    if (!user || user.role !== 'ADMIN') {
+    if (!user || user.role !== 'PLATFORM_ADMIN') {
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
     }
 

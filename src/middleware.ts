@@ -13,6 +13,10 @@ const PUBLIC_ROUTES = [
   '/reset-password',
   '/offline',
   '/api/health',
+  '/privacy',
+  '/terms',
+  '/legal-notice',
+  '/api/consent',
 ]
 
 const ADMIN_ROUTES = ['/admin']
@@ -90,8 +94,8 @@ export default auth(async (req) => {
       response.headers.set('x-organization-id', user.organizationId)
     }
 
-    // Admin route check
-    if (isAdminRoute(pathname) && user?.role !== 'ADMIN') {
+    // Admin route check — solo PLATFORM_ADMIN puede acceder a /admin/*
+    if (isAdminRoute(pathname) && user?.role !== 'PLATFORM_ADMIN') {
       return NextResponse.redirect(new URL('/dashboard', req.url))
     }
 
@@ -120,7 +124,7 @@ export default auth(async (req) => {
     return NextResponse.redirect(loginUrl)
   }
 
-  if (isAdminRoute(pathname) && payload.role !== 'ADMIN') {
+  if (isAdminRoute(pathname) && payload.role !== 'PLATFORM_ADMIN') {
     return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 

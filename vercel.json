@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/data/purge",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}

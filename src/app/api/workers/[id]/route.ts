@@ -2,6 +2,10 @@ import { prisma } from '@/lib/prisma'
 import { getUserFromRequest } from '@/lib/auth-edge'
 import { revalidatePath } from 'next/cache'
 import { NextResponse } from 'next/server'
+import { WorkerRepository } from '@/repositories/worker.repository'
+import { WorkerService } from '@/services/worker.service'
+import { getEncryptionService } from '@/services/encryption.service'
+import type { Worker } from '@prisma/client'
 
 export async function DELETE(
   request: Request,
@@ -14,20 +18,18 @@ export async function DELETE(
     }
 
     const { id } = await params
+    const repo = new WorkerRepository(user.organizationId)
+    const service = new WorkerService(repo)
 
-    const existing = await prisma.worker.findFirst({
-      where: { id, organizationId: user.organizationId },
-    })
-    if (!existing) {
-      return Response.json({ error: 'Trabajador no encontrado' }, { status: 404 })
-    }
-
-    await prisma.worker.delete({ where: { id } })
+    await service.delete(id)
 
     revalidatePath('/workers')
     return new Response(null, { status: 204 })
   } catch (error) {
     console.error('Error deleting worker:', error)
+    if (error instanceof Error && error.message === 'Not found') {
+      return Response.json({ error: 'Trabajador no encontrado' }, { status: 404 })
+    }
     return Response.json(
       { error: 'Error al eliminar el trabajador' },
       { status: 500 }
@@ -47,20 +49,13 @@ export async function PATCH(
 
     const { id } = await params
     const body = await request.json()
-
-    const { dni, ...updateData } = body
-
-    const existingWorker = await prisma.worker.findFirst({
-      where: { id, organizationId: user.organizationId },
-    })
-    if (!existingWorker) {
-      return Response.json({ error: 'Trabajador no encontrado' }, { status: 404 })
-    }
+    const repo = new WorkerRepository(user.organizationId)
+    const service = new WorkerService(repo)
 
     // Validate truckId belongs to same org
-    if (updateData.truckId) {
+    if (body.truckId) {
       const truck = await prisma.truck.findFirst({
-        where: { id: updateData.truckId, organizationId: user.organizationId },
+        where: { id: body.truckId, organizationId: user.organizationId },
       })
       if (!truck) {
         return Response.json(
@@ -70,40 +65,36 @@ export async function PATCH(
       }
     }
 
-    // Check DNI uniqueness if changed
+    const { dni, ...updateData } = body
+    const updatePayload: Record<string, unknown> = { ...updateData }
+    
     if (dni) {
-      const existing = await prisma.worker.findFirst({
-        where: {
-          dni: dni.toUpperCase(),
-          organizationId: user.organizationId,
-        },
-      })
-      if (existing && existing.id !== id) {
-        return Response.json(
-          { error: 'Ya existe un trabajador con ese DNI' },
-          { status: 409 }
-        )
-      }
+      updatePayload.dni = dni.toUpperCase()
+    }
+    if (body.baseSalary !== undefined) {
+      updatePayload.baseSalary = Number(body.baseSalary)
+    }
+    if (body.startDate !== undefined) {
+      updatePayload.startDate = new Date(body.startDate)
+    }
+    if (body.endDate !== undefined) {
+      updatePayload.endDate = body.endDate ? new Date(body.endDate) : null
     }
 
-    const worker = await prisma.worker.update({
-      where: { id },
-      data: {
-        ...updateData,
-        dni: dni ? dni.toUpperCase() : undefined,
-        baseSalary: body.baseSalary ? Number(body.baseSalary) : undefined,
-        startDate: body.startDate ? new Date(body.startDate) : undefined,
-        endDate: body.endDate !== undefined
-          ? (body.endDate ? new Date(body.endDate) : null)
-          : undefined,
-      },
-    })
+    const worker = await service.update(id, updatePayload as Parameters<typeof service.update>[1])
+
+    if (!worker) {
+      return Response.json({ error: 'Trabajador no encontrado' }, { status: 404 })
+    }
 
     revalidatePath('/workers')
     revalidatePath(`/workers/${id}`)
     return Response.json(worker)
   } catch (error) {
     console.error('Error updating worker:', error)
+    if (error instanceof Error && error.message.includes('Ya existe')) {
+      return Response.json({ error: error.message }, { status: 409 })
+    }
     return Response.json(
       { error: 'Error al actualizar el trabajador' },
       { status: 500 }
@@ -121,13 +112,26 @@ export async function GET(
   }
 
   const { id } = await params
-  const worker = await prisma.worker.findFirst({
-    where: { id, organizationId: user.organizationId },
-    include: { truck: true },
-  })
+  const repo = new WorkerRepository(user.organizationId)
+  const service = new WorkerService(repo)
+  const enc = getEncryptionService()
+
+  const worker = await service.getById(id)
 
   if (!worker) {
     return Response.json({ error: 'Trabajador no encontrado' }, { status: 404 })
+  }
+
+  // PLATFORM_ADMIN viewing worker from other org — mask DNI
+  if (user.role === 'PLATFORM_ADMIN') {
+    if (worker.dni && worker.dni.includes(':')) {
+      try {
+        const decrypted = await enc.decryptWorkerDni(worker.dni)
+        return Response.json({ ...worker, dni: enc.maskWorkerDni(decrypted) })
+      } catch {
+        return Response.json({ ...worker, dni: enc.maskWorkerDni(worker.dni) })
+      }
+    }
   }
 
   return Response.json(worker)

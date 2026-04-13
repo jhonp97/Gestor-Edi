@@ -40,7 +40,7 @@ export class UserRepository extends BaseRepository {
     })
   }
 
-  async updateRole(id: string, role: 'USER' | 'ADMIN'): Promise<User> {
+  async updateRole(id: string, role: 'USER' | 'ORG_ADMIN' | 'PLATFORM_ADMIN'): Promise<User> {
     return this.prisma.user.update({
       where: { id },
       data: { role },

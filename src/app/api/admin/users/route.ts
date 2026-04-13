@@ -5,7 +5,7 @@ import { getUserFromRequest } from '@/lib/auth-edge'
 export async function GET(request: Request) {
   try {
     const user = await getUserFromRequest(request)
-    if (!user || user.role !== 'ADMIN') {
+    if (!user || user.role !== 'PLATFORM_ADMIN') {
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
     }
 
