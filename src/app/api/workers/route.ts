@@ -26,6 +26,19 @@ export async function POST(request: Request) {
       )
     }
 
+    // Validate truckId belongs to same org
+    if (body.truckId) {
+      const truck = await prisma.truck.findFirst({
+        where: { id: body.truckId, organizationId: user.organizationId },
+      })
+      if (!truck) {
+        return Response.json(
+          { error: 'El camión seleccionado no pertenece a tu organización' },
+          { status: 403 }
+        )
+      }
+    }
+
     const worker = await prisma.worker.create({
       data: {
         name: body.name,

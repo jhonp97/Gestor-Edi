@@ -17,6 +17,7 @@ export async function GET(request: Request) {
           name: nextAuthSession.user.name,
           email: nextAuthSession.user.email,
           role: nextAuthSession.user.role,
+          organizationId: nextAuthSession.user.organizationId,
         },
       })
     }

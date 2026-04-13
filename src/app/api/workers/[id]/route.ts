@@ -57,6 +57,19 @@ export async function PATCH(
       return Response.json({ error: 'Trabajador no encontrado' }, { status: 404 })
     }
 
+    // Validate truckId belongs to same org
+    if (updateData.truckId) {
+      const truck = await prisma.truck.findFirst({
+        where: { id: updateData.truckId, organizationId: user.organizationId },
+      })
+      if (!truck) {
+        return Response.json(
+          { error: 'El camión seleccionado no pertenece a tu organización' },
+          { status: 403 }
+        )
+      }
+    }
+
     // Check DNI uniqueness if changed
     if (dni) {
       const existing = await prisma.worker.findFirst({
