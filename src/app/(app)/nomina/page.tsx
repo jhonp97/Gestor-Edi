@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 import { PayrollTable } from '@/components/nomina/payroll-table'
 import { PayrollSummaryCard } from '@/components/nomina/payroll-summary'
 import { Button } from '@/components/ui/button'
@@ -23,14 +25,18 @@ export default async function PayrollPage({
   const month = params.month ? parseInt(params.month) : new Date().getMonth() + 1
   const year = params.year ? parseInt(params.year) : new Date().getFullYear()
 
+  const session = await auth()
+  if (!session?.user?.organizationId) redirect('/login')
+  const orgId = session.user.organizationId
+
   const [payrolls, summary] = await Promise.all([
     prisma.payroll.findMany({
-      where: { month, year },
+      where: { month, year, organizationId: orgId },
       include: { worker: true },
       orderBy: { worker: { name: 'asc' } },
     }),
     prisma.payroll.aggregate({
-      where: { month, year },
+      where: { month, year, organizationId: orgId },
       _sum: {
         grossPay: true,
         netPay: true,

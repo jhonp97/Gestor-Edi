@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
-import { notFound } from 'next/navigation'
+import { auth } from '@/lib/auth'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -19,8 +20,13 @@ export default async function PayrollDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const payroll = await prisma.payroll.findUnique({
-    where: { id },
+
+  const session = await auth()
+  if (!session?.user?.organizationId) redirect('/login')
+  const orgId = session.user.organizationId
+
+  const payroll = await prisma.payroll.findFirst({
+    where: { id, organizationId: orgId },
     include: { worker: true },
   })
 

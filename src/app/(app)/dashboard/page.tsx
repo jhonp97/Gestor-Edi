@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 import { SummaryCard } from '@/components/dashboard/summary-card'
 import { RecentTransactions } from '@/components/dashboard/recent-transactions'
 import { IncomeExpenseChart } from '@/components/dashboard/income-expense-chart'
@@ -9,12 +11,13 @@ import { TrendingUp, TrendingDown, DollarSign, BarChart3 } from 'lucide-react'
 // Force dynamic rendering to avoid database access during build
 export const dynamic = 'force-dynamic'
 
-async function getMonthlyData() {
+async function getMonthlyData(orgId: string) {
   const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
   const currentYear = new Date().getFullYear()
 
   const transactions = await prisma.transaction.findMany({
     where: {
+      organizationId: orgId,
       date: {
         gte: new Date(currentYear, 0, 1),
         lte: new Date(currentYear, 11, 31),
@@ -39,13 +42,14 @@ async function getMonthlyData() {
   return monthlyData
 }
 
-async function getCategoryData() {
+async function getCategoryData(orgId: string) {
   const startOfMonth = new Date()
   startOfMonth.setDate(1)
   startOfMonth.setHours(0, 0, 0, 0)
 
   const expenses = await prisma.transaction.findMany({
     where: {
+      organizationId: orgId,
       type: 'EXPENSE',
       date: { gte: startOfMonth },
     },
@@ -64,6 +68,10 @@ async function getCategoryData() {
 }
 
 export default async function DashboardPage() {
+  const session = await auth()
+  if (!session?.user?.organizationId) redirect('/login')
+  const orgId = session.user.organizationId
+
   const startOfMonth = new Date()
   startOfMonth.setDate(1)
   startOfMonth.setHours(0, 0, 0, 0)
@@ -75,6 +83,7 @@ export default async function DashboardPage() {
     await Promise.all([
       prisma.transaction.findMany({
         where: {
+          organizationId: orgId,
           date: {
             gte: startOfMonth,
             lte: endOfMonth,
@@ -85,18 +94,18 @@ export default async function DashboardPage() {
         take: 10,
       }),
       prisma.transaction.aggregate({
-        where: { type: 'INCOME', date: { gte: startOfMonth, lte: endOfMonth } },
+        where: { organizationId: orgId, type: 'INCOME', date: { gte: startOfMonth, lte: endOfMonth } },
         _sum: { amount: true },
       }),
       prisma.transaction.aggregate({
-        where: { type: 'EXPENSE', date: { gte: startOfMonth, lte: endOfMonth } },
+        where: { organizationId: orgId, type: 'EXPENSE', date: { gte: startOfMonth, lte: endOfMonth } },
         _sum: { amount: true },
       }),
       prisma.transaction.count({
-        where: { date: { gte: startOfMonth, lte: endOfMonth } },
+        where: { organizationId: orgId, date: { gte: startOfMonth, lte: endOfMonth } },
       }),
-      getMonthlyData(),
-      getCategoryData(),
+      getMonthlyData(orgId),
+      getCategoryData(orgId),
     ])
 
   const income = totalIncome._sum.amount ?? 0

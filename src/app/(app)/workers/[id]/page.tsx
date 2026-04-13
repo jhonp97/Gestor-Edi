@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
-import { notFound } from 'next/navigation'
+import { auth } from '@/lib/auth'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -26,8 +27,13 @@ export default async function WorkerDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const worker = await prisma.worker.findUnique({
-    where: { id },
+
+  const session = await auth()
+  if (!session?.user?.organizationId) redirect('/login')
+  const orgId = session.user.organizationId
+
+  const worker = await prisma.worker.findFirst({
+    where: { id, organizationId: orgId },
     include: { truck: true },
   })
 

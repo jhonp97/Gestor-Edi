@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
-import { notFound } from 'next/navigation'
+import { auth } from '@/lib/auth'
+import { notFound, redirect } from 'next/navigation'
 import { WorkerEditForm } from '@/components/workers/worker-edit-form'
 
 export default async function WorkerEditPage({
@@ -8,13 +9,19 @@ export default async function WorkerEditPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const worker = await prisma.worker.findUnique({
-    where: { id },
+
+  const session = await auth()
+  if (!session?.user?.organizationId) redirect('/login')
+  const orgId = session.user.organizationId
+
+  const worker = await prisma.worker.findFirst({
+    where: { id, organizationId: orgId },
   })
 
   if (!worker) notFound()
 
   const trucks = await prisma.truck.findMany({
+    where: { organizationId: orgId },
     orderBy: { brand: 'asc' },
   })
 

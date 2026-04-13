@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 import { TransactionList } from '@/components/transactions/transaction-list'
 import { TransactionForm } from '@/components/transactions/transaction-form'
 
@@ -6,12 +8,18 @@ import { TransactionForm } from '@/components/transactions/transaction-form'
 export const dynamic = 'force-dynamic'
 
 export default async function TransactionsPage() {
+  const session = await auth()
+  if (!session?.user?.organizationId) redirect('/login')
+  const orgId = session.user.organizationId
+
   const [transactions, trucks] = await Promise.all([
     prisma.transaction.findMany({
+      where: { organizationId: orgId },
       include: { truck: true },
       orderBy: { date: 'desc' },
     }),
     prisma.truck.findMany({
+      where: { organizationId: orgId },
       orderBy: { plate: 'asc' },
     }),
   ])

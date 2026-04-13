@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
-import { notFound } from 'next/navigation'
+import { auth } from '@/lib/auth'
+import { notFound, redirect } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TruckEditDialog } from '@/components/trucks/truck-edit-dialog'
@@ -37,8 +38,12 @@ export default async function TruckDetailPage({
   const { id } = await params
   const { type, sort } = await searchParams
 
-  const truck = await prisma.truck.findUnique({
-    where: { id },
+  const session = await auth()
+  if (!session?.user?.organizationId) redirect('/login')
+  const orgId = session.user.organizationId
+
+  const truck = await prisma.truck.findFirst({
+    where: { id, organizationId: orgId },
     include: {
       workers: {
         orderBy: { name: 'asc' },
