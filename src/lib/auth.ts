@@ -12,6 +12,7 @@ interface UserWithRole {
   email?: string | null
   name?: string | null
   image?: string | null
+  organizationId?: string
 }
 
 // Use type assertion to avoid type issues with prisma adapter
@@ -75,8 +76,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (account && user) {
         token.id = user.id
         token.role = (user as UserWithRole).role || 'USER'
-        if ((user as any).organizationId) {
-          token.organizationId = (user as any).organizationId
+        if ((user as UserWithRole).organizationId) {
+          token.organizationId = (user as UserWithRole).organizationId
         }
       }
       // On subsequent logins, fetch organizationId from DB if missing
