@@ -86,8 +86,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           where: { id: token.id as string },
           select: { organizationId: true },
         })
-        if (dbUser) {
+        if (dbUser?.organizationId) {
           token.organizationId = dbUser.organizationId
+        } else if (dbUser) {
+          // User has no org — create one now
+          const org = await prisma.organization.create({
+            data: {
+              name: `${token.name || 'Usuario'}'s Fleet`,
+              ownerId: token.id as string,
+            },
+          })
+          await prisma.user.update({
+            where: { id: token.id as string },
+            data: { organizationId: org.id },
+          })
+          token.organizationId = org.id
         }
       }
       return token
@@ -97,7 +110,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token && session.user) {
         session.user.id = token.id as string
         session.user.role = (token.role as UserRole) || 'USER'
-        session.user.organizationId = token.organizationId as string | undefined
+        session.user.organizationId = token.organizationId as string
       }
       return session
     },

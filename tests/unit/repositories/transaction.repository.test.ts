@@ -5,7 +5,7 @@ vi.mock('@/lib/prisma', () => ({
   prisma: {
     transaction: {
       findMany: vi.fn(),
-      findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
@@ -62,6 +62,7 @@ describe('TransactionRepository', () => {
 
       expect(result).toEqual([txFixture])
       expect(mockPrisma.transaction.findMany).toHaveBeenCalledWith({
+        where: {},
         include: { truck: true },
         orderBy: { date: 'desc' },
       })
@@ -70,19 +71,19 @@ describe('TransactionRepository', () => {
 
   describe('findById', () => {
     it('debería retornar una transacción con su camión', async () => {
-      vi.mocked(mockPrisma.transaction.findUnique).mockResolvedValue(txFixture)
+      vi.mocked(mockPrisma.transaction.findFirst).mockResolvedValue(txFixture)
 
       const result = await repo.findById('1')
 
       expect(result).toEqual(txFixture)
-      expect(mockPrisma.transaction.findUnique).toHaveBeenCalledWith({
+      expect(mockPrisma.transaction.findFirst).toHaveBeenCalledWith({
         where: { id: '1' },
         include: { truck: true },
       })
     })
 
     it('debería retornar null si no existe', async () => {
-      vi.mocked(mockPrisma.transaction.findUnique).mockResolvedValue(null)
+      vi.mocked(mockPrisma.transaction.findFirst).mockResolvedValue(null)
 
       const result = await repo.findById('nonexistent')
 
@@ -175,6 +176,7 @@ describe('TransactionRepository', () => {
   describe('update', () => {
     it('debería actualizar una transacción', async () => {
       const updated = { ...txFixture, amount: 2000, description: 'Updated', type: 'EXPENSE' as const }
+      vi.mocked(mockPrisma.transaction.findFirst).mockResolvedValue(txFixture)
       vi.mocked(mockPrisma.transaction.update).mockResolvedValue(updated)
 
       const result = await repo.update('1', { amount: 2000 })
@@ -188,6 +190,7 @@ describe('TransactionRepository', () => {
     })
 
     it('debería convertir fecha string a Date al actualizar', async () => {
+      vi.mocked(mockPrisma.transaction.findFirst).mockResolvedValue(txFixture)
       vi.mocked(mockPrisma.transaction.update).mockResolvedValue(txFixture)
 
       await repo.update('1', { date: new Date('2024-06-01T00:00:00Z') })
@@ -202,6 +205,7 @@ describe('TransactionRepository', () => {
 
   describe('delete', () => {
     it('debería eliminar una transacción', async () => {
+      vi.mocked(mockPrisma.transaction.findFirst).mockResolvedValue(txFixture)
       vi.mocked(mockPrisma.transaction.delete).mockResolvedValue(txFixture)
 
       const result = await repo.delete('1')

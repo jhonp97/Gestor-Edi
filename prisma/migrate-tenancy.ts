@@ -5,13 +5,34 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('Starting tenancy migration...')
 
-  const users = await prisma.user.findMany({
+  const nullOrgUsers = await prisma.user.findMany({
     where: { organizationId: null },
+    include: { ownedOrganization: true },
   })
 
-  console.log(`Found ${users.length} users without organization`)
+  const allOrgs = await prisma.organization.findMany({ select: { id: true } })
+  const validOrgIds = new Set(allOrgs.map(o => o.id))
 
-  for (const user of users) {
+  const usersWithStaleOrgId = await prisma.user.findMany({
+    where: {
+      organizationId: { not: null },
+    },
+    include: { ownedOrganization: true },
+  })
+
+  const staleOrgUsers = usersWithStaleOrgId.filter(u => !validOrgIds.has(u.organizationId!))
+  const allUsersToFix = [...nullOrgUsers, ...staleOrgUsers]
+
+  console.log(`Found ${nullOrgUsers.length} users without organization and ${staleOrgUsers.length} users with stale organizationId`)
+
+  const totalToFix = allUsersToFix.length
+  if (totalToFix === 0) {
+    console.log('All users have valid organizations')
+  }
+
+  for (const user of allUsersToFix) {
+    // Skip if ownedOrganization exists and is valid
+    if (user.ownedOrganization && validOrgIds.has(user.organizationId!)) continue
     const org = await prisma.organization.create({
       data: {
         name: `${user.name}'s Fleet`,

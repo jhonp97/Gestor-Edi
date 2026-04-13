@@ -5,7 +5,7 @@ vi.mock('@/lib/prisma', () => ({
   prisma: {
     truck: {
       findMany: vi.fn(),
-      findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
@@ -47,6 +47,7 @@ describe('TruckRepository', () => {
 
       expect(result).toEqual([truckFixture])
       expect(mockPrisma.truck.findMany).toHaveBeenCalledWith({
+        where: {},
         orderBy: { createdAt: 'desc' },
       })
     })
@@ -54,16 +55,16 @@ describe('TruckRepository', () => {
 
   describe('findById', () => {
     it('debería retornar un camión por ID', async () => {
-      vi.mocked(mockPrisma.truck.findUnique).mockResolvedValue(truckFixture)
+      vi.mocked(mockPrisma.truck.findFirst).mockResolvedValue(truckFixture)
 
       const result = await repo.findById('1')
 
       expect(result).toEqual(truckFixture)
-      expect(mockPrisma.truck.findUnique).toHaveBeenCalledWith({ where: { id: '1' } })
+      expect(mockPrisma.truck.findFirst).toHaveBeenCalledWith({ where: { id: '1' } })
     })
 
     it('debería retornar null si no existe', async () => {
-      vi.mocked(mockPrisma.truck.findUnique).mockResolvedValue(null)
+      vi.mocked(mockPrisma.truck.findFirst).mockResolvedValue(null)
 
       const result = await repo.findById('nonexistent')
 
@@ -73,16 +74,16 @@ describe('TruckRepository', () => {
 
   describe('findByPlate', () => {
     it('debería retornar un camión por matrícula', async () => {
-      vi.mocked(mockPrisma.truck.findUnique).mockResolvedValue(truckFixture)
+      vi.mocked(mockPrisma.truck.findFirst).mockResolvedValue(truckFixture)
 
       const result = await repo.findByPlate('ABC-123')
 
       expect(result).toEqual(truckFixture)
-      expect(mockPrisma.truck.findUnique).toHaveBeenCalledWith({ where: { plate: 'ABC-123' } })
+      expect(mockPrisma.truck.findFirst).toHaveBeenCalledWith({ where: { plate: 'ABC-123' } })
     })
 
     it('debería retornar null si no existe la matrícula', async () => {
-      vi.mocked(mockPrisma.truck.findUnique).mockResolvedValue(null)
+      vi.mocked(mockPrisma.truck.findFirst).mockResolvedValue(null)
 
       const result = await repo.findByPlate('XYZ-999')
 
@@ -99,13 +100,14 @@ describe('TruckRepository', () => {
       const result = await repo.create(input)
 
       expect(result).toEqual(created)
-      expect(mockPrisma.truck.create).toHaveBeenCalledWith({ data: input })
+      expect(mockPrisma.truck.create).toHaveBeenCalledWith({ data: { ...input, organizationId: null } })
     })
   })
 
   describe('update', () => {
     it('debería actualizar un camión', async () => {
       const updated: Truck = { ...truckFixture, brand: 'Scania' }
+      vi.mocked(mockPrisma.truck.findFirst).mockResolvedValue(truckFixture)
       vi.mocked(mockPrisma.truck.update).mockResolvedValue(updated)
 
       const result = await repo.update('1', { brand: 'Scania' })
@@ -120,6 +122,7 @@ describe('TruckRepository', () => {
 
   describe('delete', () => {
     it('debería eliminar un camión', async () => {
+      vi.mocked(mockPrisma.truck.findFirst).mockResolvedValue(truckFixture)
       vi.mocked(mockPrisma.truck.delete).mockResolvedValue(truckFixture)
 
       const result = await repo.delete('1')

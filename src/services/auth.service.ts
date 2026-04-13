@@ -77,7 +77,19 @@ export class AuthService {
       throw new AuthError('WRONG_PASSWORD', 'La contraseña es incorrecta')
     }
 
-    const token = this.generateToken(user.id, user.email, user.role, user.organizationId ?? undefined)
+    let orgId = user.organizationId ?? undefined
+    if (!orgId) {
+      const org = await prisma.organization.create({
+        data: {
+          name: `${user.name || 'Usuario'}'s Fleet`,
+          ownerId: user.id,
+        },
+      })
+      await userRepo.update(user.id, { organizationId: org.id })
+      orgId = org.id
+    }
+
+    const token = this.generateToken(user.id, user.email, user.role, orgId)
 
     return {
       user: {
@@ -85,7 +97,7 @@ export class AuthService {
         name: user.name,
         email: user.email,
         role: user.role,
-        organizationId: user.organizationId ?? undefined,
+        organizationId: orgId,
       },
       token,
     }
