@@ -23,29 +23,36 @@ const adapter: any = {
   ...originalAdapter,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async createUser(user: any) {
-    const created = await originalAdapter.createUser!(user)
-
-    // Create organization for the new user
+    // Create organization first
     const org = await prisma.organization.create({
       data: {
-        name: `${created.name || 'Usuario'}'s Fleet`,
-        ownerId: created.id,
+        name: `${user.name || 'Usuario'}'s Fleet`,
+        ownerId: 'temp',
       },
     })
 
-    // Link user to organization
-    await prisma.user.update({
-      where: { id: created.id },
-      data: { organizationId: org.id },
+    // Create user with organizationId
+    const created = await prisma.user.create({
+      data: {
+        name: user.name || '',
+        email: user.email,
+        image: user.image,
+        organizationId: org.id,
+      },
     })
 
-    created.organizationId = org.id
+    // Update org with correct ownerId
+    await prisma.organization.update({
+      where: { id: org.id },
+      data: { ownerId: created.id },
+    })
 
     if (created.email) {
       emailService
         .sendWelcomeEmail(created.email, created.name || 'Usuario')
         .catch(console.error)
     }
+
     return created
   },
 }
@@ -65,12 +72,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   callbacks: {
     async jwt({ token, user, account }) {
-      // Add user ID and role to token on first sign in
       if (account && user) {
         token.id = user.id
         token.role = (user as UserWithRole).role || 'USER'
-        // organizationId may come from createUser override (set on created object)
-        token.organizationId = (user as UserWithRole & { organizationId?: string }).organizationId
+        if ((user as any).organizationId) {
+          token.organizationId = (user as any).organizationId
+        }
+      }
+      // On subsequent logins, fetch organizationId from DB if missing
+      if (!token.organizationId && token.id) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { organizationId: true },
+        })
+        if (dbUser) {
+          token.organizationId = dbUser.organizationId
+        }
       }
       return token
     },

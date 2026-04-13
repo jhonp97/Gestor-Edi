@@ -29,7 +29,7 @@ export class AuthService {
     const org = await prisma.organization.create({
       data: {
         name: `${name}'s Fleet`,
-        ownerId: 'placeholder',
+        ownerId: 'temp',
       },
     })
 
