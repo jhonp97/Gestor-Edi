@@ -28,7 +28,7 @@ vi.mock('@/services/email.service', () => ({
 const { AuthService, AuthError } = await import('@/services/auth.service')
 
 describe('AuthService', () => {
-  let authService: AuthService
+  let authService: InstanceType<typeof AuthService>
 
   beforeEach(() => {
     vi.clearAllMocks()
