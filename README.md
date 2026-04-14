@@ -107,7 +107,7 @@ El proyecto viene con un usuario admin precargado:
 - **Email**: `admin@flota.com`
 - **Contraseña**: `admin123`
 
-También podés crear nuevos usuarios desde la página de registro.
+También puedes crear nuevos usuarios desde la página de registro.
 
 ## 🧪 Tests
 
@@ -194,7 +194,7 @@ NEXT_PUBLIC_APP_URL="http://localhost:3000"
 
 ### PWA
 
-El manifest está en `public/manifest.json`. Para producción, cambiá `theme_color` y `background_color` al color real de tu marca.
+El manifest está en `public/manifest.json`. Para producción, cambia `theme_color` y `background_color` al color real de tu marca.
 
 ## 🌐 Despliegue
 
@@ -208,7 +208,7 @@ pnpm i -g vercel
 vercel
 ```
 
-O conectá el repositorio directamente en vercel.com.
+O conecta el repositorio directamente en vercel.com.
 
 ### Producción local
 
@@ -219,7 +219,7 @@ pnpm start
 
 ## 📄 Arquitectura
 
-Consultá `architecture.md` para detalles completos de la arquitectura, incluyendo:
+Consulta `architecture.md` para detalles completos de la arquitectura, incluyendo:
 
 - Diagrama de capas (Presentation → Service → Repository → Data)
 - Modelo de datos
@@ -230,14 +230,12 @@ Consultá `architecture.md` para detalles completos de la arquitectura, incluyen
 ## ⚠️ Notas Importantes
 
 1. **Single User**: La app está diseñada para un solo usuario. Todos los datos son compartidos.
-2. **SQLite**: Usá SQLite para desarrollo. Para producción, migrá a PostgreSQL.
-3. **Offline**: El modo offline funciona con IndexedDB, pero requiere red para.syncronizar datos最初的.
-4. **Google OAuth**: Necesitás configurar credenciales en Google Cloud Console para usar login con Google.
+2. **SQLite**: Usa SQLite para desarrollo. Para producción, migra a PostgreSQL.
+3. **Offline**: El modo offline funciona con IndexedDB, pero requiere red para.syncronizar datos.
+4. **Google OAuth**: Necesitas configurar credenciales en Google Cloud Console para usar login con Google.
 
 ## 📄 Licencia
 
-MIT License - Sentite libre de usar y modificar este proyecto.
+MIT License -  libre de usar y modificar este proyecto.
 
 ---
-
-¿Preguntas? Abrí un issue en GitHub o consultá la documentación en `architecture.md`.

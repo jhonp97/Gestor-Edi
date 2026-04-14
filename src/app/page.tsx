@@ -90,7 +90,7 @@ export default async function HomePage() {
                 <span>Gestión segura y profesional</span>
               </div>
               <h1 className="mb-6 text-4xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
-                Controlá tu flota de{' '}
+                Controla tu flota de{' '}
                 <span className="bg-gradient-to-r from-[#6bb3f0] to-[#4a90d9] bg-clip-text text-transparent">
                   camiones
                 </span>{' '}
@@ -190,7 +190,7 @@ export default async function HomePage() {
         <div className="container mx-auto px-4">
           <div className="mb-16 text-center">
             <h2 className="mb-4 text-3xl font-bold text-[#1e3a5f] sm:text-4xl">
-              Todo lo que necesitás para tu flota
+              Todo lo que necesitas para tu flota
             </h2>
             <p className="mx-auto max-w-2xl text-lg text-gray-600">
               Herramientas profesionales diseñadas específicamente para transportistas y gestores de flota.
@@ -205,8 +205,8 @@ export default async function HomePage() {
               </div>
               <h3 className="mb-3 text-xl font-bold text-[#1e3a5f]">Gestión de Camiones</h3>
               <p className="text-gray-600 leading-relaxed">
-                Registrá tus camiones con matrícula, marca, modelo y estado actual.
-                Controlá todo tu parque vehicular desde un solo lugar.
+                Registra tus camiones con matrícula, marca, modelo y estado actual.
+                Controla todo tu parque vehicular desde un solo lugar.
               </p>
             </div>
 
@@ -217,7 +217,7 @@ export default async function HomePage() {
               </div>
               <h3 className="mb-3 text-xl font-bold text-[#1e3a5f]">Control de Transacciones</h3>
               <p className="text-gray-600 leading-relaxed">
-                Registrá ingresos y gastos por cada camión. Categorizá automáticamente
+                Registra ingresos y gastos por cada camión. Categoriza automáticamente
                 combustible, peajes, reparaciones y más.
               </p>
             </div>
@@ -229,8 +229,8 @@ export default async function HomePage() {
               </div>
               <h3 className="mb-3 text-xl font-bold text-[#1e3a5f]">Dashboard Visual</h3>
               <p className="text-gray-600 leading-relaxed">
-                Visualizá tus ingresos vs gastos con gráficos interactivos.
-                Analizá tendencias mensuales y categorías de gastos.
+                Visualiza tus ingresos vs gastos con gráficos interactivos.
+                Analiza tendencias mensuales y categorías de gastos.
               </p>
             </div>
 
@@ -241,8 +241,8 @@ export default async function HomePage() {
               </div>
               <h3 className="mb-3 text-xl font-bold text-[#1e3a5f]">Gestión de Personal</h3>
               <p className="text-gray-600 leading-relaxed">
-                Administrá conductores, mecánicos y personal administrativo.
-                Asigná trabajadores a camiones específicos.
+                Administra conductores, mecánicos y personal administrativo.
+                Asigna trabajadores a camiones específicos.
               </p>
             </div>
 
@@ -253,8 +253,8 @@ export default async function HomePage() {
               </div>
               <h3 className="mb-3 text-xl font-bold text-[#1e3a5f]">Nómina Automática</h3>
               <p className="text-gray-600 leading-relaxed">
-                Generá nóminas con deducciones españolas: IRPF, Seguridad Social.
-                Descargá recibos en PDF.
+                Genera nóminas con deducciones españolas: IRPF, Seguridad Social.
+                Descarga recibos en PDF.
               </p>
             </div>
 
@@ -302,7 +302,7 @@ export default async function HomePage() {
         <div className="container mx-auto px-4">
           <div className="mb-16 text-center">
             <h2 className="mb-4 text-3xl font-bold text-[#1e3a5f] sm:text-4xl">
-              Empezá en 3 simples pasos
+              Empieza en 3 simples pasos
             </h2>
             <p className="mx-auto max-w-2xl text-lg text-gray-600">
               Sin complicaciones, sin instalaciones complejas. En minutos estás gestionando tu flota.
@@ -314,9 +314,9 @@ export default async function HomePage() {
               <div className="mb-6 mx-auto flex size-16 items-center justify-center rounded-full bg-[#1e3a5f] text-2xl font-bold text-white shadow-lg">
                 1
               </div>
-              <h3 className="mb-3 text-xl font-bold text-[#1e3a5f]">Creá tu cuenta</h3>
+              <h3 className="mb-3 text-xl font-bold text-[#1e3a5f]">Crea tu cuenta</h3>
               <p className="text-gray-600">
-                Registrate gratis con tu email. En menos de un minuto tenés tu cuenta activa.
+                Regístrate gratis con tu email. En menos de un minuto tienes tu cuenta activa.
               </p>
               {/* Connector line */}
               <div className="hidden md:block absolute top-8 left-1/2 w-full h-0.5 bg-[#1e3a5f]/20"></div>
@@ -326,9 +326,9 @@ export default async function HomePage() {
               <div className="mb-6 mx-auto flex size-16 items-center justify-center rounded-full bg-[#1e3a5f] text-2xl font-bold text-white shadow-lg">
                 2
               </div>
-              <h3 className="mb-3 text-xl font-bold text-[#1e3a5f]">Registrá tus camiones</h3>
+              <h3 className="mb-3 text-xl font-bold text-[#1e3a5f]">Registra tus camiones</h3>
               <p className="text-gray-600">
-                Agregá tus camiones con sus datos. Asigná conductores y empezá a registrar movimientos.
+                Agrega tus camiones con sus datos. Asigna conductores y empieza a registrar movimientos.
               </p>
             </div>
 
@@ -336,9 +336,9 @@ export default async function HomePage() {
               <div className="mb-6 mx-auto flex size-16 items-center justify-center rounded-full bg-[#1e3a5f] text-2xl font-bold text-white shadow-lg">
                 3
               </div>
-              <h3 className="mb-3 text-xl font-bold text-[#1e3a5f]">Controlá todo</h3>
+              <h3 className="mb-3 text-xl font-bold text-[#1e3a5f]">Controla todo</h3>
               <p className="text-gray-600">
-                Visualizá ingresos, gastos, generá nóminas y tomá decisiones basadas en datos reales.
+                Visualiza ingresos, gastos, genera nóminas y toma decisiones basadas en datos reales.
               </p>
             </div>
           </div>
