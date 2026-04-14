@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Truck, Receipt, Users, Banknote, Menu, X, Shield, LogOut } from 'lucide-react'
+import { LayoutDashboard, Truck, Receipt, Users, Banknote, Menu, X, Shield, LogOut, BarChart3, Building2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
 import { useApi } from '@/hooks/use-api'
@@ -115,21 +115,49 @@ export function Sidebar() {
             )
           })}
 
-          {/* Admin link - solo para PLATFORM_ADMIN */}
+          {/* Admin links - solo para PLATFORM_ADMIN */}
           {user?.role === 'PLATFORM_ADMIN' && (
-            <Link
-              href="/admin/users"
-              className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium transition-all duration-200',
-                pathname === '/admin/users'
-                  ? 'bg-white text-primary shadow-sm'
-                  : 'text-white/80 hover:bg-white/10 hover:text-white',
-              )}
-              onClick={() => setMobileOpen(false)}
-            >
-              <Shield className="size-5 shrink-0" aria-hidden="true" />
-              <span>Admin</span>
-            </Link>
+            <>
+              <Link
+                href="/admin"
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium transition-all duration-200',
+                  pathname === '/admin'
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'text-white/80 hover:bg-white/10 hover:text-white',
+                )}
+                onClick={() => setMobileOpen(false)}
+              >
+                <BarChart3 className="size-5 shrink-0" aria-hidden="true" />
+                <span>Panel Admin</span>
+              </Link>
+              <Link
+                href="/admin/orgs"
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium transition-all duration-200',
+                  pathname === '/admin/orgs'
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'text-white/80 hover:bg-white/10 hover:text-white',
+                )}
+                onClick={() => setMobileOpen(false)}
+              >
+                <Building2 className="size-5 shrink-0" aria-hidden="true" />
+                <span>Organizaciones</span>
+              </Link>
+              <Link
+                href="/admin/users"
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium transition-all duration-200',
+                  pathname === '/admin/users'
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'text-white/80 hover:bg-white/10 hover:text-white',
+                )}
+                onClick={() => setMobileOpen(false)}
+              >
+                <Shield className="size-5 shrink-0" aria-hidden="true" />
+                <span>Usuarios</span>
+              </Link>
+            </>
           )}
         </nav>
 

@@ -26,7 +26,9 @@ const pageLabels: Record<string, string> = {
   '/transactions': 'Transacciones',
   '/workers': 'Trabajadores',
   '/nomina': 'Nómina',
+  '/admin': 'Panel de Administración',
   '/admin/users': 'Usuarios',
+  '/admin/orgs': 'Organizaciones',
 }
 
 interface SessionUser {
