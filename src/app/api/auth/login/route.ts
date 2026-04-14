@@ -1,8 +1,41 @@
 import { NextResponse } from 'next/server'
 import { authService, AuthError } from '@/services/auth.service'
 import { loginSchema } from '@/schemas/auth.schema'
+import { rateLimit } from '@/lib/rate-limit'
+import { AUTH_RATE_LIMIT } from '@/config/rate-limits'
+
+// Helper function to extract IP from request
+function getClientIp(request: Request): string {
+  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() 
+    ?? request.headers.get('x-real-ip') 
+    ?? 'unknown'
+}
 
 export async function POST(request: Request) {
+  // Rate limiting BEFORE auth (use IP since user not authenticated)
+  const ip = getClientIp(request)
+  const { success, remaining, resetAt } = rateLimit(`auth:login:${ip}`, AUTH_RATE_LIMIT)
+  
+  const rateLimitHeaders = {
+    'X-RateLimit-Limit': String(AUTH_RATE_LIMIT.maxRequests),
+    'X-RateLimit-Remaining': String(remaining),
+    'X-RateLimit-Reset': String(Math.ceil(resetAt / 1000)),
+  }
+
+  if (!success) {
+    const retryAfter = Math.ceil((resetAt - Date.now()) / 1000)
+    return NextResponse.json(
+      { error: 'Too many requests', retryAfter },
+      { 
+        status: 429,
+        headers: {
+          ...rateLimitHeaders,
+          'Retry-After': String(retryAfter),
+        }
+      }
+    )
+  }
+
   try {
     const body = await request.json()
 
@@ -22,7 +55,7 @@ export async function POST(request: Request) {
    
 
     // Create response with cookie
-    const response = NextResponse.json({ success: true, user: result.user })
+    const response = NextResponse.json({ success: true, user: result.user }, { headers: rateLimitHeaders })
 
     response.cookies.set('auth-token', result.token, {
       httpOnly: true,
