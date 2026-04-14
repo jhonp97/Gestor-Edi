@@ -6,8 +6,7 @@ import { auth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import {
   Truck, BarChart3, Users, Banknote, Receipt, Wifi,
-  ChevronRight, Shield, TrendingUp, CheckCircle2,
-  Mail, Phone, MapPin
+  ChevronRight, Shield, TrendingUp, CheckCircle2
 } from 'lucide-react'
 
 async function isAuthenticated(): Promise<boolean> {
@@ -373,94 +372,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-[#0f1f33] text-white">
-        <div className="container mx-auto px-4 py-16">
-          <div className="grid gap-12 md:grid-cols-4">
-            {/* Brand */}
-            <div className="md:col-span-2">
-              <div className="mb-6 flex items-center gap-3">
-                <div className="flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#1e3a5f] to-[#4a90d9]">
-                  <Truck className="size-6 text-white" />
-                </div>
-                <span className="text-2xl font-bold">Flota Camiones</span>
-              </div>
-              <p className="mb-6 max-w-md text-gray-400 leading-relaxed">
-                Sistema integral de gestión diseñado específicamente para transportistas
-                y gestores de flota de camiones. Simple, seguro y eficiente.
-              </p>
-              <div className="flex gap-4">
-                <a href="#" className="flex size-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors">
-                  <Mail className="size-5" />
-                </a>
-                <a href="#" className="flex size-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors">
-                  <Phone className="size-5" />
-                </a>
-              </div>
-            </div>
-
-            {/* Contacto */}
-            <div>
-              <h4 className="mb-6 text-lg font-semibold">Contacto</h4>
-              <ul className="space-y-4 text-gray-400">
-                <li className="flex items-start gap-3">
-                  <Mail className="mt-1 size-4 shrink-0 text-[#4a90d9]" />
-                  <span>soporte@flotacamiones.com</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <Phone className="mt-1 size-4 shrink-0 text-[#4a90d9]" />
-                  <span>+34 900 123 456</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <MapPin className="mt-1 size-4 shrink-0 text-[#4a90d9]" />
-                  <span>Madrid, España</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Legal */}
-            <div>
-              <h4 className="mb-6 text-lg font-semibold">Legal</h4>
-              <ul className="space-y-3 text-gray-400">
-                <li>
-                  <a href="#" className="hover:text-white transition-colors">
-                    Política de Privacidad
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white transition-colors">
-                    Términos de Servicio
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white transition-colors">
-                    Política de Cookies
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white transition-colors">
-                    RGPD
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Bottom bar */}
-          <div className="mt-12 border-t border-white/10 pt-8">
-            <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-              <p className="text-sm text-gray-500">
-                © 2026 Flota Camiones. Todos los derechos reservados.
-              </p>
-              <div className="flex items-center gap-6 text-sm text-gray-500">
-                <a href="#" className="hover:text-white transition-colors">Privacidad</a>
-                <a href="#" className="hover:text-white transition-colors">Términos</a>
-                <a href="#" className="hover:text-white transition-colors">Cookies</a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </footer>
-    </div>
+      </div>
   )
 }
