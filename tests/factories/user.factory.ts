@@ -33,6 +33,13 @@ export function createOrganization(overrides: Partial<Organization> & { ownerId:
     id: overrides.id ?? 'org-test-id',
     name: overrides.name ?? 'Test Fleet',
     ownerId: overrides.ownerId,
+    planType: overrides.planType ?? 'FREE',
+    planStatus: overrides.planStatus ?? 'TRIAL',
+    billingEmail: overrides.billingEmail ?? null,
+    billingVatId: overrides.billingVatId ?? null,
+    currency: overrides.currency ?? 'EUR',
+    stripeCustomerId: overrides.stripeCustomerId ?? null,
+    stripeSubscriptionId: overrides.stripeSubscriptionId ?? null,
     createdAt: overrides.createdAt ?? new Date(),
     updatedAt: overrides.updatedAt ?? new Date(),
   }

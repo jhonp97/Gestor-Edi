@@ -6,18 +6,32 @@ vi.mock('@/lib/prisma', () => ({
     truck: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
+      count: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
     },
+    organization: {
+      findUnique: vi.fn(),
+    },
   },
 }))
 
-import { TruckRepository } from '@/repositories/truck.repository'
+import { TruckRepository, setPlanServiceFactory } from '@/repositories/truck.repository'
 import type { Truck } from '@prisma/client'
 
 // Get the mocked prisma instance
 const { prisma: mockPrisma } = await import('@/lib/prisma')
+
+// Create a mock PlanService for all truck repo tests
+const mockPlanService = {
+  checkLimit: vi.fn().mockResolvedValue(undefined),
+  getPlanConfig: vi.fn().mockReturnValue({ trucks: 5, workers: 10, transactions: 100, orgs: 1 }),
+}
+
+beforeEach(() => {
+  setPlanServiceFactory(() => mockPlanService as any)
+})
 
 describe('TruckRepository', () => {
   let repo: TruckRepository

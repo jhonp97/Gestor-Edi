@@ -6,9 +6,13 @@ vi.mock('@/lib/prisma', () => ({
     worker: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
+      count: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+    },
+    organization: {
+      findUnique: vi.fn(),
     },
   },
 }))
@@ -36,11 +40,21 @@ vi.mock('@/services/encryption.service', () => {
   }
 })
 
-import { WorkerRepository } from '@/repositories/worker.repository'
+import { WorkerRepository, setPlanServiceFactory } from '@/repositories/worker.repository'
 import type { Worker } from '@prisma/client'
 
 const { prisma: mockPrisma } = await import('@/lib/prisma')
 const { getEncryptionService } = await import('@/services/encryption.service')
+
+// Create a mock PlanService for all worker repo tests
+const mockPlanService = {
+  checkLimit: vi.fn().mockResolvedValue(undefined),
+  getPlanConfig: vi.fn().mockReturnValue({ trucks: 5, workers: 10, transactions: 100, orgs: 1 }),
+}
+
+beforeEach(() => {
+  setPlanServiceFactory(() => mockPlanService as any)
+})
 
 describe('WorkerRepository — T3.4 DNI Encryption', () => {
   let repo: WorkerRepository

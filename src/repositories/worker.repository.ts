@@ -1,9 +1,17 @@
 import { BaseRepository } from './base.repository'
 import { getEncryptionService } from '@/services/encryption.service'
+import { PlanService } from '@/services/plan.service'
 import type { Worker, CreateWorkerInput, UpdateWorkerInput } from '@/types'
+
+// Default factory — can be overridden in tests
+let createPlanService = () => new PlanService()
+export function setPlanServiceFactory(factory: () => PlanService) {
+  createPlanService = factory
+}
 
 export class WorkerRepository extends BaseRepository {
   private encryption = getEncryptionService()
+  private planService = createPlanService()
 
   constructor(organizationId?: string | null) {
     super(organizationId)
@@ -45,6 +53,11 @@ export class WorkerRepository extends BaseRepository {
   }
 
   async create(data: CreateWorkerInput): Promise<Worker> {
+    // Check plan limit before creating
+    if (this.organizationId) {
+      await this.planService.checkLimit(this.organizationId, 'workers')
+    }
+
     // Encrypt DNI before storing
     const { dni: encryptedDni, dniHash } = await this.encryption.encryptWorkerDni(data.dni)
     

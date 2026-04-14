@@ -116,6 +116,15 @@ model Organization {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
+  // Plan & billing fields (subscription-ready)
+  planType           PlanType     @default(FREE)
+  planStatus         PlanStatus   @default(TRIAL)
+  billingEmail       String?
+  billingVatId       String?      // NIF/CIF
+  currency           String       @default("EUR")
+  stripeCustomerId   String?
+  stripeSubscriptionId String?
+
   users        User[]
   trucks       Truck[]
   transactions Transaction[]
@@ -251,4 +260,17 @@ enum AuditAction {
   ROLE_CHANGE
   PLATFORM_ADMIN_WRITE
   CONSENT_CHANGE
+}
+
+enum PlanType {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum PlanStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
 }

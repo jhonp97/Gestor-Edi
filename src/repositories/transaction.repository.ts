@@ -1,7 +1,16 @@
 import { BaseRepository } from './base.repository'
+import { PlanService } from '@/services/plan.service'
 import type { Transaction, CreateTransactionInput } from '@/types'
 
+// Default factory — can be overridden in tests
+let createPlanService = () => new PlanService()
+export function setPlanServiceFactory(factory: () => PlanService) {
+  createPlanService = factory
+}
+
 export class TransactionRepository extends BaseRepository {
+  private planService = createPlanService()
+
   constructor(organizationId?: string | null) {
     super(organizationId)
   }
@@ -44,6 +53,11 @@ export class TransactionRepository extends BaseRepository {
   }
 
   async create(data: CreateTransactionInput): Promise<Transaction> {
+    // Check plan limit before creating
+    if (this.organizationId) {
+      await this.planService.checkLimit(this.organizationId, 'transactions')
+    }
+
     return this.prisma.transaction.create({
       data: {
         ...data,
