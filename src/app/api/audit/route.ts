@@ -16,7 +16,6 @@ export async function GET(request: Request) {
       )
     }
 
-    const userId = session.user.id
     const userRole = session.user.role
     const userOrgId = session.user.organizationId
 

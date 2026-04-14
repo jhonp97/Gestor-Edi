@@ -44,7 +44,6 @@ import { WorkerRepository, setPlanServiceFactory } from '@/repositories/worker.r
 import type { Worker } from '@prisma/client'
 
 const { prisma: mockPrisma } = await import('@/lib/prisma')
-const { getEncryptionService } = await import('@/services/encryption.service')
 
 // Create a mock PlanService for all worker repo tests
 const mockPlanService = {
@@ -197,7 +196,7 @@ describe('WorkerRepository — T3.4 DNI Encryption', () => {
       }
       vi.mocked(mockPrisma.worker.update).mockResolvedValue(updated)
 
-      const result = await repo.update('worker-1', { dni: 'newDNI' })
+      await repo.update('worker-1', { dni: 'newDNI' })
 
       // @ts-expect-error — Prisma mock types are complex, runtime works correctly
       const updateCall = mockPrisma.worker.update.mock.calls[0]

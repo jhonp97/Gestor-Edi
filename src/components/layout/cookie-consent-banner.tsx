@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { X } from 'lucide-react'
 import {
@@ -16,16 +16,10 @@ interface CookieConsentBannerProps {
 }
 
 export function CookieConsentBanner({ onConsentChange }: CookieConsentBannerProps) {
-  const [isVisible, setIsVisible] = useState(false)
+  const [isVisible, setIsVisible] = useState(() => isConsentRequired())
   const [analytics, setAnalytics] = useState(false)
   const [marketing, setMarketing] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-
-  useEffect(() => {
-    if (isConsentRequired()) {
-      setIsVisible(true)
-    }
-  }, [])
 
   async function handleAcceptAll() {
     const categories = acceptAllConsent()

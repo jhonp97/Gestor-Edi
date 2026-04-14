@@ -5,7 +5,6 @@ import { NextResponse } from 'next/server'
 import { WorkerRepository } from '@/repositories/worker.repository'
 import { WorkerService } from '@/services/worker.service'
 import { getEncryptionService } from '@/services/encryption.service'
-import type { Worker } from '@prisma/client'
 
 export async function DELETE(
   request: Request,

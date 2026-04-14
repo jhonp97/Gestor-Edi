@@ -61,7 +61,8 @@ export interface DataExportFormat {
 export class DataExportService {
   private encryption = getEncryptionService()
 
-  async generateExport(orgId: string, format: 'json' | 'csv' = 'json'): Promise<DataExportFormat> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+async generateExport(orgId: string, format: 'json' | 'csv' = 'json'): Promise<DataExportFormat> {
     // Fetch all org data
     const [organization, users, trucks, transactions, workers, payrolls] = await Promise.all([
       prisma.organization.findUnique({

@@ -1,6 +1,5 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { execSync } from 'child_process'
-import { existsSync } from 'fs'
 import path from 'path'
 
 describe('T3.2: DNI Hash Migration', () => {

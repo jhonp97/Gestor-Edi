@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 
 describe('T4.3: GET /api/audit endpoint', () => {
   it('debería existir el archivo de ruta /api/audit', () => {

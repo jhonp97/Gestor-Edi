@@ -53,7 +53,6 @@ describe('WorkerService — T3.5 DNI Decryption', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockRepo = new WorkerRepository() as any
     service = new WorkerService(mockRepo)
   })
@@ -142,12 +141,6 @@ describe('WorkerService — T3.5 DNI Decryption', () => {
     it('debería enmascarar DNI cuando PLATFORM_ADMIN ve trabajadores de otra org', async () => {
       const { getEncryptionService } = await import('@/services/encryption.service')
       const enc = getEncryptionService()
-
-      const encrypted: Worker = {
-        ...encryptedWorker,
-        dni: 'somebase64iv:somebase64ciphertext',
-        dniHash: 'sha256hash',
-      }
 
       // Service should mask for cross-org access
       const masked = enc.maskWorkerDni('12345678A')

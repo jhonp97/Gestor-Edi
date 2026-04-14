@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { execSync } from 'child_process'
 
 describe('T4.1: AuditLog Prisma model', () => {

@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 describe('T3.6: DNI Masking for PLATFORM_ADMIN', () => {
-  let encryptionService: ReturnType<typeof import('@/services/encryption.service').getEncryptionService>
-
   beforeEach(() => {
     process.env.DNI_ENCRYPTION_KEY = 'a'.repeat(32)
     vi.resetModules()
@@ -35,7 +33,7 @@ describe('T3.6: DNI Masking for PLATFORM_ADMIN', () => {
 
   describe('Cross-org masking logic', () => {
     it('debería enmascarar DNI para PLATFORM_ADMIN viendo cross-org', async () => {
-      const { getEncryptionService, EncryptionService } = await import('@/services/encryption.service')
+      const { getEncryptionService } = await import('@/services/encryption.service')
       const enc = getEncryptionService()
       
       // Real encrypt/decrypt roundtrip
@@ -53,9 +51,6 @@ describe('T3.6: DNI Masking for PLATFORM_ADMIN', () => {
     })
 
     it('debería NO enmascarar DNI para usuarios de la misma org', async () => {
-      const { getEncryptionService } = await import('@/services/encryption.service')
-      const enc = getEncryptionService()
-      
       // Same org: worker is from org-1, user is from org-1
       // → DNI should be visible in full (no masking)
       const plaintextDni = '12345678A'
@@ -66,9 +61,6 @@ describe('T3.6: DNI Masking for PLATFORM_ADMIN', () => {
     })
 
     it('PLATFORM_ADMIN en su propia org debería ver DNI completo', async () => {
-      const { getEncryptionService } = await import('@/services/encryption.service')
-      const enc = getEncryptionService()
-      
       // PLATFORM_ADMIN's own org: no masking needed
       // They can see full DNI for their own org's workers
       const plaintextDni = '12345678A'
@@ -79,9 +71,6 @@ describe('T3.6: DNI Masking for PLATFORM_ADMIN', () => {
 
   describe('PLATFORM_ADMIN cross-org access pattern', () => {
     it('debería aplicar masking solo cuando PLATFORM_ADMIN ve workers de OTRA org', async () => {
-      const { getEncryptionService } = await import('@/services/encryption.service')
-      const enc = getEncryptionService()
-      
       type AccessContext = {
         viewerRole: 'PLATFORM_ADMIN' | 'ORG_ADMIN' | 'USER'
         viewerOrgId: string

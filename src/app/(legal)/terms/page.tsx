@@ -11,7 +11,7 @@ export default function TermsOfService() {
             Condiciones de Uso
           </h2>
           <p>
-            El acceso y uso de Flota Camiones (en adelante, "la Plataforma") implica la aceptación expresa de las presentes condiciones generales. El usuario se compromete a utilizar la Plataforma de conformidad con la ley, las presentes condiciones, la moral, las buenas costumbres y el orden público.
+            El acceso y uso de Flota Camiones (en adelante, &ldquo;la Plataforma&rdquo;) implica la aceptación expresa de las presentes condiciones generales. El usuario se compromete a utilizar la Plataforma de conformidad con la ley, las presentes condiciones, la moral, las buenas costumbres y el orden público.
           </p>
           <p className="mt-2">
             El usuario se compromete a no utilizar la Plataforma para fines ilícitos, contrarios a lo establecido en las presentes condiciones, lesivos de los derechos e intereses de terceros, o que de cualquier forma puedan dañar, inutilizar, sobrecargar o deteriorar la Plataforma.
