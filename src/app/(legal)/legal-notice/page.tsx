@@ -1,3 +1,33 @@
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: "Aviso Legal",
+  description:
+    "Aviso Legal de Flota Camiones conforme a la LSSI-CE. Información del prestador de servicios de la sociedad de la información, propiedad intelectual y legislación aplicable.",
+  keywords: [
+    "aviso legal Flota Camiones",
+    "LSSI-CE servicios información",
+    "información legal trucking España",
+    "prestador servicios transporte",
+  ],
+  openGraph: {
+    title: "Aviso Legal | Flota Camiones",
+    description:
+      "Aviso Legal de Flota Camiones. Información identificativa del prestador de servicios conforme a la LSSI-CE.",
+    url: "https://flota-camiones.com/legal-notice",
+    siteName: "Flota Camiones",
+    locale: "es_ES",
+    type: "website",
+  },
+  alternates: {
+    canonical: "https://flota-camiones.com/legal-notice",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+}
+
 export default function LegalNotice() {
   return (
     <main className="mx-auto max-w-4xl px-4 py-16">

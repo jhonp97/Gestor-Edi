@@ -1,0 +1,37 @@
+# Flota Camiones
+
+> Sistema integral de gestión de flota de camiones. Control de ingresos, gastos, trabajadores y nóminas desde una sola plataforma.
+
+## Qué es Flota Camiones?
+
+Flota Camiones es una aplicación web SaaS diseñada específicamente para transportistas y gestores de flota de camiones en España. Permite gestionar camiones, transacciones (ingresos y gastos), trabajadores y nóminas con deducciones españolas (IRPF, Seguridad Social).
+
+## Funcionalidades principales
+
+- **Gestión de Camiones**: Registro completo de vehículos con matrícula, marca, modelo y estado (activo, en licencia, mantenimiento)
+- **Control de Transacciones**: Registro de ingresos y gastos por camión, categorización automática (combustible, peajes, reparaciones)
+- **Dashboard Visual**: Gráficos interactivos de ingresos vs gastos, tendencias mensuales
+- **Gestión de Personal**: Conductores, mecánicos y personal administrativo con asignación a camiones
+- **Nómina Automática**: Generación de nóminas con deducciones españolas (IRPF, Seguridad Social)
+- **Funciona Offline**: PWA instalable que funciona sin internet
+- **Cumplimiento Legal**: RGPD, LOPDGDD, LSSICE — política de privacidad, aviso legal, gestión de cookies
+- **Roles de Usuario**: USER (operador), ORG_ADMIN (administrador de organización), PLATFORM_ADMIN (administrador de plataforma)
+
+## Planes
+
+- **Gratuito**: Hasta 5 camiones, 10 trabajadores, 100 transacciones/mes
+- **Profesional**: Hasta 50 camiones, 100 trabajadores, transacciones ilimitadas
+- **Empresa**: Sin límites
+
+## Cumplimiento Legal
+
+- Política de Privacidad: https://flota-camiones.com/privacy
+- Términos y Condiciones: https://flota-camiones.com/terms
+- Aviso Legal: https://flota-camiones.com/legal-notice
+- Gestión de Datos (ARCO): Exportación y eliminación de datos personales disponibles
+
+## Contacto
+
+- Email: soporte@flotacamiones.com
+- Teléfono: +34 900 123 456
+- Ubicación: Madrid, España

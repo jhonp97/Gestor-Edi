@@ -8,33 +8,168 @@ import {
   Truck, BarChart3, Users, Banknote, Receipt, Wifi,
   ChevronRight, Shield, TrendingUp, CheckCircle2
 } from 'lucide-react'
+import type { Metadata } from 'next'
 
-async function isAuthenticated(): Promise<boolean> {
-  // 1. Check NextAuth session first (Google OAuth)
-  try {
-    const session = await auth()
-    if (session?.user) return true
-  } catch {
-    // NextAuth not available, try custom JWT
-  }
+export const metadata: Metadata = {
+  title: "Gestión de Flota de Camiones | Control de Ingresos, Gastos y Nóminas",
+  description:
+    "Flota Camiones es el mejor software de gestión de flota de camiones en España. Controlá ingresos, gastos, trabajadores y nóminas con IRPF y Seguridad Social. Dashboard visual, funciona offline.",
+  keywords: [
+    "software gestión flota camiones España",
+    "control ingresos gastos camiones",
+    "gestión nóminas transportistas IRPF",
+    "dashboard transporte mercancías",
+    "ERP trucking español",
+  ],
+  openGraph: {
+    title: "Flota Camiones — Gestión de Flota de Camiones en España",
+    description:
+      "Sistema integral para transportistas españoles. Control de ingresos, gastos, trabajadores y nóminas con deducciones españolas.",
+    url: "https://flota-camiones.com",
+    siteName: "Flota Camiones",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Flota Camiones - Dashboard de Gestión",
+      },
+    ],
+    locale: "es_ES",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Flota Camiones — Gestión de Flota de Camiones",
+    description:
+      "El mejor software de gestión de flota de camiones en España.",
+    images: ["/og-image.png"],
+  },
+}
 
-  // 2. Check custom JWT cookie (email/password login)
-  const cookieStore = await cookies()
-  const token = cookieStore.get('auth-token')?.value
-  if (!token) return false
-
-  try {
-    const secret = new TextEncoder().encode(
-      process.env.NEXTAUTH_SECRET || 'dev-secret-change-in-production'
-    )
-    await jwtVerify(token, secret)
-    return true
-  } catch {
-    return false
-  }
+// JSON-LD Structured Data
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': 'https://flota-camiones.com/#organization',
+      name: 'Flota Camiones',
+      url: 'https://flota-camiones.com',
+      logo: {
+        '@type': 'ImageObject',
+        url: 'https://flota-camiones.com/icons/icon-512.png',
+      },
+      description:
+        'Sistema integral de gestión de flota de camiones en España. Control de ingresos, gastos, trabajadores y nóminas.',
+      contactPoint: {
+        '@type': 'ContactPoint',
+        email: 'soporte@flotacamiones.com',
+        telephone: '+34-900-123-456',
+        contactType: 'customer service',
+        availableLanguage: 'Spanish',
+        areaServed: 'ES',
+      },
+      sameAs: [],
+    },
+    {
+      '@type': 'SoftwareApplication',
+      '@id': 'https://flota-camiones.com/#software',
+      name: 'Flota Camiones',
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web',
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'EUR',
+        description: 'Plan gratuito con funcionalidades básicas',
+      },
+      description:
+        'Software de gestión de flota de camiones para transportistas españoles. Dashboard, control de transacciones, gestión de personal y nóminas.',
+    },
+    {
+      '@type': 'FAQPage',
+      '@id': 'https://flota-camiones.com/#faq',
+      mainEntity: [
+        {
+          '@type': 'Question',
+          name: '¿Qué es Flota Camiones?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Flota Camiones es un software SaaS de gestión integral de flotas de camiones diseñado para transportistas y gestores de flota en España. Permite gestionar vehículos, transacciones, trabajadores y nóminas con deducciones españolas.',
+          },
+        },
+        {
+          '@type': 'Question',
+          name: '¿Cómo funciona el control de ingresos y gastos?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Cada transacción (ingreso o gasto) se registra asociada a un camión específico. El sistema categoriza automáticamente por tipo (combustible, peajes, reparaciones) y muestra visualizaciones en el dashboard con tendencias mensuales.',
+          },
+        },
+        {
+          '@type': 'Question',
+          name: '¿Flota Camiones calcula las nóminas con IRPF español?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Sí, el sistema genera nóminas con todas las deducciones españolas: IRPF según tablas de la Agencia Tributaria, Seguridad Social (cuota obrera y empresarial), y cálculo de base de cotización según salario.',
+          },
+        },
+        {
+          '@type': 'Question',
+          name: '¿Puedo usar Flota Camiones sin conexión a internet?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Sí, Flota Camiones es una PWA (Progressive Web App) que funciona offline. Se instala en tu dispositivo y sincroniza automáticamente cuando vuelves a tener conexión.',
+          },
+        },
+        {
+          '@type': 'Question',
+          name: '¿Cuáles son los planes disponibles?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Plan Gratuito: hasta 5 camiones, 10 trabajadores, 100 transacciones/mes. Plan Profesional: hasta 50 camiones, 100 trabajadores, transacciones ilimitadas. Plan Empresa: ilimitado con soporte dedicado.',
+          },
+        },
+        {
+          '@type': 'Question',
+          name: '¿Flota Camiones cumple con el RGPD?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Sí, cumple con RGPD y LOPDGDD. Incluye cifrado AES-256 para datos sensibles, derechos ARCO (Acceso, Rectificación, Supresión, Portabilidad), y gestión de cookies con consentimiento.',
+          },
+        },
+      ],
+    },
+  ],
 }
 
 export default async function HomePage() {
+  async function isAuthenticated(): Promise<boolean> {
+    // 1. Check NextAuth session first (Google OAuth)
+    try {
+      const session = await auth()
+      if (session?.user) return true
+    } catch {
+      // NextAuth not available, try custom JWT
+    }
+
+    // 2. Check custom JWT cookie (email/password login)
+    const cookieStore = await cookies()
+    const token = cookieStore.get('auth-token')?.value
+    if (!token) return false
+
+    try {
+      const secret = new TextEncoder().encode(
+        process.env.NEXTAUTH_SECRET || 'dev-secret-change-in-production'
+      )
+      await jwtVerify(token, secret)
+      return true
+    } catch {
+      return false
+    }
+  }
+
   // If authenticated, redirect to dashboard
   if (await isAuthenticated()) {
     redirect('/dashboard')
@@ -42,6 +177,11 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* JSON-LD Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
         <div className="container mx-auto px-4">

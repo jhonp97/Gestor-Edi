@@ -1,3 +1,33 @@
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: "Términos y Condiciones",
+  description:
+    "Términos y Condiciones de uso de Flota Camiones. Condiciones de uso, cuentas de usuario, limitación de responsabilidad, propiedad intelectual y política de cookies.",
+  keywords: [
+    "términos condiciones Flota Camiones",
+    "condiciones uso software trucking",
+    "términos servicio transporte",
+    "cookies trucking España",
+  ],
+  openGraph: {
+    title: "Términos y Condiciones | Flota Camiones",
+    description:
+      "Términos y Condiciones de Flota Camiones. Información sobre el uso del software de gestión de flota de camiones.",
+    url: "https://flota-camiones.com/terms",
+    siteName: "Flota Camiones",
+    locale: "es_ES",
+    type: "website",
+  },
+  alternates: {
+    canonical: "https://flota-camiones.com/terms",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+}
+
 export default function TermsOfService() {
   return (
     <main className="mx-auto max-w-4xl px-4 py-16">

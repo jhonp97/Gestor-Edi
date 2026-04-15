@@ -1,3 +1,34 @@
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: "Política de Privacidad",
+  description:
+    "Política de Privacidad de Flota Camiones. Información sobre el tratamiento de datos personales conforme al RGPD y la LOPDGDD. Tus derechos ARCO y contacto con el DPO.",
+  keywords: [
+    "política de privacidad Flota Camiones",
+    "RGPD protección datos",
+    "LOPDGDD derechos digitales",
+    "privacidad transportistas",
+    "protección datos personales España",
+  ],
+  openGraph: {
+    title: "Política de Privacidad | Flota Camiones",
+    description:
+      "Política de Privacidad de Flota Camiones. Cumplimiento RGPD y LOPDGDD para la gestión de datos de transportistas.",
+    url: "https://flota-camiones.com/privacy",
+    siteName: "Flota Camiones",
+    locale: "es_ES",
+    type: "website",
+  },
+  alternates: {
+    canonical: "https://flota-camiones.com/privacy",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+}
+
 export default function PrivacyPolicy() {
   return (
     <main className="mx-auto max-w-4xl px-4 py-16">

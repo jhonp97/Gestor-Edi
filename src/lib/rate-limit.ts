@@ -87,36 +87,16 @@ function cleanupExpiredEntries(now: number): void {
 }
 
 /**
- * Get current rate limit status for a key without incrementing.
- * Useful for checking status without consuming a request.
+ * Get the current store size (for monitoring/testing).
  */
-export function getRateLimitStatus(key: string): RateLimitResult | null {
-  const now = Date.now()
-  const entry = store.get(key)
-
-  if (!entry || entry.resetAt <= now) {
-    return null
-  }
-
-  // Estimate remaining based on entry count (we don't know maxRequests here)
-  return {
-    success: true,
-    remaining: -1, // Unknown
-    resetAt: entry.resetAt,
-  }
+export function getStoreSize(): number {
+  return store.size
 }
 
 /**
  * Reset rate limit for a specific key.
- * Useful for testing or admin overrides.
+ * Useful for testing.
  */
 export function resetRateLimit(key: string): void {
   store.delete(key)
-}
-
-/**
- * Get the current store size (for monitoring).
- */
-export function getStoreSize(): number {
-  return store.size
 }

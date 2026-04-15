@@ -68,7 +68,6 @@ export class EmailService {
       const resend = getResend()
       if (!resend) {
         console.log(`📧 [DEV] Password reset email skipped for ${to} (no API key)`)
-        console.log(`📧 [DEV] Reset token: ${token}`)
         return true
       }
 

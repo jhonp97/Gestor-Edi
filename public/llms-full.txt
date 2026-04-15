@@ -1,0 +1,324 @@
+# Flota Camiones - Documentación Completa
+
+> Sistema integral de gestión de flota de camiones para transportistas españoles.
+
+---
+
+## Descripción General
+
+**Flota Camiones** es una aplicación web SaaS (Software as a Service) diseñada específicamente para empresas de transporte de mercancías por carretera en España. La plataforma permite gestionar de forma integral todos los aspectos operativos de una flota de camiones: vehículos, transacciones financieras, personal y nóminas.
+
+### Problema que resuelve
+
+Los transportistas y gestores de flota en España enfrentan desafíos únicos:
+- Control manual de ingresos y gastos por vehículo
+- Cálculo complejo de nóminas con deducciones españolas (IRPF, Seguridad Social)
+- Falta de visibilidad sobre la rentabilidad por camión
+- Necesidad de cumplir con normativas fiscales y laborales españolas
+- Necesidad de acceso offline en zonas con poca cobertura
+
+Flota Camiones centraliza toda esta información en una única plataforma accesible desde cualquier dispositivo.
+
+---
+
+## Funcionalidades Detalladas
+
+### 1. Gestión de Camiones
+
+Cada camión se registra con los siguientes datos:
+- **Matrícula**: Identificador único del vehículo
+- **Marca**: Fabricante del camión (Mercedes, Scania, Volvo, etc.)
+- **Modelo**: Modelo específico
+- **Año**: Año de fabricación
+- **Estado**: Activo, En Licencia, En Mantenimiento
+- **kms actuales**: Kilometraje actualizado
+- **kms último servicio**: Para control de mantenimiento
+- **kms próxima revisión**: Alertas de mantenimiento preventivo
+
+### 2. Control de Transacciones
+
+Las transacciones se clasifican automáticamente por tipo:
+
+**Ingresos:**
+- Viajes/Fletes
+- Servicios adicionales
+- Otros ingresos
+
+**Gastos:**
+- Combustible
+- Peajes
+- Reparaciones
+- Mantenimiento
+- Seguros
+- Impuestos
+- Otros gastos
+
+Cada transacción se asocia a un camión específico, permitiendo analizar la rentabilidad individual de cada vehículo.
+
+### 3. Dashboard Visual
+
+El dashboard principal muestra:
+- **Resumen financiero**: Ingresos totales, gastos totales, beneficio neto
+- **Gráfico de tendencias**: Evolución mensual de ingresos vs gastos
+- **Por categoría**: Desglose de gastos por tipo (combustible, peajes, etc.)
+- **Por camión**: Comparativa de rentabilidad entre vehículos
+
+### 4. Gestión de Personal
+
+El sistema soporta los siguientes roles:
+- **USER**: Operador con acceso básico a la flota de su organización
+- **ORG_ADMIN**: Administrador con control total de su organización
+- **PLATFORM_ADMIN**: Administrador de la plataforma con acceso global
+
+Cada trabajador puede ser asignado a uno o varios camiones y tiene:
+- Nombre completo
+- Email
+- Teléfono
+- Puesto: Conductor, Mecánico, Administrativo, Otro
+- Estado: Activo, Inactivo
+
+### 5. Nómina Automática
+
+El sistema genera nóminas con todas las deducciones españolas:
+- **IRPF (Impuesto sobre la Renta de las Personas Físicas)**: Retención según tablas de la Agencia Tributaria
+- **Seguridad Social**: Cuota obrera y empresarial
+- **Base de cotización**: Calculada según el salario
+- **Prorrateo de pagas extra**: Incluido en el cálculo mensual
+
+Los conceptos incluidos:
+- Salario base
+- Complementos (plus transporte, plus idiomas, etc.)
+- Horas extra
+- Deducciones legales
+- Remuneración en especie (si aplica)
+
+### 6. PWA - Funciona Offline
+
+Flota Camiones es una Progressive Web App (PWA) que:
+- Se instala en el dispositivo del usuario
+- Funciona sin conexión a internet
+- Sincroniza datos automáticamente cuando hay conexión
+- Notificaciones push para alertas importantes
+
+---
+
+## Modelos de Datos
+
+### Organización
+```typescript
+{
+  id: string
+  name: string
+  cif: string
+  address: string
+  createdAt: Date
+}
+```
+
+### Usuario
+```typescript
+{
+  id: string
+  email: string
+  name: string
+  role: 'USER' | 'ORG_ADMIN' | 'PLATFORM_ADMIN'
+  organizationId: string
+  createdAt: Date
+}
+```
+
+### Camión
+```typescript
+{
+  id: string
+  organizationId: string
+  licensePlate: string
+  brand: string
+  model: string
+  year: number
+  status: 'active' | 'license' | 'maintenance'
+  currentKms: number
+  lastServiceKms: number
+  nextServiceKms: number
+  createdAt: Date
+}
+```
+
+### Transacción
+```typescript
+{
+  id: string
+  organizationId: string
+  truckId: string
+  type: 'income' | 'expense'
+  category: string
+  amount: number
+  description: string
+  date: Date
+  createdAt: Date
+}
+```
+
+### Trabajador
+```typescript
+{
+  id: string
+  organizationId: string
+  dni: string
+  name: string
+  email: string
+  phone: string
+  position: 'driver' | 'mechanic' | 'admin' | 'other'
+  status: 'active' | 'inactive'
+  truckIds: string[]
+  createdAt: Date
+}
+```
+
+---
+
+## Cumplimiento Legal
+
+### RGPD (Reglamento General de Protección de Datos)
+- Cifrado AES-256 para datos sensibles (DNI de trabajadores)
+- Hash SHA-256 para búsquedas
+- Consentimiento explícito para cookies no esenciales
+- Derecho de acceso, rectificación, supresión, portabilidad
+
+### LOPDGDD (Ley Orgánica de Protección de Datos)
+- Políticas de privacidad actualizadas
+- Aviso legal conforme a LSSI-CE
+- Gestión de derechos ARCO
+
+### LSSI-CE (Ley de Servicios de Sociedad de la Información)
+- Aviso legal con información del prestador
+- Política de cookies
+- Condiciones de uso
+
+### Normativa Fiscal Española
+- Retención IRPF según tablas oficiales
+- Cálculo de Seguridad Social
+- Conservación de documentos (6 años para facturas)
+
+---
+
+## API Endpoints
+
+### Autenticación
+- `POST /api/auth/register` - Registro de usuario
+- `POST /api/auth/login` - Inicio de sesión
+- `POST /api/auth/forgot-password` - Recuperación de contraseña
+- `POST /api/auth/logout` - Cerrar sesión
+
+### Camiones
+- `GET /api/trucks` - Listar camiones
+- `POST /api/trucks` - Crear camión
+- `GET /api/trucks/:id` - Ver camión
+- `PUT /api/trucks/:id` - Actualizar camión
+- `DELETE /api/trucks/:id` - Eliminar camión
+
+### Transacciones
+- `GET /api/transactions` - Listar transacciones
+- `POST /api/transactions` - Crear transacción
+- `PUT /api/transactions/:id` - Actualizar transacción
+- `DELETE /api/transactions/:id` - Eliminar transacción
+
+### Trabajadores
+- `GET /api/workers` - Listar trabajadores
+- `POST /api/workers` - Crear trabajador
+- `PUT /api/workers/:id` - Actualizar trabajador
+- `DELETE /api/workers/:id` - Eliminar trabajador
+
+### Nóminas
+- `GET /api/nomina` - Listar nóminas
+- `POST /api/nomina/generate` - Generar nómina
+- `GET /api/nomina/:id/pdf` - Descargar nómina en PDF
+
+### Dashboard
+- `GET /api/dashboard/summary` - Resumen financiero
+- `GET /api/dashboard/trends` - Tendencias mensuales
+- `GET /api/dashboard/by-truck` - Estadísticas por camión
+- `GET /api/dashboard/by-category` - Gastos por categoría
+
+---
+
+## Planes y Precios
+
+### Plan Gratuito
+- Hasta 5 camiones
+- Hasta 10 trabajadores
+- 100 transacciones/mes
+- Dashboard básico
+- Soporte por email
+
+### Plan Profesional
+- Hasta 50 camiones
+- Hasta 100 trabajadores
+- Transacciones ilimitadas
+- Dashboard avanzado
+- Exportación de datos
+- Soporte prioritario
+
+### Plan Empresa
+- Camiones ilimitados
+- Trabajadores ilimitados
+- Transacciones ilimitadas
+- Dashboard enterprise
+- Múltiples organizaciones
+- API access
+- Soporte dedicado
+- Onboarding personalizado
+
+---
+
+## Tecnologías Utilizadas
+
+- **Frontend**: Next.js 16 (App Router), React 18, TypeScript
+- **Styling**: Tailwind CSS v4
+- **UI Components**: shadcn/ui
+- **Backend**: Next.js API Routes, Prisma ORM
+- **Database**: PostgreSQL
+- **Authentication**: NextAuth.js, JWT
+- **Deployment**: Vercel
+
+---
+
+## Legal
+
+### Política de Privacidad
+https://flota-camiones.com/privacy
+
+### Términos y Condiciones
+https://flota-camiones.com/terms
+
+### Aviso Legal
+https://flota-camiones.com/legal-notice
+
+### Gestión de Datos (ARCO)
+Los usuarios pueden ejercer sus derechos de:
+- **Acceso**: Obtener copia de sus datos
+- **Rectificación**: Corregir datos inexactos
+- **Supresión**: Solicitar eliminación de datos
+- **Portabilidad**: Recibir datos en formato estructurado
+
+Para ejercer estos derechos: privacy@flota-camiones.com
+
+### Reclamaciones
+Derecho a presentar reclamación ante la AEPD: www.aepd.es
+
+---
+
+## Contacto
+
+- **Email de soporte**: soporte@flotacamiones.com
+- **Email de privacidad**: privacy@flota-camiones.com
+- **Email legal**: legal@flota-camiones.com
+- **DPO**: dpo@flota-camiones.com
+- **Teléfono**: +34 900 123 456
+- **Ubicación**: Madrid, España
+
+---
+
+## Última Actualización
+
+Este documento fue actualizado el 13 de abril de 2026.

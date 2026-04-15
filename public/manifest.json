@@ -1,7 +1,7 @@
 {
-  "name": "Flota Camiones EDI",
-  "short_name": "Flota",
-  "description": "Sistema de gestión de flota de camiones",
+  "name": "Flota Camiones - Gestión de Flota de Camiones",
+  "short_name": "Flota Camiones",
+  "description": "Sistema integral de gestión de flota de camiones en España. Control de ingresos, gastos, trabajadores y nóminas con deducciones españolas.",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#1e3a5f",
@@ -36,5 +36,23 @@
   ],
   "categories": ["business", "productivity"],
   "lang": "es",
-  "dir": "ltr"
+  "dir": "ltr",
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Ver el dashboard principal",
+      "url": "/dashboard",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Camiones",
+      "short_name": "Camiones",
+      "description": "Gestionar camiones",
+      "url": "/trucks",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
 }

@@ -1,5 +1,0 @@
-export { TruckRepository } from './truck.repository'
-export { TransactionRepository } from './transaction.repository'
-export { WorkerRepository } from './worker.repository'
-export { PayrollRepository } from './payroll.repository'
-export { BaseRepository } from './base.repository'
