@@ -16,7 +16,11 @@
       "msw",
       "sharp",
       "unrs-resolver"
-    ]
+    ],
+    "overrides": {
+      "@react-pdf/layout": "4.4.2",
+      "@react-pdf/image": "3.0.4"
+    }
   },
   "scripts": {
     "dev": "next dev",
@@ -42,7 +46,7 @@
     "@base-ui/react": "^1.3.0",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@prisma/client": "^5.22.0",
-    "@react-pdf/renderer": "^4.3.2",
+    "@react-pdf/renderer": "4.4.1",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -68,7 +72,6 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
-    "@types/bcryptjs": "^3.0.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20",
