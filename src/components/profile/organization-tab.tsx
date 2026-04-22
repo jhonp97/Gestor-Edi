@@ -21,7 +21,7 @@ export function OrganizationTab({ profile }: { profile: ProfileData }) {
     setSaving(true)
     setMessage('')
     try {
-      await post('/api/admin/orgs', { id: profile.organization.id, name: orgName }, { method: 'PATCH' })
+      await post('/api/organization', { name: orgName }, { method: 'PATCH' })
       setMessage('Organización actualizada')
     } catch (err: unknown) {
       setMessage(err instanceof Error ? err.message : 'Error al guardar')

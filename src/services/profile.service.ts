@@ -19,7 +19,11 @@ export class ProfileService {
   }
 
   async updateProfile(userId: string, data: Partial<Pick<User, 'name' | 'phone' | 'image'>>) {
-    return this.repo.updateProfile(userId, data)
+    // Filter out undefined values to prevent Prisma from setting fields to null
+    const filtered = Object.fromEntries(
+      Object.entries(data).filter(([, v]) => v !== undefined)
+    ) as Partial<Pick<User, 'name' | 'phone' | 'image'>>
+    return this.repo.updateProfile(userId, filtered)
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {

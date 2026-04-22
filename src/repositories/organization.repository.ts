@@ -13,4 +13,8 @@ export class OrganizationRepository extends BaseRepository {
   async findByOwnerId(ownerId: string): Promise<Organization | null> {
     return this.prisma.organization.findUnique({ where: { ownerId } })
   }
+
+  async update(id: string, data: Partial<Organization>): Promise<Organization> {
+    return this.prisma.organization.update({ where: { id }, data })
+  }
 }

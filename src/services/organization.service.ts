@@ -14,6 +14,10 @@ export class OrganizationService {
   async getByOwnerId(ownerId: string) {
     return this.repo.findByOwnerId(ownerId)
   }
+
+  async update(id: string, name: string) {
+    return this.repo.update(id, { name })
+  }
 }
 
 export const organizationService = new OrganizationService()
