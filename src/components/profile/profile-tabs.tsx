@@ -89,7 +89,7 @@ export function ProfileTabs({ initialProfile }: { initialProfile: ProfileData })
             <PersonalInfoTab profile={profile} onUpdate={updateProfile} />
           )}
           {activeTab === 'organization' && <OrganizationTab profile={profile} />}
-          {activeTab === 'security' && <SecurityTab profile={profile} />}
+          {activeTab === 'security' && <SecurityTab />}
           {activeTab === 'preferences' && (
             <PreferencesTab profile={profile} onUpdate={updateProfile} />
           )}

@@ -1,8 +1,10 @@
-process.env.CLOUDINARY_CLOUD_NAME = 'test-cloud'
-process.env.CLOUDINARY_API_KEY = 'test-key'
-process.env.CLOUDINARY_API_SECRET = 'test-secret'
-
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+vi.mock('@/lib/cloudinary', () => ({
+  cloudName: 'test-cloud',
+  apiKey: 'test-key',
+  apiSecret: 'test-secret',
+}))
 
 vi.mock('cloudinary', () => ({
   default: {
@@ -30,8 +32,8 @@ describe('CloudinaryUploadService', () => {
     const result = service.generateSignature('folder/profiles')
     expect(result.signature).toBe('mock-signature')
     expect(result.timestamp).toBeGreaterThan(0)
-    expect(result.cloudName).toBeTruthy()
-    expect(result.apiKey).toBeTruthy()
+    expect(result.cloudName).toBe('test-cloud')
+    expect(result.apiKey).toBe('test-key')
     expect(result.folder).toBe('folder/profiles')
   })
 
@@ -42,7 +44,7 @@ describe('CloudinaryUploadService', () => {
         folder: 'folder/profiles',
         timestamp: expect.any(Number),
       }),
-      expect.any(String)
+      'test-secret'
     )
   })
 })
