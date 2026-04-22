@@ -83,7 +83,34 @@ export default auth(async (req) => {
     return response
   }
 
-  // Check NextAuth session first (Google OAuth, future Credentials)
+  // Priority 1: Check custom JWT auth-token cookie (email/password login)
+  // This takes precedence over NextAuth to prevent session mixing
+  let token = req.cookies.get(COOKIE_NAME)?.value
+
+  if (!token) {
+    const authHeader = req.headers.get('x-auth-token')
+    if (authHeader) token = authHeader
+  }
+
+  if (token) {
+    const payload = await verifyToken(token)
+
+    if (payload) {
+      if (isAdminRoute(pathname) && payload.role !== 'PLATFORM_ADMIN') {
+        return NextResponse.redirect(new URL('/dashboard', req.url))
+      }
+
+      response.headers.set('x-user-id', payload.userId)
+      response.headers.set('x-user-email', payload.email)
+      response.headers.set('x-user-role', payload.role)
+      if (payload.organizationId) {
+        response.headers.set('x-organization-id', payload.organizationId)
+      }
+      return response
+    }
+  }
+
+  // Priority 2: Check NextAuth session (Google OAuth)
   if (req.auth) {
     const user = req.auth.user
     response.headers.set('x-user-id', user?.id || '')
@@ -101,40 +128,10 @@ export default auth(async (req) => {
     return response
   }
 
-  // Fallback: check custom JWT auth-token cookie (email/password login)
-  let token = req.cookies.get(COOKIE_NAME)?.value
-
-  if (!token) {
-    const authHeader = req.headers.get('x-auth-token')
-    if (authHeader) token = authHeader
-  }
-
-  if (!token) {
-    const loginUrl = new URL('/login', req.url)
-    loginUrl.searchParams.set('callbackUrl', pathname)
-    return NextResponse.redirect(loginUrl)
-  }
-
-  const payload = await verifyToken(token)
-
-  if (!payload) {
-    const loginUrl = new URL('/login', req.url)
-    loginUrl.searchParams.set('callbackUrl', pathname)
-    return NextResponse.redirect(loginUrl)
-  }
-
-  if (isAdminRoute(pathname) && payload.role !== 'PLATFORM_ADMIN') {
-    return NextResponse.redirect(new URL('/dashboard', req.url))
-  }
-
-  response.headers.set('x-user-id', payload.userId)
-  response.headers.set('x-user-email', payload.email)
-  response.headers.set('x-user-role', payload.role)
-  if (payload.organizationId) {
-    response.headers.set('x-organization-id', payload.organizationId)
-  }
-
-  return response
+  // No auth found - redirect to login
+  const loginUrl = new URL('/login', req.url)
+  loginUrl.searchParams.set('callbackUrl', pathname)
+  return NextResponse.redirect(loginUrl)
 })
 
 export const config = {

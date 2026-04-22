@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { signOut } from 'next-auth/react'
 import { LayoutDashboard, Truck, Receipt, Users, Banknote, Menu, X, Shield, LogOut, BarChart3, Building2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
@@ -45,6 +46,9 @@ export function Sidebar() {
     } catch {
       // Continue cleanup even if API call fails
     }
+
+    // Clear NextAuth session (Google OAuth)
+    await signOut({ redirect: false })
 
     // Clear all client-side storage to prevent session leakage
     localStorage.removeItem('auth-token')

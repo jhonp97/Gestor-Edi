@@ -54,8 +54,8 @@ export async function POST(request: Request) {
     const result = await authService.login(email, password)
    
 
-    // Create response with cookie
-    const response = NextResponse.json({ success: true, user: result.user }, { headers: rateLimitHeaders })
+    // Create response with cookie and token for client storage
+    const response = NextResponse.json({ success: true, user: result.user, token: result.token }, { headers: rateLimitHeaders })
 
     response.cookies.set('auth-token', result.token, {
       httpOnly: true,

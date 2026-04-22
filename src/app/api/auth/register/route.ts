@@ -62,9 +62,9 @@ export async function POST(request: Request) {
     // Register user
     const result = await authService.register(name, email, password)
 
-    // Create response with cookie
+    // Create response with cookie and token for client storage
     const response = NextResponse.json(
-      { user: result.user },
+      { user: result.user, token: result.token },
       { status: 201, headers: rateLimitHeaders }
     )
 

@@ -9,6 +9,7 @@ import { PasswordInput } from '@/components/ui/password-input'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Truck } from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
+import { signOut } from 'next-auth/react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -33,7 +34,10 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const data = await post<{ success?: boolean; error?: string; field?: string }>('/api/auth/login', { email, password })
+      // Clear any existing Google session to prevent session mixing
+      await signOut({ redirect: false })
+
+      const data = await post<{ success?: boolean; error?: string; field?: string; token?: string }>('/api/auth/login', { email, password })
 
       if (data.error) {
         // Set inline errors based on field
@@ -48,10 +52,9 @@ export default function LoginPage() {
         return
       }
 
-      // Login exitoso -redirigir
-      if (data.success) {
-        // Pequeño delay para asegurar que la cookie se procesa
-        await new Promise(resolve => setTimeout(resolve, 100))
+      // Login exitoso - guardar token y redirigir
+      if (data.success && data.token) {
+        localStorage.setItem('auth-token', data.token)
         window.location.href = '/dashboard'
       }
       return

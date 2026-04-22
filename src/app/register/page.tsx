@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { signIn } from 'next-auth/react'
+import { signIn, signOut } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
@@ -35,6 +35,9 @@ export default function RegisterPage() {
     setLoading(true)
 
     try {
+      // Clear any existing Google session to prevent session mixing
+      await signOut({ redirect: false })
+
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -48,7 +51,10 @@ export default function RegisterPage() {
         return
       }
 
-      // Force full page reload to ensure cookie is set
+      // Store token and redirect
+      if (data.token) {
+        localStorage.setItem('auth-token', data.token)
+      }
       window.location.href = '/dashboard'
     } catch {
       setError('Error de conexión')
