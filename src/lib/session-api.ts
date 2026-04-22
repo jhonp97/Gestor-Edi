@@ -1,6 +1,5 @@
 import { auth } from '@/lib/auth'
 import { authService } from '@/services/auth.service'
-import type { NextRequest } from 'next/server'
 
 const COOKIE_NAME = 'auth-token'
 
@@ -12,7 +11,7 @@ const COOKIE_NAME = 'auth-token'
  * 
  * Use this in ALL API routes instead of calling auth() directly.
  */
-export async function getSessionFromRequest(request: NextRequest) {
+export async function getSessionFromRequest(request: Request) {
   // 1. Try NextAuth session first (Google OAuth)
   const nextAuthSession = await auth()
   if (nextAuthSession?.user) {
@@ -30,7 +29,11 @@ export async function getSessionFromRequest(request: NextRequest) {
 
   // 2. Fall back to custom JWT auth-token cookie
   try {
-    const token = request.cookies.get(COOKIE_NAME)?.value
+    const cookieHeader = request.headers.get('cookie')
+    const token = cookieHeader
+      ?.split('; ')
+      .find((c) => c.startsWith(`${COOKIE_NAME}=`))
+      ?.split('=')[1]
 
     if (!token) {
       return null
