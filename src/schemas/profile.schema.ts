@@ -2,7 +2,13 @@ import { z } from 'zod'
 
 export const updateProfileSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').max(100).optional(),
-  phone: z.string().regex(/^\+[1-9]\d{6,14}$/, 'Formato de teléfono inválido').optional().nullable(),
+  phone: z.string()
+    .transform((val) => val ? val.replace(/[\s\-.]/g, '') : val)
+    .refine((val) => !val || /^\+[1-9]\d{6,14}$/.test(val), {
+      message: 'Formato de teléfono inválido. Ej: +34612345678',
+    })
+    .optional()
+    .nullable(),
   image: z.string().url('URL de imagen inválida').optional().nullable(),
 }).strict()
 
@@ -22,7 +28,11 @@ export const updatePreferencesSchema = z.object({
   smsNotifications: z.boolean().optional(),
 })
 
-export const phoneSchema = z.string().regex(/^\+[1-9]\d{6,14}$/, 'Formato de teléfono inválido')
+export const phoneSchema = z.string()
+  .transform((val) => val.replace(/[\s\-.]/g, ''))
+  .refine((val) => /^\+[1-9]\d{6,14}$/.test(val), {
+    message: 'Formato de teléfono inválido. Ej: +34612345678',
+  })
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>

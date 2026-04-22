@@ -18,6 +18,7 @@ export async function GET(request: Request) {
           email: nextAuthSession.user.email,
           role: nextAuthSession.user.role,
           organizationId: nextAuthSession.user.organizationId,
+          image: nextAuthSession.user.image,
         },
       })
     }

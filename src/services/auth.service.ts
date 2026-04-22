@@ -141,6 +141,7 @@ export class AuthService {
           email: user.email,
           role: user.role,
           organizationId: user.organizationId ?? undefined,
+          image: user.image ?? undefined,
         },
       }
     } catch {

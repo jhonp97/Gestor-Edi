@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -35,6 +36,7 @@ interface SessionUser {
   name: string
   email: string
   role: string
+  image?: string | null
 }
 
 export function Header() {
@@ -90,8 +92,12 @@ export function Header() {
         )}
 
         {/* User avatar */}
-        <div className="hidden size-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary sm:flex">
-          {user ? user.name.charAt(0).toUpperCase() : 'U'}
+        <div className="hidden size-8 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-sm font-semibold text-primary sm:flex">
+          {user?.image ? (
+            <img src={user.image} alt={user.name} className="size-full object-cover" />
+          ) : (
+            user ? user.name.charAt(0).toUpperCase() : 'U'
+          )}
         </div>
       </div>
     </header>

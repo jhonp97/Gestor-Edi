@@ -16,6 +16,7 @@ export interface AuthSession {
     email: string
     role: UserRole
     organizationId?: string
+    image?: string | null
   }
 }
 

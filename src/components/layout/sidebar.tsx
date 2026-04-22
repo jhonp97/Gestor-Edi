@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 'use client'
 
 import Link from 'next/link'
@@ -22,6 +23,7 @@ interface SessionUser {
   name: string
   email: string
   role: string
+  image?: string | null
 }
 
 export function Sidebar() {
@@ -174,8 +176,12 @@ export function Sidebar() {
         {/* User profile */}
         <div className="border-t border-white/10 px-4 py-4">
           <Link href="/profile" className="flex items-center gap-3 rounded-lg p-1 transition-colors hover:bg-white/10">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-semibold">
-              {user ? user.name.charAt(0).toUpperCase() : 'U'}
+            <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/20 text-sm font-semibold">
+              {user?.image ? (
+                <img src={user.image} alt={user.name} className="size-full object-cover" />
+              ) : (
+                user ? user.name.charAt(0).toUpperCase() : 'U'
+              )}
             </div>
             <div className="flex-1 overflow-hidden">
               <p className="truncate text-sm font-medium">{user?.name || 'Usuario'}</p>

@@ -57,10 +57,10 @@ export function PersonalInfoTab({
               id="phone"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="+34612345678"
-              pattern="^\\+[1-9]\\d{6,14}$"
-              title="Formato E.164: +34612345678"
+              placeholder="+34 612 345 678"
+              title="Formato internacional: +34 612 345 678"
             />
+            <p className="mt-1 text-xs text-muted-foreground">Formato internacional con prefijo de país. Ej: +34 612 345 678</p>
           </div>
           {message && (
             <p className={`text-sm ${message.includes('Error') ? 'text-destructive' : 'text-green-600'}`}>{message}</p>
