@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth'
 import { jwtVerify } from 'jose'
+import { getJwtSecret } from '@/lib/jwt-secret'
 import type { AuthTokenPayload } from '@/types/auth'
 
 const COOKIE_NAME = 'auth-token'
@@ -47,9 +48,7 @@ export async function getUserFromRequest(request: Request): Promise<AuthTokenPay
 
 async function verifyJwt(token: string): Promise<AuthTokenPayload | null> {
   try {
-    const secret = new TextEncoder().encode(
-      process.env.NEXTAUTH_SECRET || 'dev-secret-change-in-production'
-    )
+    const secret = new TextEncoder().encode(getJwtSecret())
     const { payload } = await jwtVerify(token, secret)
     return payload as unknown as AuthTokenPayload
   } catch {

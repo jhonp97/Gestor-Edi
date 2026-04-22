@@ -8,13 +8,20 @@ import { prisma } from '@/lib/prisma'
 import type { AuthTokenPayload, AuthSession } from '@/types/auth'
 import type { UserRole } from '@prisma/client'
 
-const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'dev-secret-change-in-production'
 const JWT_EXPIRY = '8h'
 const BCRYPT_COST = 12
 const RESET_TOKEN_EXPIRY_HOURS = 1
 
 const userRepo = new UserRepository()
 const tokenRepo = new PasswordResetTokenRepository()
+
+function getJwtSecret(): string {
+  const secret = process.env.NEXTAUTH_SECRET
+  if (!secret) {
+    throw new Error('NEXTAUTH_SECRET env var is required')
+  }
+  return secret
+}
 
 export class AuthService {
   async register(name: string, email: string, password: string): Promise<{ user: AuthSession['user']; token: string }> {
@@ -25,25 +32,28 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(password, BCRYPT_COST)
 
-    // Create organization first, then user with orgId
-    const org = await prisma.organization.create({
-      data: {
-        name: `${name}'s Fleet`,
-        ownerId: 'temp',
-      },
-    })
+    const { user, org } = await prisma.$transaction(async (tx) => {
+      const org = await tx.organization.create({
+        data: {
+          name: `${name}'s Fleet`,
+        },
+      })
 
-    const user = await userRepo.create({
-      name,
-      email,
-      password: hashedPassword,
-      organizationId: org.id,
-    })
+      const user = await tx.user.create({
+        data: {
+          name,
+          email,
+          password: hashedPassword,
+          organizationId: org.id,
+        },
+      })
 
-    // Update org with correct ownerId
-    await prisma.organization.update({
-      where: { id: org.id },
-      data: { ownerId: user.id },
+      await tx.organization.update({
+        where: { id: org.id },
+        data: { ownerId: user.id },
+      })
+
+      return { user, org }
     })
 
     const token = this.generateToken(user.id, user.email, user.role, org.id)
@@ -79,13 +89,19 @@ export class AuthService {
 
     let orgId = user.organizationId ?? undefined
     if (!orgId) {
-      const org = await prisma.organization.create({
-        data: {
-          name: `${user.name || 'Usuario'}'s Fleet`,
-          ownerId: user.id,
-        },
+      const org = await prisma.$transaction(async (tx) => {
+        const org = await tx.organization.create({
+          data: {
+            name: `${user.name || 'Usuario'}'s Fleet`,
+            ownerId: user.id,
+          },
+        })
+        await tx.user.update({
+          where: { id: user.id },
+          data: { organizationId: org.id },
+        })
+        return org
       })
-      await userRepo.update(user.id, { organizationId: org.id })
       orgId = org.id
     }
 
@@ -105,7 +121,7 @@ export class AuthService {
 
   async verifyToken(token: string): Promise<AuthTokenPayload> {
     try {
-      const payload = jwt.verify(token, JWT_SECRET) as AuthTokenPayload
+      const payload = jwt.verify(token, getJwtSecret()) as AuthTokenPayload
       return payload
     } catch {
       throw new AuthError('INVALID_TOKEN', 'Token inválido o expirado')
@@ -181,7 +197,7 @@ export class AuthService {
 
   private generateToken(userId: string, email: string, role: UserRole, organizationId?: string): string {
     const payload: AuthTokenPayload = { userId, email, role, organizationId }
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRY })
+    return jwt.sign(payload, getJwtSecret(), { expiresIn: JWT_EXPIRY })
   }
 }
 

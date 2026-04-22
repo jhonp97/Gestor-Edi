@@ -24,28 +24,28 @@ const adapter: any = {
   ...originalAdapter,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async createUser(user: any) {
-    // Create organization first
-    const org = await prisma.organization.create({
-      data: {
-        name: `${user.name || 'Usuario'}'s Fleet`,
-        ownerId: 'temp',
-      },
-    })
+    const created = await prisma.$transaction(async (tx) => {
+      const org = await tx.organization.create({
+        data: {
+          name: `${user.name || 'Usuario'}'s Fleet`,
+        },
+      })
 
-    // Create user with organizationId
-    const created = await prisma.user.create({
-      data: {
-        name: user.name || '',
-        email: user.email,
-        image: user.image,
-        organizationId: org.id,
-      },
-    })
+      const createdUser = await tx.user.create({
+        data: {
+          name: user.name || '',
+          email: user.email,
+          image: user.image,
+          organizationId: org.id,
+        },
+      })
 
-    // Update org with correct ownerId
-    await prisma.organization.update({
-      where: { id: org.id },
-      data: { ownerId: created.id },
+      await tx.organization.update({
+        where: { id: org.id },
+        data: { ownerId: createdUser.id },
+      })
+
+      return createdUser
     })
 
     if (created.email) {
@@ -90,15 +90,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.organizationId = dbUser.organizationId
         } else if (dbUser) {
           // User has no org — create one now
-          const org = await prisma.organization.create({
-            data: {
-              name: `${token.name || 'Usuario'}'s Fleet`,
-              ownerId: token.id as string,
-            },
-          })
-          await prisma.user.update({
-            where: { id: token.id as string },
-            data: { organizationId: org.id },
+          const org = await prisma.$transaction(async (tx) => {
+            const newOrg = await tx.organization.create({
+              data: {
+                name: `${token.name || 'Usuario'}'s Fleet`,
+                ownerId: token.id as string,
+              },
+            })
+            await tx.user.update({
+              where: { id: token.id as string },
+              data: { organizationId: newOrg.id },
+            })
+            return newOrg
           })
           token.organizationId = org.id
         }

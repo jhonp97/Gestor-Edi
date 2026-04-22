@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { jwtVerify } from 'jose'
 import { auth } from '@/lib/auth'
+import { getJwtSecret } from '@/lib/jwt-secret'
 import { Button } from '@/components/ui/button'
 import {
   Truck, BarChart3, Users, Banknote, Receipt, Wifi,
@@ -160,9 +161,7 @@ export default async function HomePage() {
     if (!token) return false
 
     try {
-      const secret = new TextEncoder().encode(
-        process.env.NEXTAUTH_SECRET || 'dev-secret-change-in-production'
-      )
+      const secret = new TextEncoder().encode(getJwtSecret())
       await jwtVerify(token, secret)
       return true
     } catch {

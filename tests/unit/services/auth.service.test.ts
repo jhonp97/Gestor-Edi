@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createUser, createUserWithNullOrg, createOrganization } from '../../factories/user.factory'
 
+// Ensure JWT secret is present for module import
+process.env.NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || 'test-nextauth-secret'
+
 const mockPrismaUser = {
   findUnique: vi.fn(),
   create: vi.fn(),
@@ -12,11 +15,25 @@ const mockPrismaOrg = {
   update: vi.fn(),
 }
 
+const mockTxUser = {
+  findUnique: vi.fn(),
+  create: vi.fn(),
+  update: vi.fn(),
+}
+
+const mockTxOrg = {
+  create: vi.fn(),
+  update: vi.fn(),
+}
+
+const mockPrisma = {
+  user: mockPrismaUser,
+  organization: mockPrismaOrg,
+  $transaction: vi.fn(async (callback) => callback({ user: mockTxUser, organization: mockTxOrg })),
+}
+
 vi.mock('@/lib/prisma', () => ({
-  prisma: {
-    user: mockPrismaUser,
-    organization: mockPrismaOrg,
-  },
+  prisma: mockPrisma,
 }))
 
 vi.mock('@/services/email.service', () => ({
@@ -50,24 +67,24 @@ describe('AuthService', () => {
       expect(result.user.email).toBe(user.email)
     })
 
-    it('debería crear organización para usuario sin organizationId', async () => {
+    it('debería crear organización para usuario sin organizationId usando transacción', async () => {
       const user = createUserWithNullOrg({ email: 'nullorg@test.com' })
-
       const newOrg = createOrganization({ ownerId: user.id, id: 'org-new-123', name: `${user.name}'s Fleet` })
 
       mockPrismaUser.findUnique.mockResolvedValue(user)
-      mockPrismaOrg.create.mockResolvedValue(newOrg)
-      mockPrismaUser.update.mockResolvedValue({ ...user, organizationId: newOrg.id })
+      mockTxOrg.create.mockResolvedValue(newOrg)
+      mockTxUser.update.mockResolvedValue({ ...user, organizationId: newOrg.id })
 
       const result = await authService.login(user.email, 'password123')
 
-      expect(mockPrismaOrg.create).toHaveBeenCalledWith({
+      expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1)
+      expect(mockTxOrg.create).toHaveBeenCalledWith({
         data: {
           name: `${user.name}'s Fleet`,
           ownerId: user.id,
         },
       })
-      expect(mockPrismaUser.update).toHaveBeenCalledWith({
+      expect(mockTxUser.update).toHaveBeenCalledWith({
         where: { id: user.id },
         data: { organizationId: newOrg.id },
       })
@@ -106,25 +123,81 @@ describe('AuthService', () => {
       const result = await authService.login(user.email, 'password123')
 
       expect(mockPrismaOrg.create).not.toHaveBeenCalled()
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled()
       expect(result.user.organizationId).toBe(orgId)
     })
   })
 
   describe('register', () => {
-    it('debería crear usuario con organización automáticamente', async () => {
-      const newOrg = createOrganization({ ownerId: 'new-user-123', id: 'org-reg-123', name: "John's Fleet" })
+    it('debería crear usuario y organización dentro de una transacción atómica', async () => {
+      const newOrg = createOrganization({ ownerId: null, id: 'org-reg-123', name: "John's Fleet" })
       const newUser = createUser({ id: 'new-user-123', email: 'new@test.com', organizationId: newOrg.id, name: 'John' })
 
       mockPrismaUser.findUnique.mockResolvedValue(null)
-      mockPrismaOrg.create.mockResolvedValue(newOrg)
-      mockPrismaUser.create.mockResolvedValue(newUser)
-      mockPrismaOrg.update.mockResolvedValue(newOrg)
+      mockTxOrg.create.mockResolvedValue(newOrg)
+      mockTxUser.create.mockResolvedValue(newUser)
+      mockTxOrg.update.mockResolvedValue({ ...newOrg, ownerId: newUser.id })
 
       const result = await authService.register('John', 'new@test.com', 'password123')
 
-      expect(mockPrismaOrg.create).toHaveBeenCalled()
+      expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1)
+      expect(mockTxOrg.create).toHaveBeenCalledWith({
+        data: expect.not.objectContaining({ ownerId: 'temp' }),
+      })
+      expect(mockTxUser.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          name: 'John',
+          email: 'new@test.com',
+          organizationId: newOrg.id,
+        }),
+      })
+      expect(mockTxOrg.update).toHaveBeenCalledWith({
+        where: { id: newOrg.id },
+        data: { ownerId: newUser.id },
+      })
       expect(result.user.organizationId).toBe(newOrg.id)
       expect(result.token).toBeTruthy()
+    })
+
+    it('debería hacer rollback si la creación de usuario falla en la transacción', async () => {
+      mockPrismaUser.findUnique.mockResolvedValue(null)
+      mockTxOrg.create.mockResolvedValue(createOrganization({ ownerId: null, id: 'org-fail' }))
+      mockTxUser.create.mockRejectedValue(new Error('Duplicate email'))
+
+      await expect(authService.register('John', 'existing@test.com', 'password123')).rejects.toThrow('Duplicate email')
+
+      expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1)
+    })
+
+    it('no debería usar ownerId temp en ningún momento', async () => {
+      const newOrg = createOrganization({ ownerId: null, id: 'org-temp-check' })
+      const newUser = createUser({ id: 'user-temp-check', organizationId: 'org-temp-check' })
+
+      mockPrismaUser.findUnique.mockResolvedValue(null)
+      mockTxOrg.create.mockResolvedValue(newOrg)
+      mockTxUser.create.mockResolvedValue(newUser)
+      mockTxOrg.update.mockResolvedValue({ ...newOrg, ownerId: newUser.id })
+
+      await authService.register('John', 'tempcheck@test.com', 'password123')
+
+      const txCalls = mockTxOrg.create.mock.calls
+      for (const call of txCalls) {
+        expect(call[0].data).not.toHaveProperty('ownerId', 'temp')
+      }
+    })
+  })
+
+  describe('JWT Secret', () => {
+    it('debería lanzar error si NEXTAUTH_SECRET no está definido al generar token', async () => {
+      const originalSecret = process.env.NEXTAUTH_SECRET
+      delete process.env.NEXTAUTH_SECRET
+
+      const user = createUser({ organizationId: 'org-123', email: 'jwt@test.com' })
+      mockPrismaUser.findUnique.mockResolvedValue(user)
+
+      await expect(authService.login('jwt@test.com', 'password123')).rejects.toThrow('NEXTAUTH_SECRET')
+
+      process.env.NEXTAUTH_SECRET = originalSecret
     })
   })
 

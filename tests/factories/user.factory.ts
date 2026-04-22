@@ -28,11 +28,11 @@ export function createUserWithNullOrg(overrides: Partial<User> = {}): User {
   })
 }
 
-export function createOrganization(overrides: Partial<Organization> & { ownerId: string }): Organization {
+export function createOrganization(overrides: Partial<Organization> & { ownerId?: string | null }): Organization {
   return {
     id: overrides.id ?? 'org-test-id',
     name: overrides.name ?? 'Test Fleet',
-    ownerId: overrides.ownerId,
+    ownerId: overrides.ownerId ?? null,
     planType: overrides.planType ?? 'FREE',
     planStatus: overrides.planStatus ?? 'TRIAL',
     billingEmail: overrides.billingEmail ?? null,

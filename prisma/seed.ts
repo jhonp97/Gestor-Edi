@@ -50,29 +50,30 @@ async function main() {
 
   const adminPassword = await bcrypt.hash(adminRawPassword, 12)
 
-  // Create organization first
-  const org = await prisma.organization.create({
-    data: {
-      name: "Admin's Fleet",
-      ownerId: 'temp',
-    },
-  })
+  // Create admin user and organization atomically
+  const { org, admin } = await prisma.$transaction(async (tx) => {
+    const org = await tx.organization.create({
+      data: {
+        name: "Admin's Fleet",
+      },
+    })
 
-  // Create admin user with organizationId
-  const admin = await prisma.user.create({
-    data: {
-      name: 'Admin',
-      email: adminEmail,
-      password: adminPassword,
-      role: UserRole.ORG_ADMIN,
-      organizationId: org.id,
-    },
-  })
+    const admin = await tx.user.create({
+      data: {
+        name: 'Admin',
+        email: adminEmail,
+        password: adminPassword,
+        role: UserRole.ORG_ADMIN,
+        organizationId: org.id,
+      },
+    })
 
-  // Update org with correct ownerId
-  await prisma.organization.update({
-    where: { id: org.id },
-    data: { ownerId: admin.id },
+    await tx.organization.update({
+      where: { id: org.id },
+      data: { ownerId: admin.id },
+    })
+
+    return { org, admin }
   })
 
   console.log(`✅ Created admin user: ${admin.email} with organization: ${org.name}`)
