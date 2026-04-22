@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { getSessionUniversal } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { TruckCard } from '@/components/trucks/truck-card'
 import { TruckForm } from '@/components/trucks/truck-form'
@@ -8,7 +8,7 @@ import { TruckForm } from '@/components/trucks/truck-form'
 export const dynamic = 'force-dynamic'
 
 export default async function TrucksPage() {
-  const session = await auth()
+  const session = await getSessionUniversal()
   if (!session?.user?.organizationId) redirect('/login')
   const orgId = session.user.organizationId
 

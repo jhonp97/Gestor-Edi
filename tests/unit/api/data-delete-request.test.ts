@@ -20,12 +20,12 @@ describe('T4.7: POST /api/data/delete-request endpoint', () => {
     expect(content).toContain('export async function POST')
   })
 
-  it('debería usar auth() para verificar sesión', () => {
+  it('debería usar getSessionFromRequest() para verificar sesión', () => {
     const fs = require('fs')
     const path = require('path')
     const routePath = path.join(process.cwd(), 'src/app/api/data/delete-request/route.ts')
     const content = fs.readFileSync(routePath, 'utf-8')
-    expect(content).toContain('auth()')
+    expect(content).toContain('getSessionFromRequest(request)')
   })
 
   it('debería actualizar User.deletedAt y User.deletionRequestedAt', () => {

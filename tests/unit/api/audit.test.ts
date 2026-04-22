@@ -24,12 +24,12 @@ describe('T4.3: GET /api/audit endpoint', () => {
     expect(content).toContain('audit.service')
   })
 
-  it('debería usar auth() para verificar sesión', () => {
+  it('debería usar getSessionFromRequest() para verificar sesión', () => {
     const fs = require('fs')
     const path = require('path')
     const routePath = path.join(process.cwd(), 'src/app/api/audit/route.ts')
     const content = fs.readFileSync(routePath, 'utf-8')
-    expect(content).toContain('auth()')
+    expect(content).toContain('getSessionFromRequest(request)')
   })
 
   it('debería verificar rol PLATFORM_ADMIN o acceso ORG_ADMIN', () => {

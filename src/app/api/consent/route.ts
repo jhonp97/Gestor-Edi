@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session-api'
 import { consentService } from '@/services/consent.service'
 import { ConsentInputSchema } from '@/schemas/consent.schema'
 
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     }
 
     // Get optional user session info
-    const session = await auth()
+    const session = await getSessionFromRequest(request)
     const userId = session?.user?.id
     const organizationId = session?.user?.organizationId
 

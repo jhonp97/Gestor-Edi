@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { getSessionUniversal } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { SummaryCard } from '@/components/dashboard/summary-card'
 import { RecentTransactions } from '@/components/dashboard/recent-transactions'
@@ -68,7 +68,7 @@ async function getCategoryData(orgId: string) {
 }
 
 export default async function DashboardPage() {
-  const session = await auth()
+  const session = await getSessionUniversal()
   if (!session?.user?.organizationId) redirect('/login')
   const orgId = session.user.organizationId
 

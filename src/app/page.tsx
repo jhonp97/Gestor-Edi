@@ -1,9 +1,6 @@
 import Link from 'next/link'
-import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { jwtVerify } from 'jose'
-import { auth } from '@/lib/auth'
-import { getJwtSecret } from '@/lib/jwt-secret'
+import { getSessionUniversal } from '@/lib/session'
 import { Button } from '@/components/ui/button'
 import {
   Truck, BarChart3, Users, Banknote, Receipt, Wifi,
@@ -146,31 +143,9 @@ const jsonLd = {
 }
 
 export default async function HomePage() {
-  async function isAuthenticated(): Promise<boolean> {
-    // 1. Check NextAuth session first (Google OAuth)
-    try {
-      const session = await auth()
-      if (session?.user) return true
-    } catch {
-      // NextAuth not available, try custom JWT
-    }
-
-    // 2. Check custom JWT cookie (email/password login)
-    const cookieStore = await cookies()
-    const token = cookieStore.get('auth-token')?.value
-    if (!token) return false
-
-    try {
-      const secret = new TextEncoder().encode(getJwtSecret())
-      await jwtVerify(token, secret)
-      return true
-    } catch {
-      return false
-    }
-  }
-
   // If authenticated, redirect to dashboard
-  if (await isAuthenticated()) {
+  const session = await getSessionUniversal()
+  if (session?.user) {
     redirect('/dashboard')
   }
 

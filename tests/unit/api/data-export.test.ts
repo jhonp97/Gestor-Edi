@@ -36,12 +36,12 @@ describe('T4.6: POST /api/data/export endpoint', () => {
     expect(content).toContain('audit.service')
   })
 
-  it('debería usar auth() para verificar sesión', () => {
+  it('debería usar getSessionFromRequest() para verificar sesión', () => {
     const fs = require('fs')
     const path = require('path')
     const routePath = path.join(process.cwd(), 'src/app/api/data/export/route.ts')
     const content = fs.readFileSync(routePath, 'utf-8')
-    expect(content).toContain('auth()')
+    expect(content).toContain('getSessionFromRequest(request)')
   })
 
   it('debería requerir rol ORG_ADMIN o PLATFORM_ADMIN', () => {

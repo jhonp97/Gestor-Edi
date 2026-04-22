@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session-api'
 import { prisma } from '@/lib/prisma'
 import { auditService } from '@/services/audit.service'
 
@@ -9,7 +9,7 @@ const DELETION_WINDOW_DAYS = 30
 
 export async function POST(request: Request) {
   try {
-    const session = await auth()
+    const session = await getSessionFromRequest(request)
 
     if (!session?.user) {
       return NextResponse.json(

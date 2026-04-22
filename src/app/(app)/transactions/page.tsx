@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { getSessionUniversal } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { TransactionList } from '@/components/transactions/transaction-list'
 import { TransactionForm } from '@/components/transactions/transaction-form'
@@ -8,7 +8,7 @@ import { TransactionForm } from '@/components/transactions/transaction-form'
 export const dynamic = 'force-dynamic'
 
 export default async function TransactionsPage() {
-  const session = await auth()
+  const session = await getSessionUniversal()
   if (!session?.user?.organizationId) redirect('/login')
   const orgId = session.user.organizationId
 

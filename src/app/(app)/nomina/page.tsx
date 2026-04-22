@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { getSessionUniversal } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { PayrollTable } from '@/components/nomina/payroll-table'
 import { PayrollSummaryCard } from '@/components/nomina/payroll-summary'
@@ -25,7 +25,7 @@ export default async function PayrollPage({
   const month = params.month ? parseInt(params.month) : new Date().getMonth() + 1
   const year = params.year ? parseInt(params.year) : new Date().getFullYear()
 
-  const session = await auth()
+  const session = await getSessionUniversal()
   if (!session?.user?.organizationId) redirect('/login')
   const orgId = session.user.organizationId
 

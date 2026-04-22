@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session-api'
 import { dataExportService } from '@/services/data-export.service'
 import { auditService } from '@/services/audit.service'
 
@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   try {
-    const session = await auth()
+    const session = await getSessionFromRequest(request)
 
     if (!session?.user) {
       return NextResponse.json(

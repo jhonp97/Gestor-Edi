@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { getSessionUniversal } from '@/lib/session'
 import { notFound, redirect } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -38,7 +38,7 @@ export default async function TruckDetailPage({
   const { id } = await params
   const { type, sort } = await searchParams
 
-  const session = await auth()
+  const session = await getSessionUniversal()
   if (!session?.user?.organizationId) redirect('/login')
   const orgId = session.user.organizationId
 

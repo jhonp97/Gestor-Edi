@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { getSessionUniversal } from '@/lib/session'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
@@ -28,7 +28,7 @@ export default async function WorkerDetailPage({
 }) {
   const { id } = await params
 
-  const session = await auth()
+  const session = await getSessionUniversal()
   if (!session?.user?.organizationId) redirect('/login')
   const orgId = session.user.organizationId
 

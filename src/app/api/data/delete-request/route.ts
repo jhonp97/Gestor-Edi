@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
+import { getSessionFromRequest } from '@/lib/session-api'
 import { prisma } from '@/lib/prisma'
 import { auditService } from '@/services/audit.service'
 import { LastAdminError } from '@/lib/errors'
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   try {
-    const session = await auth()
+    const session = await getSessionFromRequest(request)
 
     if (!session?.user) {
       return NextResponse.json(
