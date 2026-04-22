@@ -6,6 +6,7 @@ import { LayoutDashboard, Truck, Receipt, Users, Banknote, Menu, X, Shield, LogO
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
 import { useApi } from '@/hooks/use-api'
+import { clearOfflineToken } from '@/lib/offline'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -41,11 +42,16 @@ export function Sidebar() {
     setLoggingOut(true)
     try {
       await get<{ success?: boolean }>('/api/auth/logout', { method: 'POST' })
-      // Full page reload to clear both auth systems (custom JWT + NextAuth)
-      window.location.href = '/login'
     } catch {
-      setLoggingOut(false)
+      // Continue cleanup even if API call fails
     }
+
+    // Clear all client-side storage to prevent session leakage
+    localStorage.removeItem('auth-token')
+    await clearOfflineToken()
+
+    // Full page reload to clear both auth systems (custom JWT + NextAuth)
+    window.location.href = '/login'
   }
 
   return (

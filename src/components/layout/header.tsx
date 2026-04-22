@@ -6,6 +6,7 @@ import { useSyncExternalStore } from 'react'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { useApi } from '@/hooks/use-api'
+import { clearOfflineToken } from '@/lib/offline'
 
 function subscribeToOnlineState(callback: () => void) {
   window.addEventListener('online', callback)
@@ -59,11 +60,16 @@ export function Header() {
     setLoggingOut(true)
     try {
       await get<{ success?: boolean }>('/api/auth/logout', { method: 'POST' })
-      // Full page reload to clear both auth systems (custom JWT + NextAuth)
-      window.location.href = '/login'
     } catch {
-      setLoggingOut(false)
+      // Continue cleanup even if API call fails
     }
+
+    // Clear all client-side storage to prevent session leakage
+    localStorage.removeItem('auth-token')
+    await clearOfflineToken()
+
+    // Full page reload to clear both auth systems (custom JWT + NextAuth)
+    window.location.href = '/login'
   }
 
   return (

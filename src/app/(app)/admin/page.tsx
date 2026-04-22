@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ComplianceWidget } from '@/components/admin/compliance-widget'
 import { Users, Building2, Truck, ClipboardList, Activity } from 'lucide-react'
@@ -27,11 +27,7 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    fetchStats()
-  }, [])
-
-  async function fetchStats() {
+  const fetchStats = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/stats')
       if (!res.ok) {
@@ -45,7 +41,11 @@ export default function AdminDashboardPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchStats()
+  }, [fetchStats])
 
   if (loading) {
     return (

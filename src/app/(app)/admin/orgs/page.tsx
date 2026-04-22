@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -49,11 +49,7 @@ export default function AdminOrgsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    fetchOrgs()
-  }, [])
-
-  async function fetchOrgs() {
+  const fetchOrgs = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/orgs')
       if (!res.ok) {
@@ -67,7 +63,11 @@ export default function AdminOrgsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchOrgs()
+  }, [fetchOrgs])
 
   if (loading) {
     return (

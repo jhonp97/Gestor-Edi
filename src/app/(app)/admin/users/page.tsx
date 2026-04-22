@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Trash2, Shield, User, Users, Calendar } from 'lucide-react'
@@ -21,11 +21,7 @@ export default function AdminUsersPage() {
   const [deleting, setDeleting] = useState<string | null>(null)
   const [changingRole, setChangingRole] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchUsers()
-  }, [])
-
-  async function fetchUsers() {
+  const fetchUsers = useCallback(async () => {
     try {
       const [usersRes, sessionRes] = await Promise.all([
         fetch('/api/admin/users'),
@@ -47,7 +43,11 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchUsers()
+  }, [fetchUsers])
 
   async function deleteUser(id: string, name: string) {
     if (!confirm(`¿Estás seguro de eliminar al usuario "${name}"? Esta acción no se puede deshacer.`)) {

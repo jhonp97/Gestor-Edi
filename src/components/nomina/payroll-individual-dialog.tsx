@@ -65,17 +65,20 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
   const netPay = Math.round((grossPay - irpfAmount - ssAmount - otherDed) * 100) / 100
 
   useEffect(() => {
-    if (open && !preselectedWorker) {
-      setLoadingWorkers(true)
-      fetch('/api/workers')
-        .then((r) => r.json())
-        .then((data) => {
-          const active = data.filter((w: Worker & { status: string }) => w.status === 'ACTIVE')
-          setWorkers(active)
-        })
-        .catch(() => setError('Error al cargar trabajadores'))
-        .finally(() => setLoadingWorkers(false))
-    }
+    if (!open || preselectedWorker) return
+
+    const controller = new AbortController()
+
+    fetch('/api/workers', { signal: controller.signal })
+      .then((r) => r.json())
+      .then((data) => {
+        const active = data.filter((w: Worker & { status: string }) => w.status === 'ACTIVE')
+        setWorkers(active)
+      })
+      .catch(() => setError('Error al cargar trabajadores'))
+      .finally(() => setLoadingWorkers(false))
+
+    return () => controller.abort()
   }, [open, preselectedWorker])
 
   // When worker changes, update base salary
@@ -153,7 +156,15 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
     ?? ''
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm() }}>
+    <Dialog open={open} onOpenChange={(v) => {
+      setOpen(v)
+      if (v && !preselectedWorker) {
+        setLoadingWorkers(true)
+        setWorkers([])
+        setError('')
+      }
+      if (!v) resetForm()
+    }}>
       <DialogTrigger>
         <Button variant="outline" size="lg" type='button'>
           <UserPlus className="mr-2 size-5" />
