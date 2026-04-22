@@ -33,3 +33,30 @@ export const API_RATE_LIMIT: RateLimitConfig = {
   window: 15 * 60 * 1000, // 15 minutes
   maxRequests: 200,
 }
+
+/**
+ * Profile update routes
+ * 50 requests per 15 minutes
+ */
+export const PROFILE_RATE_LIMIT: RateLimitConfig = {
+  window: 15 * 60 * 1000, // 15 minutes
+  maxRequests: 50,
+}
+
+/**
+ * 2FA routes (send code, verify)
+ * 5 requests per 15 minutes
+ */
+export const TWO_FA_RATE_LIMIT: RateLimitConfig = {
+  window: 15 * 60 * 1000, // 15 minutes
+  maxRequests: 5,
+}
+
+/**
+ * Upload signature routes
+ * 20 requests per 15 minutes
+ */
+export const UPLOAD_RATE_LIMIT: RateLimitConfig = {
+  window: 15 * 60 * 1000, // 15 minutes
+  maxRequests: 20,
+}

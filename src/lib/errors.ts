@@ -5,6 +5,20 @@ export class LastAdminError extends Error {
   }
 }
 
+export class ProfileError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'ProfileError'
+  }
+}
+
+export class TwoFactorError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'TwoFactorError'
+  }
+}
+
 export class PlanLimitError extends Error {
   public readonly resource: string
   public readonly limit: number

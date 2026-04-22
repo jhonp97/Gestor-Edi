@@ -196,6 +196,17 @@ model User {
   role                  UserRole            @default(USER)
   image                 String?
 
+  phone                 String?
+  phoneVerified         DateTime?
+  twoFactorEnabled      Boolean             @default(false)
+  twoFactorMethod       TwoFactorMethod     @default(NONE)
+  language              String              @default("es")
+  notificationsEnabled  Boolean             @default(true)
+  emailNotifications    Boolean             @default(true)
+  smsNotifications      Boolean             @default(false)
+  gdprConsentGiven      Boolean             @default(false)
+  gdprConsentDate       DateTime?
+
   organizationId        String
   organization          Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   ownedOrganization     Organization?       @relation("OrganizationOwner")
@@ -253,6 +264,11 @@ enum UserRole {
   PLATFORM_ADMIN
 }
 
+enum TwoFactorMethod {
+  NONE
+  SMS
+}
+
 enum AuditAction {
   DATA_EXPORT
   DATA_DELETE_REQUEST
@@ -260,6 +276,8 @@ enum AuditAction {
   ROLE_CHANGE
   PLATFORM_ADMIN_WRITE
   CONSENT_CHANGE
+  PASSWORD_CHANGE
+  TWO_FACTOR_CHANGE
 }
 
 enum PlanType {

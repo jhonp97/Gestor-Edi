@@ -1,7 +1,7 @@
 import { OrganizationRepository } from '@/repositories/organization.repository'
 
 export class OrganizationService {
-  constructor(private repo: OrganizationRepository) {}
+  private repo = new OrganizationRepository()
 
   async getById(id: string) {
     return this.repo.findById(id)
@@ -15,3 +15,5 @@ export class OrganizationService {
     return this.repo.findByOwnerId(ownerId)
   }
 }
+
+export const organizationService = new OrganizationService()

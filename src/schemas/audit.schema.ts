@@ -7,6 +7,8 @@ export const AuditActionSchema = z.enum([
   'ROLE_CHANGE',
   'PLATFORM_ADMIN_WRITE',
   'CONSENT_CHANGE',
+  'PASSWORD_CHANGE',
+  'TWO_FACTOR_CHANGE',
 ])
 
 export const AuditLogCreateSchema = z.object({

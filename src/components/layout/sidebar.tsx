@@ -173,7 +173,7 @@ export function Sidebar() {
 
         {/* User profile */}
         <div className="border-t border-white/10 px-4 py-4">
-          <div className="flex items-center gap-3">
+          <Link href="/profile" className="flex items-center gap-3 rounded-lg p-1 transition-colors hover:bg-white/10">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-semibold">
               {user ? user.name.charAt(0).toUpperCase() : 'U'}
             </div>
@@ -181,6 +181,8 @@ export function Sidebar() {
               <p className="truncate text-sm font-medium">{user?.name || 'Usuario'}</p>
               <p className="truncate text-xs text-white/60">{user?.email || ''}</p>
             </div>
+          </Link>
+          <div className="mt-2 flex justify-end">
             <button
               onClick={handleLogout}
               disabled={loggingOut}
