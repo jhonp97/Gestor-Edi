@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Trash2, Shield, User, Users, Calendar } from 'lucide-react'
@@ -21,33 +21,38 @@ export default function AdminUsersPage() {
   const [deleting, setDeleting] = useState<string | null>(null)
   const [changingRole, setChangingRole] = useState<string | null>(null)
 
-  const fetchUsers = useCallback(async () => {
-    try {
-      const [usersRes, sessionRes] = await Promise.all([
-        fetch('/api/admin/users'),
-        fetch('/api/auth/session'),
-      ])
-
-      const usersData = await usersRes.json()
-      const sessionData = await sessionRes.json()
-
-      if (!usersRes.ok) {
-        setError(usersData.error || 'Error al cargar usuarios')
-        return
-      }
-
-      setUsers(usersData.users)
-      setCurrentUserId(sessionData?.user?.id || null)
-    } catch {
-      setError('Error de conexión')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
   useEffect(() => {
-    fetchUsers()
-  }, [fetchUsers])
+    let cancelled = false
+
+    async function load() {
+      try {
+        const [usersRes, sessionRes] = await Promise.all([
+          fetch('/api/admin/users'),
+          fetch('/api/auth/session'),
+        ])
+
+        const usersData = await usersRes.json()
+        const sessionData = await sessionRes.json()
+
+        if (!usersRes.ok) {
+          if (!cancelled) setError(usersData.error || 'Error al cargar usuarios')
+          return
+        }
+
+        if (!cancelled) {
+          setUsers(usersData.users)
+          setCurrentUserId(sessionData?.user?.id || null)
+        }
+      } catch {
+        if (!cancelled) setError('Error de conexión')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    load()
+    return () => { cancelled = true }
+  }, [])
 
   async function deleteUser(id: string, name: string) {
     if (!confirm(`¿Estás seguro de eliminar al usuario "${name}"? Esta acción no se puede deshacer.`)) {

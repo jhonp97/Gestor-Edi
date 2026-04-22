@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ComplianceWidget } from '@/components/admin/compliance-widget'
 import { Users, Building2, Truck, ClipboardList, Activity } from 'lucide-react'
@@ -27,25 +27,28 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const fetchStats = useCallback(async () => {
-    try {
-      const res = await fetch('/api/admin/stats')
-      if (!res.ok) {
-        setError('Error al cargar estadísticas')
-        return
-      }
-      const data = await res.json()
-      setStats(data)
-    } catch {
-      setError('Error de conexión')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
   useEffect(() => {
-    fetchStats()
-  }, [fetchStats])
+    let cancelled = false
+
+    async function load() {
+      try {
+        const res = await fetch('/api/admin/stats')
+        if (!res.ok) {
+          if (!cancelled) setError('Error al cargar estadísticas')
+          return
+        }
+        const data = await res.json()
+        if (!cancelled) setStats(data)
+      } catch {
+        if (!cancelled) setError('Error de conexión')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    load()
+    return () => { cancelled = true }
+  }, [])
 
   if (loading) {
     return (

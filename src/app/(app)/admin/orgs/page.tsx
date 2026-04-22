@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -49,25 +49,28 @@ export default function AdminOrgsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const fetchOrgs = useCallback(async () => {
-    try {
-      const res = await fetch('/api/admin/orgs')
-      if (!res.ok) {
-        setError('Error al cargar organizaciones')
-        return
-      }
-      const data = await res.json()
-      setOrgs(data.data)
-    } catch {
-      setError('Error de conexión')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
   useEffect(() => {
-    fetchOrgs()
-  }, [fetchOrgs])
+    let cancelled = false
+
+    async function load() {
+      try {
+        const res = await fetch('/api/admin/orgs')
+        if (!res.ok) {
+          if (!cancelled) setError('Error al cargar organizaciones')
+          return
+        }
+        const data = await res.json()
+        if (!cancelled) setOrgs(data.data)
+      } catch {
+        if (!cancelled) setError('Error de conexión')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    load()
+    return () => { cancelled = true }
+  }, [])
 
   if (loading) {
     return (
