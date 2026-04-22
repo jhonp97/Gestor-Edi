@@ -28,12 +28,11 @@ export async function apiFetch(
 ): Promise<Response> {
   const headers = new Headers(options.headers)
   headers.set('Content-Type', 'application/json')
-  headers.set('credentials', 'include')
 
   // Si está online, intentar normalmente
   if (navigator.onLine) {
     try {
-      const response = await fetch(url, { ...options, headers })
+      const response = await fetch(url, { ...options, headers, credentials: 'include' })
 
       // Después de login exitoso, guardar token para offline
       if (response.ok && url.includes('/api/auth/login')) {
@@ -56,7 +55,7 @@ export async function apiFetch(
     headers.set('x-auth-token', offlineToken)
 
     try {
-      const response = await fetch(url, { ...options, headers })
+      const response = await fetch(url, { ...options, headers, credentials: 'include' })
       if (response.ok) {
         return response
       }

@@ -1,12 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Wifi, WifiOff, LogOut } from 'lucide-react'
+import { Wifi, WifiOff } from 'lucide-react'
 import { useSyncExternalStore } from 'react'
 import { usePathname } from 'next/navigation'
-import { Button } from '@/components/ui/button'
 import { useApi } from '@/hooks/use-api'
-import { clearOfflineToken } from '@/lib/offline'
 
 function subscribeToOnlineState(callback: () => void) {
   window.addEventListener('online', callback)
@@ -43,7 +41,6 @@ export function Header() {
   const isOnline = useSyncExternalStore(subscribeToOnlineState, getOnlineSnapshot, () => true)
   const pathname = usePathname()
   const [user, setUser] = useState<SessionUser | null>(null)
-  const [loggingOut, setLoggingOut] = useState(false)
   const { get } = useApi()
 
   const currentPage = pageLabels[pathname] || pageLabels[pathname.split('/').slice(0, 2).join('/')] || 'Página'
@@ -55,22 +52,6 @@ export function Header() {
       })
       .catch(() => {})
   }, [get])
-
-  async function handleLogout() {
-    setLoggingOut(true)
-    try {
-      await get<{ success?: boolean }>('/api/auth/logout', { method: 'POST' })
-    } catch {
-      // Continue cleanup even if API call fails
-    }
-
-    // Clear all client-side storage to prevent session leakage
-    localStorage.removeItem('auth-token')
-    await clearOfflineToken()
-
-    // Full page reload to clear both auth systems (custom JWT + NextAuth)
-    window.location.href = '/login'
-  }
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-border bg-card px-6">
@@ -112,17 +93,6 @@ export function Header() {
         <div className="hidden size-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary sm:flex">
           {user ? user.name.charAt(0).toUpperCase() : 'U'}
         </div>
-
-        {/* Logout button */}
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={handleLogout}
-          disabled={loggingOut}
-          aria-label="Cerrar sesión"
-        >
-          <LogOut className="size-4" />
-        </Button>
       </div>
     </header>
   )
