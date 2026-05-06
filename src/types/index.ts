@@ -73,6 +73,29 @@ export type MonthlyPayrollSummary = {
   workerCount: number
 }
 
+// --- Mileage Types ---
+
+export type MileageRecord = {
+  id: string
+  date: Date
+  km: number
+  notes: string | null
+  createdAt: Date
+}
+
+export type MileageSummaryProps = {
+  totalKm: number
+  monthlyKm: number
+  yearlyKm: number
+}
+
+export type MileageHistoryResult = {
+  records: MileageRecord[]
+  totalKm: number
+  monthlyKm?: number
+  yearlyKm?: number
+}
+
 export type PayrollCalculation = {
   baseSalary: number
   irpfPercent: number

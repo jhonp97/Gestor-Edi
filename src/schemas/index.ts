@@ -66,3 +66,14 @@ export const generatePayrollSchema = z.object({
 
 export type CreatePayrollInput = z.infer<typeof createPayrollSchema>
 export type GeneratePayrollInput = z.infer<typeof generatePayrollSchema>
+
+// --- Mileage Schemas ---
+
+export const createMileageSchema = z.object({
+  truckId: z.string().uuid(),
+  date: z.coerce.date(),
+  km: z.number().positive('Los kilómetros deben ser positivos').max(5000, 'Máximo 5000 km por día'),
+  notes: z.string().max(255).optional(),
+})
+
+export type CreateMileageInput = z.infer<typeof createMileageSchema>

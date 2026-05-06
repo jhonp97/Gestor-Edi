@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TruckEditDialog } from '@/components/trucks/truck-edit-dialog'
 import { TruckDeleteButton } from '@/components/trucks/truck-delete-button'
 import Link from 'next/link'
-import { ArrowLeft, User } from 'lucide-react'
+import { ArrowLeft, User, Gauge } from 'lucide-react'
+import { TruckMileageModal, TruckMileageSummary, TruckMileageHistory } from '@/components/trucks'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,6 +53,9 @@ export default async function TruckDetailPage({
         where: type === 'INCOME' || type === 'EXPENSE' ? { type } : undefined,
         orderBy: { date: sort === 'asc' ? 'asc' : 'desc' },
       },
+      mileages: {
+        orderBy: { date: 'desc' },
+      },
     },
   })
 
@@ -64,6 +68,21 @@ export default async function TruckDetailPage({
   const totalExpense = truck.transactions
     .filter((t) => t.type === 'EXPENSE')
     .reduce((s, t) => s + t.amount, 0)
+
+  // Mileage calculations
+  const totalKm = truck.mileages.reduce((s, m) => s + m.km, 0)
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth() + 1
+  const monthlyKm = truck.mileages
+    .filter((m) => {
+      const d = new Date(m.date)
+      return d.getFullYear() === currentYear && d.getMonth() + 1 === currentMonth
+    })
+    .reduce((s, m) => s + m.km, 0)
+  const yearlyKm = truck.mileages
+    .filter((m) => new Date(m.date).getFullYear() === currentYear)
+    .reduce((s, m) => s + m.km, 0)
 
   return (
     <div className="space-y-6">
@@ -119,6 +138,19 @@ export default async function TruckDetailPage({
             </p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Kilometraje */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Gauge className="size-5 text-muted-foreground" />
+          <h2 className="text-lg font-semibold">Kilometraje</h2>
+        </div>
+        <TruckMileageSummary totalKm={totalKm} monthlyKm={monthlyKm} yearlyKm={yearlyKm} />
+        <div className="flex justify-end">
+          <TruckMileageModal truckId={truck.id} />
+        </div>
+        <TruckMileageHistory truckId={truck.id} records={truck.mileages} />
       </div>
 
       {/* Trabajadores asignados */}
