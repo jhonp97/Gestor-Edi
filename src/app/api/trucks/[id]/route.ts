@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth-edge'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
+import { createTruckSchema } from '@/schemas'
 
 export async function GET(
   request: Request,
@@ -42,7 +43,17 @@ export async function PATCH(
 
     const { id } = await params
     const body = await request.json()
-    const { plate, brand, model, year, status } = body
+
+    const updateTruckSchema = createTruckSchema.partial()
+    const validated = updateTruckSchema.safeParse(body)
+    if (!validated.success) {
+      return NextResponse.json(
+        { error: validated.error.issues[0].message },
+        { status: 400 }
+      )
+    }
+
+    const { plate, brand, model, year, status } = validated.data
 
     const existing = await prisma.truck.findFirst({
       where: { id, organizationId: user.organizationId },

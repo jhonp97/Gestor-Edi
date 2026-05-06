@@ -19,7 +19,16 @@ export const createTransactionSchema = z.object({
 
 export const createWorkerSchema = z.object({
   name: z.string().min(2).max(100),
-  dni: z.string().regex(/^\d{8}[A-Z]$/, 'DNI inválido (formato: 12345678A)'),
+  dni: z.string().min(5).max(20).refine((val) => {
+    const upper = val.toUpperCase()
+    // DNI: 8 digits + 1 letter
+    const dniRegex = /^\d{8}[A-Z]$/
+    // NIE: X/Y/Z + 7 digits + 1 letter
+    const nieRegex = /^[XYZ]\d{7}[A-Z]$/
+    // Pasaporte: 6-9 alphanumeric
+    const passportRegex = /^[A-Z0-9]{6,9}$/
+    return dniRegex.test(upper) || nieRegex.test(upper) || passportRegex.test(upper)
+  }, { message: 'Documento inválido (DNI: 12345678A, NIE: X1234567A, Pasaporte: ABC123456)' }),
   position: z.string().min(2).max(50),
   baseSalary: z.coerce.number().positive('El salario debe ser positivo'),
   startDate: z.coerce.date(),

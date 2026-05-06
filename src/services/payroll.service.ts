@@ -20,8 +20,8 @@ export class PayrollService {
     bonuses: number = 0,
     otherDeductions: number = 0,
   ): PayrollCalculation {
-    const irpfAmount = baseSalary * (irpfPercent / 100)
-    const socialSecurityAmount = baseSalary * (ssPercent / 100)
+    const irpfAmount = (baseSalary + bonuses) * (irpfPercent / 100)
+    const socialSecurityAmount = (baseSalary + bonuses) * (ssPercent / 100)
     const grossPay = baseSalary + bonuses
     const netPay = grossPay - irpfAmount - socialSecurityAmount - otherDeductions
 

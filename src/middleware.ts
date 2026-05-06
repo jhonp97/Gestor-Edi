@@ -51,7 +51,7 @@ function setSecurityHeaders(response: NextResponse): void {
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://res.cloudinary.com; font-src 'self'; connect-src 'self' https://api.cloudinary.com; frame-ancestors 'none';"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://res.cloudinary.com https://lh3.googleusercontent.com; font-src 'self'; connect-src 'self' https://api.cloudinary.com; frame-ancestors 'none';"
   )
 }
 
@@ -61,19 +61,11 @@ export default auth(async (req) => {
   const response = NextResponse.next()
   setSecurityHeaders(response)
 
-  // Dev mode: only check x-auth-token header for context, skip auth enforcement
-  if (process.env.NODE_ENV !== 'production') {
+  // Dev mode with SKIP_AUTH: only for explicit debugging, NEVER by default
+  if (process.env.NODE_ENV !== 'production' && process.env.SKIP_AUTH === 'true') {
     const authHeader = req.headers.get('x-auth-token')
     if (authHeader) {
-      const payload = await verifyToken(authHeader)
-      if (payload) {
-        response.headers.set('x-user-id', payload.userId)
-        response.headers.set('x-user-email', payload.email)
-        response.headers.set('x-user-role', payload.role)
-        if (payload.organizationId) {
-          response.headers.set('x-organization-id', payload.organizationId)
-        }
-      }
+      await verifyToken(authHeader)
     }
     return response
   }
@@ -85,12 +77,7 @@ export default auth(async (req) => {
 
   // Priority 1: Check custom JWT auth-token cookie (email/password login)
   // This takes precedence over NextAuth to prevent session mixing
-  let token = req.cookies.get(COOKIE_NAME)?.value
-
-  if (!token) {
-    const authHeader = req.headers.get('x-auth-token')
-    if (authHeader) token = authHeader
-  }
+  const token = req.cookies.get(COOKIE_NAME)?.value
 
   if (token) {
     const payload = await verifyToken(token)
@@ -100,12 +87,6 @@ export default auth(async (req) => {
         return NextResponse.redirect(new URL('/dashboard', req.url))
       }
 
-      response.headers.set('x-user-id', payload.userId)
-      response.headers.set('x-user-email', payload.email)
-      response.headers.set('x-user-role', payload.role)
-      if (payload.organizationId) {
-        response.headers.set('x-organization-id', payload.organizationId)
-      }
       return response
     }
   }
@@ -113,12 +94,6 @@ export default auth(async (req) => {
   // Priority 2: Check NextAuth session (Google OAuth)
   if (req.auth) {
     const user = req.auth.user
-    response.headers.set('x-user-id', user?.id || '')
-    response.headers.set('x-user-email', user?.email || '')
-    response.headers.set('x-user-role', user?.role || 'USER')
-    if (user?.organizationId) {
-      response.headers.set('x-organization-id', user.organizationId)
-    }
 
     // Admin route check — solo PLATFORM_ADMIN puede acceder a /admin/*
     if (isAdminRoute(pathname) && user?.role !== 'PLATFORM_ADMIN') {

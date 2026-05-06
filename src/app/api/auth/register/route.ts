@@ -10,7 +10,7 @@ const COOKIE_OPTIONS = {
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'lax' as const,
   path: '/',
-  maxAge: 8 * 60 * 60, // 8 hours in seconds
+  maxAge: 60 * 60 * 24 * 7, // 7 days, consistent with login
 }
 
 // Helper function to extract IP from request

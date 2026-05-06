@@ -55,13 +55,15 @@ export async function POST(request: Request) {
       }
 
       // Calculate amounts
-      const irpfAmount = Math.round(worker.baseSalary * (irpf / 100) * 100) / 100
-      const ssAmount = Math.round(worker.baseSalary * (SS_PERCENT / 100) * 100) / 100
       const bonusAmount = Math.round(worker.baseSalary * (bonusPercent / 100) * 100) / 100
       const otherDedAmount = Math.round(worker.baseSalary * (otherDeductionsPercent / 100) * 100) / 100
       
       // Gross = base + bonuses
       const grossPay = Math.round((worker.baseSalary + bonusAmount) * 100) / 100
+      
+      // IRPF and SS are calculated on gross pay (base + bonuses)
+      const irpfAmount = Math.round(grossPay * (irpf / 100) * 100) / 100
+      const ssAmount = Math.round(grossPay * (SS_PERCENT / 100) * 100) / 100
       
       // Net = gross - all deductions
       const netPay = Math.round((grossPay - irpfAmount - ssAmount - otherDedAmount) * 100) / 100

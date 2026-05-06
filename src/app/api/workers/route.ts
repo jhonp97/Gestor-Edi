@@ -50,6 +50,14 @@ export async function POST(request: Request) {
     if (error instanceof Error && error.message.includes('Ya existe')) {
       return Response.json({ error: error.message }, { status: 409 })
     }
+    // Handle Zod validation errors
+    if (error && typeof error === 'object' && 'issues' in error) {
+      const zodError = error as { issues: Array<{ message: string; path: string[] }> }
+      return Response.json(
+        { error: zodError.issues[0]?.message || 'Datos inválidos' },
+        { status: 400 }
+      )
+    }
     return Response.json(
       { error: 'Error al crear el trabajador' },
       { status: 500 }

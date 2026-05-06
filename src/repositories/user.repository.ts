@@ -2,9 +2,32 @@ import { BaseRepository } from './base.repository'
 import type { User, CreateUserInput } from '@/types/auth'
 
 export class UserRepository extends BaseRepository {
-  async findAll(): Promise<User[]> {
+  async findAll(): Promise<Omit<User, 'password'>[]> {
     return this.prisma.user.findMany({
       orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        emailVerified: true,
+        role: true,
+        image: true,
+        phone: true,
+        phoneVerified: true,
+        twoFactorEnabled: true,
+        twoFactorMethod: true,
+        language: true,
+        notificationsEnabled: true,
+        emailNotifications: true,
+        smsNotifications: true,
+        gdprConsentGiven: true,
+        gdprConsentDate: true,
+        organizationId: true,
+        deletedAt: true,
+        deletionRequestedAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     })
   }
 

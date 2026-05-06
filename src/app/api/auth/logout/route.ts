@@ -4,6 +4,7 @@ const COOKIE_NAME = 'auth-token'
 const NEXTAUTH_SESSION_COOKIE = 'authjs.session-token'
 const NEXTAUTH_LEGACY_COOKIE = 'next-auth.session-token'
 const NEXTAUTH_CSRF_COOKIE = 'authjs.csrf-token'
+const NEXTAUTH_SECURE_COOKIE = '__Secure-authjs.session-token'
 
 export async function POST() {
   const response = NextResponse.json({ success: true })
@@ -35,6 +36,14 @@ export async function POST() {
   response.cookies.set(NEXTAUTH_CSRF_COOKIE, '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    path: '/',
+    maxAge: 0,
+  })
+  // Clear secure-prefixed cookie used in HTTPS production
+  response.cookies.set(NEXTAUTH_SECURE_COOKIE, '', {
+    httpOnly: true,
+    secure: true,
     sameSite: 'lax' as const,
     path: '/',
     maxAge: 0,
