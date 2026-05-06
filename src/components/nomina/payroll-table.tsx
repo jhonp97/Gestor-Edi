@@ -33,7 +33,8 @@ export function PayrollTable({ payrolls }: PayrollTableProps) {
         <CardTitle>Detalle de Nóminas</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
+        {/* Desktop Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b">
@@ -100,6 +101,57 @@ export function PayrollTable({ payrolls }: PayrollTableProps) {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards */}
+        <div className="md:hidden space-y-3">
+          {payrolls.map((p) => (
+            <Card key={p.id} className="bg-muted/30">
+              <CardContent className="pt-4 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-semibold">{p.worker.name}</p>
+                    <p className="text-xs text-muted-foreground">{p.worker.dni}</p>
+                  </div>
+                  <Badge variant={p.paidAt ? 'default' : 'secondary'}>
+                    {p.paidAt ? 'Pagado' : 'Pendiente'}
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <p className="text-muted-foreground text-xs">Período</p>
+                    <p>{MONTH_NAMES[p.month]} {p.year}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-muted-foreground text-xs">Salario Base</p>
+                    <p>${p.baseSalary.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs">IRPF ({p.irpfPercent.toFixed(1)}%)</p>
+                    <p className="text-destructive">-${p.irpfAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-muted-foreground text-xs">Seg. Social ({p.socialSecurityPercent.toFixed(2)}%)</p>
+                    <p className="text-destructive">-${p.socialSecurityAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
+                  </div>
+                </div>
+
+                <div className="border-t pt-2 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Neto</p>
+                    <p className="text-lg font-bold">${p.netPay.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
+                  </div>
+                  <Link href={`/nomina/${p.id}`}>
+                    <Button variant="outline" size="sm">
+                      <Eye className="size-4 mr-1" />
+                      Ver
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </CardContent>
     </Card>

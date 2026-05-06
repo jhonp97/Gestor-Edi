@@ -57,17 +57,17 @@ export default async function PayrollPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Nómina</h1>
           <p className="text-lg text-muted-foreground">
             {MONTH_NAMES[month]} {year}
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
           <PayrollIndividualDialog />
           <Link href="/nomina/generar">
-            <Button size="lg">
+            <Button size="lg" className="w-full sm:w-auto">
               <Plus className="mr-2 size-5" />
               Todos los trabajadores
             </Button>
@@ -76,8 +76,8 @@ export default async function PayrollPage({
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-3">
-        <form className="flex items-center gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <form className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
           <select
             name="month"
             defaultValue={month}
@@ -102,7 +102,7 @@ export default async function PayrollPage({
               </option>
             ))}
           </select>
-          <Button type="submit" variant="outline">
+          <Button type="submit" variant="outline" className="w-full sm:w-auto">
             Filtrar
           </Button>
         </form>
