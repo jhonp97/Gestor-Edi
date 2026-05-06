@@ -87,7 +87,7 @@ export default async function TruckDetailPage({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-4">
           <Link href="/trucks">
             <button className="flex size-9 items-center justify-center rounded-md border border-input bg-background hover:bg-accent">
@@ -95,7 +95,7 @@ export default async function TruckDetailPage({
             </button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground">
               {truck.brand} {truck.model} ({truck.year})
             </h1>
             <div className="mt-1 flex items-center gap-3">
@@ -168,7 +168,7 @@ export default async function TruckDetailPage({
                 <Link
                   key={worker.id}
                   href={`/workers/${worker.id}`}
-                  className="flex items-center justify-between py-3 hover:text-primary transition-colors"
+                  className="flex flex-col gap-2 py-3 hover:text-primary transition-colors sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div>
                     <p className="font-medium">{worker.name}</p>
@@ -189,12 +189,12 @@ export default async function TruckDetailPage({
       {/* Transacciones con filtros */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>
               Transacciones ({truck.transactions.length})
             </CardTitle>
             {/* Filtros */}
-            <form className="flex items-center gap-2">
+            <form className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <select
                 name="type"
                 defaultValue={type ?? ''}
@@ -231,7 +231,7 @@ export default async function TruckDetailPage({
               {truck.transactions.map((tx) => (
                 <div
                   key={tx.id}
-                  className="flex items-center justify-between py-3"
+                  className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div>
                     <p className="font-medium">{tx.description}</p>
