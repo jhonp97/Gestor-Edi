@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DeleteWorkerButton } from '@/components/workers/delete-worker-button'
 import { ArrowLeft, Truck } from 'lucide-react'
 import { PayrollIndividualDialog } from '@/components/nomina/payroll-individual-dialog'
+import { decryptWorkerDni, detectDocType } from '@/lib/worker-utils'
 
 const statusLabels: Record<string, string> = {
   ACTIVE: 'Activo',
@@ -32,12 +33,23 @@ export default async function WorkerDetailPage({
   if (!session?.user?.organizationId) redirect('/login')
   const orgId = session.user.organizationId
 
-  const worker = await prisma.worker.findFirst({
+  const rawWorker = await prisma.worker.findFirst({
     where: { id, organizationId: orgId },
     include: { truck: true },
   })
 
-  if (!worker) notFound()
+  if (!rawWorker) notFound()
+
+  // Decrypt DNI for display
+  const decryptedDni = await decryptWorkerDni(rawWorker.dni)
+  const docType = rawWorker.docType || detectDocType(decryptedDni)
+
+  // Create display-friendly worker object
+  const worker = {
+    ...rawWorker,
+    decryptedDni,
+    docType,
+  }
 
   return (
     <div className="space-y-6">
@@ -66,8 +78,8 @@ export default async function WorkerDetailPage({
               <p className="text-lg font-medium">{worker.name}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">DNI</p>
-              <p className="text-lg font-mono">{worker.dni}</p>
+              <p className="text-sm text-muted-foreground">{worker.docType}</p>
+              <p className="text-lg font-mono">{worker.decryptedDni}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Puesto</p>
@@ -144,7 +156,7 @@ export default async function WorkerDetailPage({
         <PayrollIndividualDialog preselectedWorker={{
           id: worker.id,
           name: worker.name,
-          dni: worker.dni,
+          dni: worker.decryptedDni,
           position: worker.position,
           baseSalary: worker.baseSalary,
         }} />

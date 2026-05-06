@@ -63,6 +63,7 @@ describe('WorkerRepository — T3.4 DNI Encryption', () => {
     name: 'Juan Pérez',
     dni: '12345678A',
     dniHash: null,
+    docType: 'DNI',
     position: 'Conductor',
     baseSalary: 1500,
     startDate: new Date('2024-01-01'),
@@ -101,6 +102,7 @@ describe('WorkerRepository — T3.4 DNI Encryption', () => {
       const input = {
         name: 'Ana García',
         dni: '87654321B',
+        docType: 'DNI' as const,
         position: 'Mecánico',
         baseSalary: 1400,
         startDate: new Date(),
@@ -114,6 +116,7 @@ describe('WorkerRepository — T3.4 DNI Encryption', () => {
         name: input.name,
         dni: `mock_encrypted:${input.dni}`, // Should be encrypted by mock
         dniHash: `mock_hash:${input.dni}`, // Should have hash
+        docType: 'DNI',
         position: input.position,
         baseSalary: input.baseSalary,
         startDate: input.startDate,
@@ -144,6 +147,7 @@ describe('WorkerRepository — T3.4 DNI Encryption', () => {
       const input = {
         name: 'Carlos López',
         dni: '11111111C',
+        docType: 'DNI' as const,
         position: 'Conductor',
         baseSalary: 1300,
         startDate: new Date(),
@@ -157,6 +161,7 @@ describe('WorkerRepository — T3.4 DNI Encryption', () => {
         name: input.name,
         dni: `mock_encrypted:${input.dni}`,
         dniHash: `mock_hash:${input.dni}`,
+        docType: 'DNI',
         position: input.position,
         baseSalary: input.baseSalary,
         startDate: input.startDate,

@@ -29,6 +29,7 @@ export const createWorkerSchema = z.object({
     const passportRegex = /^[A-Z0-9]{6,9}$/
     return dniRegex.test(upper) || nieRegex.test(upper) || passportRegex.test(upper)
   }, { message: 'Documento inválido (DNI: 12345678A, NIE: X1234567A, Pasaporte: ABC123456)' }),
+  docType: z.enum(['DNI', 'NIE', 'PASAPORTE', 'OTRO']).default('DNI'),
   position: z.string().min(2).max(50),
   baseSalary: z.coerce.number().positive('El salario debe ser positivo'),
   startDate: z.coerce.date(),

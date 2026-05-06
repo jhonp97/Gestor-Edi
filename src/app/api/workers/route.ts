@@ -35,6 +35,7 @@ export async function POST(request: Request) {
     const worker = await service.create({
       name: body.name,
       dni: body.dni.toUpperCase(),
+      docType: body.docType ?? 'DNI',
       position: body.position,
       baseSalary: Number(body.baseSalary),
       startDate: new Date(body.startDate),

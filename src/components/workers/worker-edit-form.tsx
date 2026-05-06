@@ -76,6 +76,7 @@ export function WorkerEditForm({ worker, trucks }: WorkerEditFormProps) {
         body: JSON.stringify({
           name,
           dni: docType === 'OTRO' ? dni.trim() : dni.toUpperCase(),
+          docType,
           position,
           baseSalary: Number(baseSalary),
           startDate: new Date(startDate).toISOString(),

@@ -7,10 +7,21 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Search, Trash2, Edit } from 'lucide-react'
 import Link from 'next/link'
-import type { Worker, Truck } from '@/types'
+import type { Truck } from '@/types'
+
+interface WorkerWithDecryptedDni {
+  id: string
+  name: string
+  decryptedDni: string
+  docType: string
+  position: string
+  baseSalary: number
+  status: string
+  truckId: string | null
+}
 
 interface WorkerTableProps {
-  workers: Worker[]
+  workers: WorkerWithDecryptedDni[]
   trucks: Truck[]
 }
 
@@ -33,7 +44,7 @@ export function WorkerTable({ workers, trucks }: WorkerTableProps) {
   const filteredWorkers = workers.filter((w) => {
     if (!search) return true
     const q = search.toLowerCase()
-    return w.name.toLowerCase().includes(q) || w.dni.toLowerCase().includes(q)
+    return w.name.toLowerCase().includes(q) || w.decryptedDni.toLowerCase().includes(q)
   })
 
   return (
@@ -43,7 +54,7 @@ export function WorkerTable({ workers, trucks }: WorkerTableProps) {
         <div className="flex items-center gap-2">
           <Search className="size-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nombre o DNI..."
+            placeholder="Buscar por nombre o documento..."
             className="max-w-sm"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -56,7 +67,7 @@ export function WorkerTable({ workers, trucks }: WorkerTableProps) {
             <thead>
               <tr className="border-b">
                 <th className="pb-3 pr-4 font-medium text-muted-foreground">Nombre</th>
-                <th className="pb-3 pr-4 font-medium text-muted-foreground">DNI</th>
+                <th className="pb-3 pr-4 font-medium text-muted-foreground">Documento</th>
                 <th className="pb-3 pr-4 font-medium text-muted-foreground">Puesto</th>
                 <th className="pb-3 pr-4 font-medium text-muted-foreground">Salario Base</th>
                 <th className="pb-3 pr-4 font-medium text-muted-foreground">Estado</th>
@@ -71,7 +82,11 @@ export function WorkerTable({ workers, trucks }: WorkerTableProps) {
                   className="border-b last:border-b-0"
                 >
                   <td className="py-3 pr-4 font-medium">{worker.name}</td>
-                  <td className="py-3 pr-4 font-mono text-sm">{worker.dni}</td>
+                  <td className="py-3 pr-4">
+                    <span className="text-xs text-muted-foreground uppercase">{worker.docType}</span>
+                    <br />
+                    <span className="font-mono text-sm">{worker.decryptedDni}</span>
+                  </td>
                   <td className="py-3 pr-4">{worker.position}</td>
                   <td className="py-3 pr-4">${worker.baseSalary.toLocaleString('es-AR')}</td>
                   <td className="py-3 pr-4">

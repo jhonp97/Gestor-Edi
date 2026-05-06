@@ -40,6 +40,7 @@ describe('WorkerService — T3.5 DNI Decryption', () => {
     name: 'Juan Pérez',
     dni: 'enc:12345678A', // Encrypted in DB
     dniHash: 'h:12345678A',
+    docType: 'DNI',
     position: 'Conductor',
     baseSalary: 1500,
     startDate: new Date(),
@@ -86,6 +87,7 @@ describe('WorkerService — T3.5 DNI Decryption', () => {
       const input = {
         name: 'Ana García',
         dni: '87654321B',
+        docType: 'DNI' as const,
         position: 'Mecánico',
         baseSalary: 1400,
         startDate: new Date(),
@@ -120,6 +122,7 @@ describe('WorkerService — T3.5 DNI Decryption', () => {
         await service.create({
           name: 'Carlos',
           dni: '12345678A', // Same DNI
+          docType: 'DNI',
           position: 'Conductor',
           baseSalary: 1500,
           startDate: new Date(),

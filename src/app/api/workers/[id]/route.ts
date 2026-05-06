@@ -64,11 +64,14 @@ export async function PATCH(
       }
     }
 
-    const { dni, ...updateData } = body
+    const { dni, docType, ...updateData } = body
     const updatePayload: Record<string, unknown> = { ...updateData }
     
     if (dni) {
       updatePayload.dni = dni.toUpperCase()
+    }
+    if (docType) {
+      updatePayload.docType = docType
     }
     if (body.baseSalary !== undefined) {
       updatePayload.baseSalary = Number(body.baseSalary)

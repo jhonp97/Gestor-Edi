@@ -85,6 +85,7 @@ export function WorkerForm({ trucks }: WorkerFormProps) {
         body: JSON.stringify({
           name,
           dni: docType === 'OTRO' ? dni.trim() : dni.toUpperCase(),
+          docType,
           position,
           baseSalary: Number(baseSalary),
           startDate: new Date(startDate).toISOString(),

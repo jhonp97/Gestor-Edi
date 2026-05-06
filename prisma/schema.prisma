@@ -56,6 +56,7 @@ model Worker {
   name            String
   dni             String
   dniHash         String?
+  docType         String       @default("DNI")
   position        String
   baseSalary      Float
   startDate       DateTime

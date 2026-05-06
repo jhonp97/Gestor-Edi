@@ -3,6 +3,7 @@ import { getSessionUniversal } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { WorkerTable } from '@/components/workers/worker-table'
 import { WorkerForm } from '@/components/workers/worker-form'
+import { decryptWorkersDnis } from '@/lib/worker-utils'
 
 // Force dynamic rendering to avoid build-time database connection
 export const dynamic = 'force-dynamic'
@@ -12,7 +13,7 @@ export default async function WorkersPage() {
   if (!session?.user?.organizationId) redirect('/login')
   const orgId = session.user.organizationId
 
-  const [workers, trucks] = await Promise.all([
+  const [rawWorkers, trucks] = await Promise.all([
     prisma.worker.findMany({
       where: { organizationId: orgId },
       orderBy: { createdAt: 'desc' },
@@ -22,6 +23,9 @@ export default async function WorkersPage() {
       orderBy: { createdAt: 'desc' },
     }),
   ])
+
+  // Decrypt DNIs for display
+  const workers = await decryptWorkersDnis(rawWorkers)
 
   return (
     <div className="space-y-6">

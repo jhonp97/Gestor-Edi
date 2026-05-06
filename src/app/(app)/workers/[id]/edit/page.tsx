@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { getSessionUniversal } from '@/lib/session'
 import { notFound, redirect } from 'next/navigation'
 import { WorkerEditForm } from '@/components/workers/worker-edit-form'
+import { decryptWorkerDni } from '@/lib/worker-utils'
 
 export default async function WorkerEditPage({
   params,
@@ -14,11 +15,18 @@ export default async function WorkerEditPage({
   if (!session?.user?.organizationId) redirect('/login')
   const orgId = session.user.organizationId
 
-  const worker = await prisma.worker.findFirst({
+  const rawWorker = await prisma.worker.findFirst({
     where: { id, organizationId: orgId },
   })
 
-  if (!worker) notFound()
+  if (!rawWorker) notFound()
+
+  // Decrypt DNI for the edit form
+  const decryptedDni = await decryptWorkerDni(rawWorker.dni)
+  const worker = {
+    ...rawWorker,
+    dni: decryptedDni,
+  }
 
   const trucks = await prisma.truck.findMany({
     where: { organizationId: orgId },
