@@ -1,5 +1,5 @@
 import { BaseRepository } from './base.repository'
-import type { TruckMileage } from '@prisma/client'
+import type { Prisma, TruckMileage } from '@prisma/client'
 
 type CreateMileageData = {
   truckId: string
@@ -49,7 +49,7 @@ export class TruckMileageRepository extends BaseRepository {
   }
 
   async findByTruck(truckId: string, filters?: MileageFilters): Promise<TruckMileage[]> {
-    const where: Record<string, unknown> = {
+    const where: Prisma.TruckMileageWhereInput = {
       truckId,
       ...this.tenantFilter(),
     }
@@ -69,7 +69,7 @@ export class TruckMileageRepository extends BaseRepository {
     }
 
     return this.prisma.truckMileage.findMany({
-      where: where as any,
+      where,
       orderBy: { date: 'desc' },
     })
   }

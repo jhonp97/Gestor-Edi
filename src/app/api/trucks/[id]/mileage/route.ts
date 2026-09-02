@@ -50,7 +50,7 @@ export async function POST(
     revalidatePath(`/trucks/${id}`)
     return NextResponse.json(record, { status: 201 })
   } catch (error) {
-    if (error instanceof Error && (error as any).statusCode === 409) {
+    if (error instanceof Error && 'statusCode' in error && error.statusCode === 409) {
       return NextResponse.json(
         { error: 'Ya existe un registro de kilometraje para esta fecha' },
         { status: 409 }
