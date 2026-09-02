@@ -24,9 +24,13 @@ const selectClass = 'flex h-10 w-full rounded-md border border-input bg-backgrou
 interface Worker {
   id: string
   name: string
-  dni: string
+  dni?: string
   position: string
   baseSalary: number
+}
+
+function getWorkerLabel(worker: Worker): string {
+  return worker.name.trim() || 'Trabajador sin nombre'
 }
 
 interface PayrollIndividualDialogProps {
@@ -165,11 +169,9 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
       }
       if (!v) resetForm()
     }}>
-      <DialogTrigger>
-        <Button variant="outline" size="lg" type='button'>
-          <UserPlus className="mr-2 size-5" />
-          {preselectedWorker ? 'Generar Nómina' : 'Nómina Individual'}
-        </Button>
+      <DialogTrigger render={<Button variant="outline" size="lg" type="button" />}>
+        <UserPlus className="mr-2 size-5" />
+        {preselectedWorker ? 'Generar Nómina' : 'Nómina Individual'}
       </DialogTrigger>
 
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
@@ -186,8 +188,8 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
           {/* Trabajador */}
           {preselectedWorker ? (
             <div className="rounded-lg bg-muted px-4 py-3 text-sm">
-              <p className="font-medium">{preselectedWorker.name}</p>
-              <p className="text-muted-foreground">{preselectedWorker.dni} · {preselectedWorker.position}</p>
+              <p className="font-medium">{getWorkerLabel(preselectedWorker)}</p>
+              <p className="text-muted-foreground">{preselectedWorker.position}</p>
             </div>
           ) : (
             <div className="space-y-1">
@@ -205,7 +207,7 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
                 </option>
                 {workers.map((w) => (
                   <option key={w.id} value={w.id}>
-                    {w.name} — {w.dni}
+                    {getWorkerLabel(w)}
                   </option>
                 ))}
               </select>
