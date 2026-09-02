@@ -21,6 +21,11 @@ interface TransactionFormProps {
 
 const selectClass = 'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
+const CATEGORY_SUGGESTIONS = {
+  EXPENSE: ['Combustible', 'Impuestos', 'Reparaciones', 'Salarios', 'Mantenimiento', 'Peajes', 'Seguros'],
+  INCOME: ['Servicios de transporte', 'Venta de activos', 'Otros ingresos'],
+} as const
+
 export function TransactionForm({ trucks }: TransactionFormProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -81,11 +86,9 @@ export function TransactionForm({ trucks }: TransactionFormProps) {
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm() }}>
 
-      <DialogTrigger>
-        <Button size="lg" type="button">
-          <Plus className="mr-2 size-5" aria-hidden="true" />
-          Agregar Transacción
-        </Button>
+      <DialogTrigger render={<Button size="lg" type="button" />}>
+        <Plus className="mr-2 size-5" aria-hidden="true" />
+        Agregar Transacción
       </DialogTrigger>
 
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
@@ -166,10 +169,16 @@ export function TransactionForm({ trucks }: TransactionFormProps) {
               <Label htmlFor="tx-cat">Categoría</Label>
               <Input
                 id="tx-cat"
+                list="tx-category-suggestions"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 placeholder="Opcional"
               />
+              <datalist id="tx-category-suggestions">
+                {CATEGORY_SUGGESTIONS[type].map((suggestion) => (
+                  <option key={suggestion} value={suggestion} />
+                ))}
+              </datalist>
             </div>
           </div>
 
