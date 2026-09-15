@@ -9,6 +9,7 @@ import { decryptWorkersDnis } from '@/lib/worker-utils'
 export const dynamic = 'force-dynamic'
 
 export default async function WorkersPage() {
+  const initialStartDate = new Date().toISOString().split('T')[0]
   const session = await getSessionUniversal()
   if (!session?.user?.organizationId) redirect('/login')
   const orgId = session.user.organizationId
@@ -36,7 +37,7 @@ export default async function WorkersPage() {
             Gestión del personal de la flota
           </p>
         </div>
-        <WorkerForm trucks={trucks} />
+        <WorkerForm trucks={trucks} initialStartDate={initialStartDate} />
       </div>
 
       {workers.length === 0 ? (

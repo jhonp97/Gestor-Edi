@@ -17,6 +17,7 @@ import type { Truck } from '@/types'
 
 interface WorkerFormProps {
   trucks: Truck[]
+  initialStartDate: string
 }
 
 type DocType = 'DNI' | 'NIE' | 'PASAPORTE' | 'OTRO'
@@ -36,7 +37,7 @@ function validateDoc(type: DocType, value: string): boolean {
 
 const selectClass = 'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
-export function WorkerForm({ trucks }: WorkerFormProps) {
+export function WorkerForm({ trucks, initialStartDate }: WorkerFormProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
@@ -44,7 +45,7 @@ export function WorkerForm({ trucks }: WorkerFormProps) {
   const [dni, setDni] = useState('')
   const [position, setPosition] = useState('')
   const [baseSalary, setBaseSalary] = useState('')
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0])
+  const [startDate, setStartDate] = useState(initialStartDate)
   const [status, setStatus] = useState('ACTIVE')
   const [truckId, setTruckId] = useState('')
   const [error, setError] = useState('')
@@ -56,7 +57,7 @@ export function WorkerForm({ trucks }: WorkerFormProps) {
     setDni('')
     setPosition('')
     setBaseSalary('')
-    setStartDate(new Date().toISOString().split('T')[0])
+    setStartDate(initialStartDate)
     setStatus('ACTIVE')
     setTruckId('')
     setError('')
