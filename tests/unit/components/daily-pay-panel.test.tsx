@@ -197,7 +197,7 @@ describe('DailyPayPanel', () => {
     })
   })
 
-  it('marca y desmarca un día trabajado', async () => {
+  it('marca un día pasado seleccionado con la ruta específica', async () => {
     const user = userEvent.setup()
     render(<DailyPayPanel workerId="w1" />)
 
@@ -205,11 +205,15 @@ describe('DailyPayPanel', () => {
       expect(screen.getByRole('button', { name: /marcar día/i })).toBeInTheDocument()
     })
 
-    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+    const pastDate = currentPeriodStart()
+    await user.clear(screen.getByLabelText('Fecha trabajada'))
+    await user.type(screen.getByLabelText('Fecha trabajada'), pastDate)
+
+    mockFetch.mockResolvedValueOnce({ ok: true })
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => monthDto({
-        days: [{ date: '2026-09-03', rateSnapshot: '100.00' }],
+        days: [{ date: pastDate, rateSnapshot: '100.00' }],
         totals: { accrued: '100.00' },
       }),
     })
@@ -218,10 +222,73 @@ describe('DailyPayPanel', () => {
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
-        `/api/workers/w1/daily-pay/days/${todayCivil()}`,
+        `/api/workers/w1/daily-pay/days/${pastDate}`,
         { method: 'PUT' }
       )
     })
+  })
+
+  it('quita el día seleccionado cuando ya está registrado', async () => {
+    const user = userEvent.setup()
+    const pastDate = currentPeriodStart()
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => monthDto({
+        days: [{ date: pastDate, rateSnapshot: '100.00' }],
+        totals: { accrued: '100.00' },
+      }),
+    })
+    render(<DailyPayPanel workerId="w1" />)
+
+    const dateInput = await screen.findByLabelText('Fecha trabajada')
+    expect(dateInput).toHaveAttribute('min', currentPeriodStart())
+    expect(dateInput).toHaveAttribute('max', todayCivil())
+    await user.clear(dateInput)
+    await user.type(dateInput, pastDate)
+
+    const removeButton = screen.getByRole('button', { name: /quitar día/i })
+    mockFetch.mockReset()
+    mockFetch.mockResolvedValueOnce({ ok: true })
+    mockFetch.mockResolvedValue({ ok: true, json: async () => monthDto() })
+    await user.click(removeButton)
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        `/api/workers/w1/daily-pay/days/${pastDate}`,
+        { method: 'DELETE' }
+      )
+    })
+  })
+
+  it('deshabilita la fecha y la acción cuando no hay tarifa positiva', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => monthDto({ dailyRate: null }),
+    })
+    render(<DailyPayPanel workerId="w1" />)
+
+    const dateInput = await screen.findByLabelText('Fecha trabajada')
+    expect(dateInput).toBeDisabled()
+    expect(screen.getByRole('button', { name: /marcar día/i })).toBeDisabled()
+    expect(screen.getByLabelText('Tarifa diaria')).toBeEnabled()
+    expect(screen.getByRole('button', { name: /guardar tarifa/i })).toBeEnabled()
+  })
+
+  it('muestra el mensaje de error devuelto al actualizar un día', async () => {
+    const user = userEvent.setup()
+    render(<DailyPayPanel workerId="w1" />)
+
+    await screen.findByLabelText('Fecha trabajada')
+    mockFetch.mockReset()
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ error: 'La tarifa diaria debe ser positiva.' }),
+    })
+    await user.click(screen.getByRole('button', { name: /marcar día/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'La tarifa diaria debe ser positiva.'
+    )
   })
 
   it('marca mes como PAID', async () => {

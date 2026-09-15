@@ -12,12 +12,8 @@ import {
   type HistoryMonth,
 } from './daily-pay-calendar'
 
-function firstOfMonth(date: Date): string {
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-01`
-}
-
-function todayPeriodStart(): string {
-  return firstOfMonth(new Date())
+function formatCivilDate(date: Date): string {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`
 }
 
 interface DayDTO {
@@ -45,16 +41,20 @@ const DECIMAL_RATE_PATTERN = /^\d+(\.\d+)?$/
 export function DailyPayPanel({ workerId }: DailyPayPanelProps) {
   const [month, setMonth] = useState<MonthData | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [year, setYear] = useState(() => new Date().getUTCFullYear())
+  const [today] = useState(() => formatCivilDate(new Date()))
+  const [selectedDate, setSelectedDate] = useState(today)
+  const [year, setYear] = useState(() => Number(today.slice(0, 4)))
   const [history, setHistory] = useState<HistoryMonth[]>([])
   const [dailyRateInput, setDailyRateInput] = useState('')
   const [isSavingRate, setIsSavingRate] = useState(false)
+  const [isUpdatingDay, setIsUpdatingDay] = useState(false)
+  const [dayError, setDayError] = useState<string | null>(null)
   const [rateFeedback, setRateFeedback] = useState({
     message: DAILY_RATE_HELPER,
     isError: false,
   })
 
-  const periodStart = todayPeriodStart()
+  const periodStart = `${today.slice(0, 7)}-01`
 
   const fetchMonth = useCallback(async (): Promise<MonthData> => {
     const res = await fetch(
@@ -184,24 +184,31 @@ export function DailyPayPanel({ workerId }: DailyPayPanelProps) {
     }
   }
 
-  const today = (() => {
-    const d = new Date()
-    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
-  })()
+  const isSelectedDateMarked = month?.days.some((day) => day.date === selectedDate) ?? false
 
-  const isTodayMarked = month?.days.some((d) => d.date === today) ?? false
+  async function toggleSelectedDate() {
+    const method = isSelectedDateMarked ? 'DELETE' : 'PUT'
+    setIsUpdatingDay(true)
+    setDayError(null)
 
-  async function toggleToday() {
-    const method = isTodayMarked ? 'DELETE' : 'PUT'
     try {
       const res = await fetch(
-        `/api/workers/${workerId}/daily-pay/days/${today}`,
+        `/api/workers/${workerId}/daily-pay/days/${selectedDate}`,
         { method }
       )
-      if (!res.ok) return
+      if (!res.ok) {
+        const data: unknown = await res.json().catch(() => null)
+        const message = data && typeof data === 'object' && 'error' in data
+          ? String(data.error)
+          : 'No se pudo actualizar el día seleccionado.'
+        setDayError(message)
+        return
+      }
       await refreshData()
     } catch {
-      // Toggle failure is non-blocking for the UI
+      setDayError('Error de conexión al actualizar el día seleccionado.')
+    } finally {
+      setIsUpdatingDay(false)
     }
   }
 
@@ -251,7 +258,8 @@ export function DailyPayPanel({ workerId }: DailyPayPanelProps) {
     )
   }
 
-  const noRate = month?.dailyRate === null
+  const noRate = !month?.dailyRate || Number(month.dailyRate) <= 0
+  const dayEditingDisabled = month?.status === 'PAID' || noRate || isUpdatingDay
 
   return (
     <div className="space-y-4">
@@ -324,16 +332,50 @@ export function DailyPayPanel({ workerId }: DailyPayPanelProps) {
             Marca los días trabajados. La suma de las tarifas es informativa.
           </p>
 
+          <div className="space-y-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <Label htmlFor="worked-day">Fecha trabajada</Label>
+                <Input
+                  id="worked-day"
+                  type="date"
+                  min={periodStart}
+                  max={today}
+                  value={selectedDate}
+                  onChange={(event) => {
+                    setSelectedDate(event.target.value)
+                    setDayError(null)
+                  }}
+                  disabled={dayEditingDisabled}
+                  aria-describedby="selected-worked-day daily-pay-day-error"
+                />
+                <p id="selected-worked-day" className="text-xs text-muted-foreground">
+                  Fecha seleccionada: {selectedDate}
+                </p>
+              </div>
+              <Button
+                variant={isSelectedDateMarked ? 'destructive' : 'default'}
+                size="sm"
+                className="w-full sm:w-auto"
+                onClick={toggleSelectedDate}
+                disabled={dayEditingDisabled}
+                aria-label={isSelectedDateMarked ? 'Quitar día' : 'Marcar día'}
+              >
+                {isUpdatingDay
+                  ? 'Actualizando...'
+                  : isSelectedDateMarked
+                    ? 'Quitar día'
+                    : 'Marcar día'}
+              </Button>
+            </div>
+            {dayError && (
+              <p id="daily-pay-day-error" className="text-sm text-destructive" role="alert">
+                {dayError}
+              </p>
+            )}
+          </div>
+
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant={isTodayMarked ? 'destructive' : 'default'}
-              size="sm"
-              onClick={toggleToday}
-              disabled={month?.status === 'PAID'}
-              aria-label={isTodayMarked ? 'Quitar día' : 'Marcar día'}
-            >
-              {isTodayMarked ? 'Quitar día' : 'Marcar día'}
-            </Button>
             <Button
               variant="outline"
               size="sm"
