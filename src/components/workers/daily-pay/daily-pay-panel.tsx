@@ -39,47 +39,79 @@ interface DailyPayPanelProps {
 
 export function DailyPayPanel({ workerId }: DailyPayPanelProps) {
   const [month, setMonth] = useState<MonthData | null>(null)
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [year, setYear] = useState(() => new Date().getUTCFullYear())
   const [history, setHistory] = useState<HistoryMonth[]>([])
 
   const periodStart = todayPeriodStart()
 
-  const fetchMonth = useCallback(async () => {
-    try {
-      const res = await fetch(
-        `/api/workers/${workerId}/daily-pay?periodStart=${periodStart}`
-      )
-      if (!res.ok) throw new Error('Failed to fetch')
-      setMonth(await res.json())
-    } catch {
-      setError('Error al cargar datos del mes')
-    } finally {
-      setLoading(false)
-    }
+  const fetchMonth = useCallback(async (): Promise<MonthData> => {
+    const res = await fetch(
+      `/api/workers/${workerId}/daily-pay?periodStart=${periodStart}`
+    )
+    if (!res.ok) throw new Error('Failed to fetch')
+    return res.json()
   }, [workerId, periodStart])
 
-  const fetchHistory = useCallback(async () => {
-    try {
-      const res = await fetch(
-        `/api/workers/${workerId}/daily-pay/history?year=${year}`
-      )
-      if (!res.ok) throw new Error('Failed to fetch history')
-      const data = await res.json()
-      setHistory(data.months ?? [])
-    } catch {
-      // History failure is non-blocking
-    }
+  const fetchHistory = useCallback(async (): Promise<HistoryMonth[]> => {
+    const res = await fetch(
+      `/api/workers/${workerId}/daily-pay/history?year=${year}`
+    )
+    if (!res.ok) throw new Error('Failed to fetch history')
+    const data = await res.json()
+    return data.months ?? []
   }, [workerId, year])
 
   useEffect(() => {
-    fetchMonth()
+    let cancelled = false
+
+    void fetchMonth()
+      .then((data) => {
+        if (!cancelled) {
+          setMonth(data)
+          setError(null)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setError('Error al cargar datos del mes')
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [fetchMonth])
 
   useEffect(() => {
-    fetchHistory()
+    let cancelled = false
+
+    void fetchHistory()
+      .then((data) => {
+        if (!cancelled) setHistory(data)
+      })
+      .catch(() => {
+        // History failure is non-blocking
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [fetchHistory])
+
+  const loading = month === null && error === null
+
+  async function refreshData() {
+    try {
+      setMonth(await fetchMonth())
+    } catch {
+      setError('Error al cargar datos del mes')
+    }
+
+    try {
+      setHistory(await fetchHistory())
+    } catch {
+      // History failure is non-blocking
+    }
+  }
 
   const today = (() => {
     const d = new Date()
@@ -96,8 +128,7 @@ export function DailyPayPanel({ workerId }: DailyPayPanelProps) {
         { method }
       )
       if (!res.ok) return
-      await fetchMonth()
-      await fetchHistory()
+      await refreshData()
     } catch {
       // Toggle failure is non-blocking for the UI
     }
@@ -110,8 +141,7 @@ export function DailyPayPanel({ workerId }: DailyPayPanelProps) {
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }
       )
       if (!res.ok) return
-      await fetchMonth()
-      await fetchHistory()
+      await refreshData()
     } catch {
       // Mark-paid failure is non-blocking for the UI
     }
@@ -124,8 +154,7 @@ export function DailyPayPanel({ workerId }: DailyPayPanelProps) {
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }
       )
       if (!res.ok) return
-      await fetchMonth()
-      await fetchHistory()
+      await refreshData()
     } catch {
       // Revert failure is non-blocking for the UI
     }
