@@ -29,6 +29,11 @@ function todayCivil(): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
 }
 
+function currentPeriodStart(): string {
+  const d = new Date()
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-01`
+}
+
 describe('DailyPayPanel', () => {
   beforeEach(() => {
     mockFetch.mockReset()
@@ -94,7 +99,8 @@ describe('DailyPayPanel', () => {
     expect(screen.getByText(/15\/9\/2026/)).toBeInTheDocument()
   })
 
-  it('muestra advertencia cuando no hay tarifa diaria', async () => {
+  it('muestra el control y permite quitar la tarifa diaria', async () => {
+    const user = userEvent.setup()
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => monthDto({ dailyRate: null }),
@@ -104,6 +110,83 @@ describe('DailyPayPanel', () => {
     await waitFor(() => {
       expect(screen.getByText(/Configura la tarifa diaria del trabajador/)).toBeInTheDocument()
     })
+
+    const input = screen.getByLabelText('Tarifa diaria')
+    expect(input).toHaveAttribute('type', 'number')
+    expect(input).toHaveAttribute('min', '0.01')
+    expect(input).toHaveAttribute('step', '0.01')
+    expect(input).toHaveValue(null)
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2))
+    mockFetch.mockReset()
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => monthDto({ dailyRate: null }),
+    })
+
+    await user.click(screen.getByRole('button', { name: /guardar tarifa/i }))
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        `/api/workers/w1/daily-pay?periodStart=${currentPeriodStart()}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dailyRate: null }),
+        }
+      )
+    })
+    expect(await screen.findByText('Tarifa diaria eliminada.')).toBeInTheDocument()
+  })
+
+  it('guarda una tarifa diaria positiva y actualiza el campo', async () => {
+    const user = userEvent.setup()
+    render(<DailyPayPanel workerId="w1" />)
+
+    const input = await screen.findByLabelText('Tarifa diaria')
+    expect(input).toHaveValue(100)
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2))
+
+    await user.clear(input)
+    await user.type(input, '125.50')
+    mockFetch.mockReset()
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => monthDto({ dailyRate: '125.50' }),
+    })
+
+    await user.click(screen.getByRole('button', { name: /guardar tarifa/i }))
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        `/api/workers/w1/daily-pay?periodStart=${currentPeriodStart()}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dailyRate: '125.5' }),
+        }
+      )
+    })
+    expect(await screen.findByText('Tarifa diaria guardada.')).toBeInTheDocument()
+    expect(input).toHaveValue(125.5)
+  })
+
+  it('muestra un error cuando el servidor rechaza la tarifa diaria', async () => {
+    const user = userEvent.setup()
+    render(<DailyPayPanel workerId="w1" />)
+
+    const input = await screen.findByLabelText('Tarifa diaria')
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2))
+    await user.clear(input)
+    await user.type(input, '150')
+    mockFetch.mockReset()
+    mockFetch.mockResolvedValueOnce({ ok: false })
+
+    await user.click(screen.getByRole('button', { name: /guardar tarifa/i }))
+
+    expect(
+      await screen.findByText('No se pudo guardar la tarifa diaria.')
+    ).toBeInTheDocument()
   })
 
   it('muestra estado de días para un mes sin días', async () => {

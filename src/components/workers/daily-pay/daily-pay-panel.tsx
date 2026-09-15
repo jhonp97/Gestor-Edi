@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { CalendarDays, CheckCircle2, Undo2 } from 'lucide-react'
 import {
   DailyPayCalendar,
@@ -37,11 +39,20 @@ interface DailyPayPanelProps {
   workerId: string
 }
 
+const DAILY_RATE_HELPER = 'Déjala vacía para quitar la tarifa diaria.'
+const DECIMAL_RATE_PATTERN = /^\d+(\.\d+)?$/
+
 export function DailyPayPanel({ workerId }: DailyPayPanelProps) {
   const [month, setMonth] = useState<MonthData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [year, setYear] = useState(() => new Date().getUTCFullYear())
   const [history, setHistory] = useState<HistoryMonth[]>([])
+  const [dailyRateInput, setDailyRateInput] = useState('')
+  const [isSavingRate, setIsSavingRate] = useState(false)
+  const [rateFeedback, setRateFeedback] = useState({
+    message: DAILY_RATE_HELPER,
+    isError: false,
+  })
 
   const periodStart = todayPeriodStart()
 
@@ -69,6 +80,7 @@ export function DailyPayPanel({ workerId }: DailyPayPanelProps) {
       .then((data) => {
         if (!cancelled) {
           setMonth(data)
+          setDailyRateInput(data.dailyRate ?? '')
           setError(null)
         }
       })
@@ -101,7 +113,10 @@ export function DailyPayPanel({ workerId }: DailyPayPanelProps) {
 
   async function refreshData() {
     try {
-      setMonth(await fetchMonth())
+      const data = await fetchMonth()
+      setMonth(data)
+      setDailyRateInput(data.dailyRate ?? '')
+      setError(null)
     } catch {
       setError('Error al cargar datos del mes')
     }
@@ -110,6 +125,62 @@ export function DailyPayPanel({ workerId }: DailyPayPanelProps) {
       setHistory(await fetchHistory())
     } catch {
       // History failure is non-blocking
+    }
+  }
+
+  async function saveDailyRate(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const trimmedRate = dailyRateInput.trim()
+    if (
+      trimmedRate !== '' &&
+      (!DECIMAL_RATE_PATTERN.test(trimmedRate) || Number(trimmedRate) < 0.01)
+    ) {
+      setRateFeedback({
+        message: 'Ingresa una tarifa diaria de al menos 0,01.',
+        isError: true,
+      })
+      return
+    }
+
+    setIsSavingRate(true)
+    setRateFeedback({ message: DAILY_RATE_HELPER, isError: false })
+
+    try {
+      const res = await fetch(
+        `/api/workers/${workerId}/daily-pay?periodStart=${periodStart}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dailyRate: trimmedRate || null }),
+        }
+      )
+
+      if (!res.ok) {
+        setRateFeedback({
+          message: 'No se pudo guardar la tarifa diaria.',
+          isError: true,
+        })
+        return
+      }
+
+      const data: MonthData = await res.json()
+      setMonth(data)
+      setDailyRateInput(data.dailyRate ?? '')
+      setError(null)
+      setRateFeedback({
+        message: data.dailyRate
+          ? 'Tarifa diaria guardada.'
+          : 'Tarifa diaria eliminada.',
+        isError: false,
+      })
+    } catch {
+      setRateFeedback({
+        message: 'Error de conexión al guardar la tarifa diaria.',
+        isError: true,
+      })
+    } finally {
+      setIsSavingRate(false)
     }
   }
 
@@ -207,6 +278,47 @@ export function DailyPayPanel({ workerId }: DailyPayPanelProps) {
               Configura la tarifa diaria del trabajador antes de marcar días.
             </p>
           )}
+
+          <form
+            className="flex flex-col gap-2 sm:flex-row sm:items-end"
+            onSubmit={saveDailyRate}
+            noValidate
+          >
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <Label htmlFor="daily-rate">Tarifa diaria</Label>
+              <Input
+                id="daily-rate"
+                type="number"
+                min="0.01"
+                step="0.01"
+                inputMode="decimal"
+                value={dailyRateInput}
+                onChange={(event) => {
+                  setDailyRateInput(event.target.value)
+                  setRateFeedback({ message: DAILY_RATE_HELPER, isError: false })
+                }}
+                aria-describedby="daily-rate-feedback"
+                aria-invalid={rateFeedback.isError}
+                disabled={isSavingRate}
+              />
+              <p
+                id="daily-rate-feedback"
+                className={rateFeedback.isError
+                  ? 'text-xs text-destructive'
+                  : 'text-xs text-muted-foreground'}
+                aria-live="polite"
+              >
+                {rateFeedback.message}
+              </p>
+            </div>
+            <Button
+              type="submit"
+              className="w-full sm:w-auto"
+              disabled={isSavingRate}
+            >
+              {isSavingRate ? 'Guardando...' : 'Guardar tarifa'}
+            </Button>
+          </form>
 
           <p className="text-sm text-muted-foreground">
             Marca los días trabajados. La suma de las tarifas es informativa.

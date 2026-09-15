@@ -153,18 +153,22 @@ export default async function WorkerDetailPage({
       <DailyPayPanel workerId={worker.id} />
 
       {/* Actions */}
-      <div className="flex gap-3">
-        <Link href={`/workers/${worker.id}/edit`}>
-          <Button>Editar Trabajador</Button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+        <Link href={`/workers/${worker.id}/edit`} className="w-full sm:w-auto">
+          <Button className="w-full sm:w-auto">Editar Trabajador</Button>
         </Link>
-        <PayrollIndividualDialog preselectedWorker={{
-          id: worker.id,
-          name: worker.name,
-          dni: worker.decryptedDni,
-          position: worker.position,
-          baseSalary: worker.baseSalary,
-        }} />
-        <DeleteWorkerButton workerId={worker.id} workerName={worker.name} />
+        <div className="w-full sm:w-auto [&>button]:w-full sm:[&>button]:w-auto">
+          <PayrollIndividualDialog preselectedWorker={{
+            id: worker.id,
+            name: worker.name,
+            dni: worker.decryptedDni,
+            position: worker.position,
+            baseSalary: worker.baseSalary,
+          }} />
+        </div>
+        <div className="w-full sm:w-auto [&>button]:w-full sm:[&>button]:w-auto">
+          <DeleteWorkerButton workerId={worker.id} workerName={worker.name} />
+        </div>
       </div>
     </div>
   )
