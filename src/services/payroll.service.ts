@@ -162,7 +162,7 @@ export class PayrollService {
     const calc = this.calculatePayroll(
       validated.baseSalary,
       validated.irpfPercent,
-      validated.socialSecurityPercent || 6.35,
+      validated.socialSecurityPercent ?? 0,
       0, // bonuses
       validated.otherDeductions || 0,
     )

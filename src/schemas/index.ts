@@ -53,7 +53,7 @@ export const createPayrollSchema = z.object({
   year: z.number().int().min(2020).max(2030),
   baseSalary: z.number().positive(),
   irpfPercent: z.number().min(0).max(100).default(0),
-  socialSecurityPercent: z.number().min(0).max(100).default(6.35),
+  socialSecurityPercent: z.number().min(0).max(100).default(0),
   otherDeductions: z.number().min(0).default(0),
   otherDeductionsDesc: z.string().max(200).optional(),
   notes: z.string().max(500).optional(),

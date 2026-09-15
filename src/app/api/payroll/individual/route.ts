@@ -3,7 +3,7 @@ import { getUserFromRequest } from '@/lib/auth-edge'
 import { revalidatePath } from 'next/cache'
 import { NextResponse } from 'next/server'
 
-const SS_PERCENT = 6.35
+const DEFAULT_SS_PERCENT = 0
 
 export async function POST(request: Request) {
   try {
@@ -18,7 +18,8 @@ export async function POST(request: Request) {
       month,
       year,
       baseSalary,
-      irpfPercent = 15,
+      irpfPercent = 0,
+      socialSecurityPercent = DEFAULT_SS_PERCENT,
       bonusAmount = 0,
       bonusDesc = '',
       otherDeductions = 0,
@@ -31,6 +32,17 @@ export async function POST(request: Request) {
         { error: 'Trabajador, mes, año y salario base son requeridos' },
         { status: 400 }
       )
+    }
+
+    if (
+      typeof irpfPercent !== 'number' ||
+      irpfPercent < 0 ||
+      irpfPercent > 100 ||
+      typeof socialSecurityPercent !== 'number' ||
+      socialSecurityPercent < 0 ||
+      socialSecurityPercent > 100
+    ) {
+      return Response.json({ error: 'Los porcentajes deben estar entre 0 y 100' }, { status: 400 })
     }
 
     // Verify worker belongs to this org
@@ -59,7 +71,7 @@ export async function POST(request: Request) {
     }
 
     const irpfAmount = Math.round(baseSalary * (irpfPercent / 100) * 100) / 100
-    const ssAmount = Math.round(baseSalary * (SS_PERCENT / 100) * 100) / 100
+    const ssAmount = Math.round(baseSalary * (socialSecurityPercent / 100) * 100) / 100
     const grossPay = Math.round((baseSalary + bonusAmount) * 100) / 100
     const netPay = Math.round((grossPay - irpfAmount - ssAmount - otherDeductions) * 100) / 100
 
@@ -71,7 +83,7 @@ export async function POST(request: Request) {
         baseSalary,
         irpfPercent,
         irpfAmount,
-        socialSecurityPercent: SS_PERCENT,
+        socialSecurityPercent,
         socialSecurityAmount: ssAmount,
         bonuses: bonusAmount,
         bonusesDesc: bonusDesc || undefined,

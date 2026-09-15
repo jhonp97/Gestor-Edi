@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -49,6 +49,9 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [year, setYear] = useState(new Date().getFullYear())
   const [baseSalary, setBaseSalary] = useState(preselectedWorker?.baseSalary.toString() ?? '')
+  const [dailyPayTotal, setDailyPayTotal] = useState<string | null>(null)
+  const [applyIrpf, setApplyIrpf] = useState(false)
+  const [applySocialSecurity, setApplySocialSecurity] = useState(false)
   const [irpfPercent, setIrpfPercent] = useState('15')
   const [bonusAmount, setBonusAmount] = useState('0')
   const [bonusDesc, setBonusDesc] = useState('')
@@ -57,14 +60,17 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
   const [notes, setNotes] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const baseSalaryTouched = useRef(false)
 
   // Calculated preview
   const SS_PERCENT = 6.35
   const base = parseFloat(baseSalary) || 0
   const bonus = parseFloat(bonusAmount) || 0
   const grossPay = base + bonus
-  const irpfAmount = Math.round(base * (parseFloat(irpfPercent) / 100) * 100) / 100
-  const ssAmount = Math.round(base * (SS_PERCENT / 100) * 100) / 100
+  const effectiveIrpfPercent = applyIrpf ? parseFloat(irpfPercent) || 0 : 0
+  const effectiveSsPercent = applySocialSecurity ? SS_PERCENT : 0
+  const irpfAmount = Math.round(base * (effectiveIrpfPercent / 100) * 100) / 100
+  const ssAmount = Math.round(base * (effectiveSsPercent / 100) * 100) / 100
   const otherDed = parseFloat(otherDeductions) || 0
   const netPay = Math.round((grossPay - irpfAmount - ssAmount - otherDed) * 100) / 100
 
@@ -85,9 +91,35 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
     return () => controller.abort()
   }, [open, preselectedWorker])
 
+  useEffect(() => {
+    if (!open || !workerId) return
+
+    let cancelled = false
+    const periodStart = `${year}-${String(month).padStart(2, '0')}-01`
+
+    fetch(`/api/workers/${workerId}/daily-pay?periodStart=${periodStart}`)
+      .then(async (response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (cancelled) return
+        const accrued = data?.totals?.accrued
+        setDailyPayTotal(typeof accrued === 'string' ? accrued : null)
+        if (!baseSalaryTouched.current && typeof accrued === 'string') {
+          setBaseSalary(accrued)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setDailyPayTotal(null)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, workerId, month, year])
+
   // When worker changes, update base salary
   function handleWorkerChange(id: string) {
     setWorkerId(id)
+    baseSalaryTouched.current = false
     const w = workers.find((w) => w.id === id)
     if (w) setBaseSalary(w.baseSalary.toString())
   }
@@ -95,8 +127,12 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
   function resetForm() {
     setWorkerId(preselectedWorker?.id ?? '')
     setBaseSalary(preselectedWorker?.baseSalary.toString() ?? '')
+    setDailyPayTotal(null)
+    baseSalaryTouched.current = false
     setMonth(new Date().getMonth() + 1)
     setYear(new Date().getFullYear())
+    setApplyIrpf(false)
+    setApplySocialSecurity(false)
     setIrpfPercent('15')
     setBonusAmount('0')
     setBonusDesc('')
@@ -129,7 +165,8 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
           month,
           year,
           baseSalary: base,
-          irpfPercent: parseFloat(irpfPercent),
+          irpfPercent: effectiveIrpfPercent,
+          socialSecurityPercent: effectiveSsPercent,
           bonusAmount: bonus,
           bonusDesc,
           otherDeductions: otherDed,
@@ -221,7 +258,10 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
               <select
                 id="month"
                 value={month}
-                onChange={(e) => setMonth(parseInt(e.target.value))}
+                onChange={(e) => {
+                  baseSalaryTouched.current = false
+                  setMonth(parseInt(e.target.value))
+                }}
                 className={selectClass}
               >
                 {MONTH_NAMES.map((name, i) =>
@@ -234,7 +274,10 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
               <select
                 id="year"
                 value={year}
-                onChange={(e) => setYear(parseInt(e.target.value))}
+                onChange={(e) => {
+                  baseSalaryTouched.current = false
+                  setYear(parseInt(e.target.value))
+                }}
                 className={selectClass}
               >
                 {Array.from({ length: 7 }, (_, i) => 2024 + i).map((y) => (
@@ -251,31 +294,58 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
               id="baseSalary"
               type="number"
               value={baseSalary}
-              onChange={(e) => setBaseSalary(e.target.value)}
+              onChange={(e) => {
+                baseSalaryTouched.current = true
+                setBaseSalary(e.target.value)
+              }}
               placeholder="2500"
               min="0"
               step="0.01"
               required
             />
             <p className="text-xs text-muted-foreground">
-              Puedes modificarlo si este mes es diferente al registrado
+              {dailyPayTotal !== null
+                ? `Acumulado diario del mes: €${Number(dailyPayTotal).toFixed(2)}. Puedes modificarlo.`
+                : 'Puedes modificarlo si este mes es diferente al registrado'}
             </p>
           </div>
 
           {/* IRPF */}
-          <div className="space-y-1">
-            <Label htmlFor="irpf">% IRPF</Label>
-            <Input
-              id="irpf"
-              type="number"
-              value={irpfPercent}
-              onChange={(e) => setIrpfPercent(e.target.value)}
-              className="w-28"
-              min="0"
-              max="100"
-              step="0.5"
-            />
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={applyIrpf}
+                onChange={(e) => setApplyIrpf(e.target.checked)}
+              />
+              Aplicar IRPF
+            </label>
+            {applyIrpf && (
+              <div className="space-y-1">
+                <Label htmlFor="irpf">% IRPF</Label>
+                <Input
+                  id="irpf"
+                  type="number"
+                  value={irpfPercent}
+                  onChange={(e) => setIrpfPercent(e.target.value)}
+                  className="w-28"
+                  min="0"
+                  max="100"
+                  step="0.5"
+                />
+              </div>
+            )}
           </div>
+
+          {/* Seguridad Social */}
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              checked={applySocialSecurity}
+              onChange={(e) => setApplySocialSecurity(e.target.checked)}
+            />
+            Aplicar Seguridad Social (6,35%)
+          </label>
 
           {/* Bono */}
           <div className="grid grid-cols-2 gap-3">
@@ -360,14 +430,18 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
                   <span>Bruto</span>
                   <span>€{grossPay.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-destructive">
-                  <span>IRPF ({irpfPercent}%)</span>
-                  <span>-€{irpfAmount.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-destructive">
-                  <span>Seg. Social (6.35%)</span>
-                  <span>-€{ssAmount.toFixed(2)}</span>
-                </div>
+                {applyIrpf && (
+                  <div className="flex justify-between text-destructive">
+                    <span>IRPF ({irpfPercent}%)</span>
+                    <span>-€{irpfAmount.toFixed(2)}</span>
+                  </div>
+                )}
+                {applySocialSecurity && (
+                  <div className="flex justify-between text-destructive">
+                    <span>Seg. Social (6,35%)</span>
+                    <span>-€{ssAmount.toFixed(2)}</span>
+                  </div>
+                )}
                 {otherDed > 0 && (
                   <div className="flex justify-between text-destructive">
                     <span>Otras deducciones</span>

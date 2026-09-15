@@ -411,7 +411,7 @@ export function DailyPayPanel({ workerId }: DailyPayPanelProps) {
                 ))}
               </ul>
               <div className="border-t pt-2 text-sm font-semibold">
-                Total accrual: <span className="font-mono">{month.totals.accrued}</span>
+                Total acumulado: <span className="font-mono">{month.totals.accrued}</span>
               </div>
             </div>
           ) : (
