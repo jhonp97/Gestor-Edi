@@ -59,12 +59,15 @@ model Worker {
   docType         String       @default("DNI")
   position        String
   baseSalary      Float
+  dailyRate       Decimal?     @db.Decimal(12, 2)
   startDate       DateTime
   endDate         DateTime?
   status          WorkerStatus @default(ACTIVE)
   truckId         String?
   truck           Truck?       @relation(fields: [truckId], references: [id], onDelete: SetNull)
   payrolls        Payroll[]
+  dailyPayDays    DailyPayDay[]
+  dailyPayMonths  DailyPayMonthControl[]
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
@@ -153,6 +156,8 @@ model Organization {
   truckMileages TruckMileage[]
   consentLogs  ConsentLog[]
   auditLogs    AuditLog[]
+  dailyPayDays   DailyPayDay[]
+  dailyPayMonths  DailyPayMonthControl[]
 
   @@index([ownerId])
 }
@@ -299,6 +304,8 @@ enum AuditAction {
   CONSENT_CHANGE
   PASSWORD_CHANGE
   TWO_FACTOR_CHANGE
+  DAILY_PAY_MONTH_MARKED_PAID
+  DAILY_PAY_MONTH_MARKED_PENDING
 }
 
 enum PlanType {
@@ -312,4 +319,45 @@ enum PlanStatus {
   ACTIVE
   PAST_DUE
   CANCELED
+}
+
+model DailyPayDay {
+  id             String   @id @default(uuid())
+  workerId       String
+  worker         Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  workDate       DateTime @db.Date
+  rateSnapshot   Decimal  @db.Decimal(12, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([workerId, workDate])
+  @@index([workerId])
+  @@index([workDate])
+  @@index([organizationId])
+}
+
+model DailyPayMonthControl {
+  id             String              @id @default(uuid())
+  workerId       String
+  worker         Worker              @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  periodStart    DateTime            @db.Date
+  status         DailyPayMonthStatus @default(PENDING)
+  paidAt         DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  organizationId String
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, workerId, periodStart])
+  @@index([workerId])
+  @@index([organizationId])
+}
+
+enum DailyPayMonthStatus {
+  PENDING
+  PAID
 }

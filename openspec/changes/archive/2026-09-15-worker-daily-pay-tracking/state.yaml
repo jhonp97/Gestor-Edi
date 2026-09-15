@@ -1,0 +1,63 @@
+# Pre-proposal state for the selected research lane of `worker-daily-pay-tracking`.
+# Store mode: openspec. Schema: gentle-ai.sdd-preproposal/v1 (lifecycle contract).
+schema: gentle-ai.sdd-preproposal/v1
+revision: 1
+change: worker-daily-pay-tracking
+updated_at: 2026-09-03
+store_mode: openspec
+
+exploration:
+  outcome: complete
+  reference: openspec/changes/worker-daily-pay-tracking/exploration.md
+  amendment: "AMENDMENT 1 (2026-09-03) — payment ledger removed; manual monthly PENDING|PAID marker with paidAt on the month-control row"
+
+research:
+  selected: true
+  lane: >-
+    Evidence-based modeling of a manual monthly worker paid marker (PENDING|PAID plus
+    paidAt) without payment processing, payment amounts, partial payments, paid
+    aggregates, balances, or overpayment.
+  questions:
+    - q1-paidat-state-invariant-postgres-prisma
+    - q2-transition-audit-pattern
+    - q3-idempotency-concurrency-mark-revert
+    - q4-separation-from-payroll-and-payment-providers
+  requested_source_classes: [documentation, open-web]
+  admission:
+    runtime_capability_schema: gentle-ai.sdd-research-capability/v1
+    declared_grants: [documentation, open-web]
+    observed_grants: [documentation]
+    denied_grants: [open-web]
+    denial_reason: >-
+      open-web declared but not observed in the session toolset; fail-closed per
+      contract. No claim depends on the denied grant; all four questions are
+      supported by documentation-class sources.
+    used_source_classes: [documentation]
+  outcome: done
+  questions_supported: 4
+  questions_total: 4
+  evidence:
+    openspec: openspec/changes/worker-daily-pay-tracking/research.md
+    engram: null
+  product_decisions_status: confirmed
+
+product_decisions: confirmed
+
+proposal_ready: true
+readiness_basis: >-
+  Research outcome=done with every question source-supported; product decisions
+  confirmed; evidence references valid; openspec store write succeeded and was read
+  back (same revision and bytes).
+
+handoff:
+  proposal_amendment_may_proceed: true
+  state_revision: 1
+  confirmed_decisions_reference: "exploration.md — AMENDMENT 1, Confirmed Product Correction (decisions, non-authoritative for research)"
+  evidence_references:
+    - openspec/changes/worker-daily-pay-tracking/research.md
+  research_pinned_conventions:
+    - "Row-local PostgreSQL CHECK constraint (hand-authored migration SQL; Prisma Migrate cannot declare CHECK) enforces PAID => paidAt NOT NULL / PENDING => paidAt NULL; Zod alone is insufficient"
+    - "State change + audit row written in one Prisma transaction; audit details carry actor, datetime, previous value, new value (OWASP shape); revert records the cleared paidAt in audit details"
+    - "Serializable interactive transactions with bounded retry on P2034/SQLSTATE 40001 (and deadlocks 40P01); unique (organizationId, workerId, periodStart) control row is the serialization anchor"
+    - "State-conflicting mark/revert surfaces as HTTP 409 Conflict (RFC 9110 semantics) or a pinned idempotent no-op — spec phase must pin the choice"
+    - "No FK/coupling between DailyPayMonthControl and Payroll; independence is enforced by construction and guarded by existing integration tests"

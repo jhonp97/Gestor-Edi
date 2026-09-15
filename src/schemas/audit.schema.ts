@@ -9,6 +9,8 @@ export const AuditActionSchema = z.enum([
   'CONSENT_CHANGE',
   'PASSWORD_CHANGE',
   'TWO_FACTOR_CHANGE',
+  'DAILY_PAY_MONTH_MARKED_PAID',
+  'DAILY_PAY_MONTH_MARKED_PENDING',
 ])
 
 export const AuditLogCreateSchema = z.object({

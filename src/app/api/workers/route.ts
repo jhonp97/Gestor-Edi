@@ -42,6 +42,8 @@ export async function POST(request: Request) {
       endDate: body.endDate ? new Date(body.endDate) : null,
       status: body.status ?? 'ACTIVE',
       truckId: body.truckId || null,
+      // La tarifa diaria se configura después por el endpoint de pago diario.
+      dailyRate: null,
     })
 
     revalidatePath('/workers')

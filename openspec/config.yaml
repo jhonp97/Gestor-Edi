@@ -1,0 +1,55 @@
+schema: spec-driven
+
+context: |
+  Project: Gestor-Edi (Flota Camiones PWA)
+  Stack: Next.js 16.2.2, React 19.2.4, TypeScript, Prisma 5.22.0, PostgreSQL
+  Architecture: App Router with service, repository, schema, and component layers
+  Testing: Vitest unit/integration, Playwright end-to-end, V8 coverage
+  Quality: ESLint and TypeScript compiler checks
+  Active change: worker-daily-pay-tracking; preserve existing planning and apply artifacts
+
+strict_tdd: true
+
+projects:
+  - path: "."
+    stack: "Next.js 16.2.2 / React 19.2.4 / TypeScript / Prisma 5.22.0"
+    test_command: "pnpm test:unit"
+    test_framework: "Vitest 4.1.2"
+    e2e_command: "pnpm test:e2e"
+    e2e_framework: "Playwright"
+    coverage_command: "pnpm test:coverage"
+    lint_command: "pnpm lint"
+    typecheck_command: "pnpm typecheck"
+    formatter_command: "—"
+
+testing:
+  strict_tdd: true
+  workspace_test_command: "pnpm test:unit"
+  projects:
+    - path: "."
+      unit: "pnpm test:unit"
+      integration: "pnpm test:unit"
+      e2e: "pnpm test:e2e"
+      coverage: "pnpm test:coverage"
+      lint: "pnpm lint"
+      typecheck: "pnpm typecheck"
+      formatter: "—"
+
+rules:
+  proposal:
+    - Preserve existing change artifacts; do not re-plan an active change.
+  specs:
+    - Use Given/When/Then scenarios and RFC 2119 keywords.
+  design:
+    - Document architecture decisions with rationale.
+  tasks:
+    - Preserve existing task ordering and completion evidence.
+  apply:
+    tdd: true
+    test_command: "pnpm test:unit"
+  verify:
+    test_command: "pnpm test:unit"
+    build_command: "pnpm build"
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas.

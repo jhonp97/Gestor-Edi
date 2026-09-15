@@ -9,6 +9,7 @@ import { DeleteWorkerButton } from '@/components/workers/delete-worker-button'
 import { ArrowLeft, Truck } from 'lucide-react'
 import { PayrollIndividualDialog } from '@/components/nomina/payroll-individual-dialog'
 import { decryptWorkerDni, detectDocType } from '@/lib/worker-utils'
+import { DailyPayPanel } from '@/components/workers/daily-pay/daily-pay-panel'
 
 const statusLabels: Record<string, string> = {
   ACTIVE: 'Activo',
@@ -147,6 +148,9 @@ export default async function WorkerDetailPage({
           </p>
         </CardContent>
       </Card>
+
+      {/* Daily Pay Panel */}
+      <DailyPayPanel workerId={worker.id} />
 
       {/* Actions */}
       <div className="flex gap-3">

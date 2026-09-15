@@ -1,9 +1,15 @@
+import { Prisma, type PrismaClient } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import type { AuditAction, AuditLogCreate } from '@/schemas/audit.schema'
 
 export class AuditLogRepository {
-  async create(data: AuditLogCreate) {
-    return prisma.auditLog.create({
+  /**
+   * Appends an immutable audit row. The client is the bare Prisma client by
+   * default; passing a transaction client lets a service write the audit
+   * atomically with the state change it describes (both commit or neither).
+   */
+  async create(data: AuditLogCreate, client: Prisma.TransactionClient | PrismaClient = prisma) {
+    return client.auditLog.create({
       data: {
         action: data.action as AuditAction,
         userId: data.userId,
