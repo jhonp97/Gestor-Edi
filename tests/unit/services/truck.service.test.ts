@@ -108,6 +108,27 @@ describe('TruckService', () => {
 
       await expect(service.create(invalidInput)).rejects.toThrow(ZodError)
     })
+
+    it('debería recortar espacios exteriores de los campos de texto', async () => {
+      const input = createTruckInput({
+        plate: '  DEF-2000  ',
+        brand: '  Mercedes Benz  ',
+        model: '  Actros  L  ',
+      })
+      const normalized = {
+        ...input,
+        plate: 'DEF-2000',
+        brand: 'Mercedes Benz',
+        model: 'Actros  L',
+      }
+      mockRepo.findByPlate.mockResolvedValue(null)
+      mockRepo.create.mockResolvedValue(createTruck(normalized))
+
+      await service.create(input)
+
+      expect(mockRepo.findByPlate).toHaveBeenCalledWith(normalized.plate)
+      expect(mockRepo.create).toHaveBeenCalledWith(normalized)
+    })
   })
 
   describe('update', () => {
@@ -120,6 +141,22 @@ describe('TruckService', () => {
 
       expect(result).toEqual(updated)
       expect(mockRepo.update).toHaveBeenCalledWith('truck-1', { brand: 'New Brand' })
+    })
+
+    it('debería recortar espacios exteriores antes de actualizar', async () => {
+      mockRepo.update.mockResolvedValue(createTruck())
+
+      await service.update('truck-1', {
+        plate: '  ABC-1234  ',
+        brand: '  Mercedes Benz  ',
+        model: '  Actros  L  ',
+      })
+
+      expect(mockRepo.update).toHaveBeenCalledWith('truck-1', {
+        plate: 'ABC-1234',
+        brand: 'Mercedes Benz',
+        model: 'Actros  L',
+      })
     })
   })
 

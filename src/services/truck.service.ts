@@ -1,5 +1,5 @@
 import { TruckRepository } from '@/repositories/truck.repository'
-import { createTruckSchema } from '@/schemas'
+import { createTruckSchema, updateTruckSchema } from '@/schemas'
 import type { CreateTruckInput } from '@/types'
 
 export class TruckService {
@@ -21,7 +21,8 @@ export class TruckService {
   }
 
   async update(id: string, input: Partial<CreateTruckInput>) {
-    return this.repo.update(id, input)
+    const validated = updateTruckSchema.parse(input)
+    return this.repo.update(id, validated)
   }
 
   async delete(id: string) {

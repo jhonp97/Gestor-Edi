@@ -1,12 +1,14 @@
 import { z } from 'zod'
 
 export const createTruckSchema = z.object({
-  plate: z.string().min(3).max(10).regex(/^[A-Z0-9-]+$/i, { error: 'Formato de matrícula inválido' }),
-  brand: z.string().min(2).max(50),
-  model: z.string().min(1).max(50),
+  plate: z.string().trim().min(3).max(10).regex(/^[A-Z0-9-]+$/i, { error: 'Formato de matrícula inválido' }),
+  brand: z.string().trim().min(2).max(50),
+  model: z.string().trim().min(1).max(50),
   year: z.number().int().min(1990).max(new Date().getFullYear() + 1),
   status: z.enum(['ACTIVE', 'MAINTENANCE', 'INACTIVE']).optional(),
 })
+
+export const updateTruckSchema = createTruckSchema.partial()
 
 export const createTransactionSchema = z.object({
   truckId: z.uuid(),

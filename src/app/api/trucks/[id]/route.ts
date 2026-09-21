@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth-edge'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
-import { createTruckSchema } from '@/schemas'
+import { updateTruckSchema } from '@/schemas'
 
 export async function GET(
   request: Request,
@@ -44,7 +44,6 @@ export async function PATCH(
     const { id } = await params
     const body = await request.json()
 
-    const updateTruckSchema = createTruckSchema.partial()
     const validated = updateTruckSchema.safeParse(body)
     if (!validated.success) {
       return NextResponse.json(
