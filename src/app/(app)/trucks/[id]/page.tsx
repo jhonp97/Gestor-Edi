@@ -47,6 +47,11 @@ export default async function TruckDetailPage({
     where: { id, organizationId: orgId },
     include: {
       workers: {
+        select: {
+          id: true,
+          name: true,
+          status: true,
+        },
         orderBy: { name: 'asc' },
       },
       transactions: {
@@ -170,12 +175,7 @@ export default async function TruckDetailPage({
                   href={`/workers/${worker.id}`}
                   className="flex flex-col gap-2 py-3 hover:text-primary transition-colors sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <div>
-                    <p className="font-medium">{worker.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {worker.position} · {worker.dni}
-                    </p>
-                  </div>
+                  <p className="font-medium">{worker.name}</p>
                   <Badge variant={worker.status === 'ACTIVE' ? 'default' : 'secondary'}>
                     {workerStatusLabels[worker.status] ?? worker.status}
                   </Badge>
