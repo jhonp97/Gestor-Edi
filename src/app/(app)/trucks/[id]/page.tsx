@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TruckEditDialog } from '@/components/trucks/truck-edit-dialog'
 import { TruckDeleteButton } from '@/components/trucks/truck-delete-button'
 import { WorkerDayOperationEntry } from '@/components/trucks/worker-day-operation-entry'
+import { TransactionForm } from '@/components/transactions/transaction-form'
 import Link from 'next/link'
 import { ArrowLeft, User, Gauge } from 'lucide-react'
 import { TruckMileageModal, TruckMileageSummary, TruckMileageHistory } from '@/components/trucks'
@@ -210,6 +211,11 @@ export default async function TruckDetailPage({
             <CardTitle>
               Transacciones ({truck.transactions.length})
             </CardTitle>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <TransactionForm
+              trucks={[{ id: truck.id, plate: truck.plate, brand: truck.brand, model: truck.model }]}
+              fixedTruckId={truck.id}
+            />
             {/* Filtros */}
             <form className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <select
@@ -236,6 +242,7 @@ export default async function TruckDetailPage({
                 Filtrar
               </button>
             </form>
+            </div>
           </div>
         </CardHeader>
         <CardContent>

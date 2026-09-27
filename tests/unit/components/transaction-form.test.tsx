@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TransactionForm } from '@/components/transactions/transaction-form'
 import type { Truck } from '@/types'
@@ -21,6 +21,28 @@ const truck = {
 describe('TransactionForm', () => {
   beforeEach(() => {
     mockFetch.mockReset()
+  })
+
+  it('keeps a fixed truck read-only across reset and submits both transaction types', async () => {
+    const user = userEvent.setup()
+    mockFetch.mockResolvedValue({ ok: true })
+    const otherTruck = { ...truck, id: 'other-truck', plate: '9999-XYZ' }
+    render(<TransactionForm trucks={[truck, otherTruck]} fixedTruckId={truck.id} />)
+
+    for (const type of ['INCOME', 'EXPENSE'] as const) {
+      await user.click(screen.getByRole('button', { name: 'Agregar Transacción' }))
+      expect(screen.getByText(/1234-ABC.*Volvo FH/)).toBeInTheDocument()
+      expect(screen.queryByLabelText('Camión', { selector: 'select' })).not.toBeInTheDocument()
+      expect(screen.queryByText(/9999-XYZ/)).not.toBeInTheDocument()
+      await user.selectOptions(screen.getByLabelText('Tipo'), type)
+      await user.type(screen.getByLabelText('Monto (€)'), '125')
+      await user.type(screen.getByLabelText('Descripción'), 'Servicio real')
+      await user.click(screen.getByRole('button', { name: 'Guardar Transacción' }))
+      await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(type === 'INCOME' ? 1 : 2))
+      const body = JSON.parse(mockFetch.mock.calls.at(-1)![1].body)
+      expect(body.truckId).toBe(truck.id)
+      expect(body.type).toBe(type)
+    }
   })
 
   it('ofrece sugerencias coherentes con el tipo sin cerrar la entrada', async () => {

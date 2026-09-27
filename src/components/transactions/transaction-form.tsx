@@ -16,7 +16,8 @@ import { Plus } from 'lucide-react'
 import type { Truck } from '@/types'
 
 interface TransactionFormProps {
-  trucks: Truck[]
+  trucks: Pick<Truck, 'id' | 'plate' | 'brand' | 'model'>[]
+  fixedTruckId?: string
 }
 
 const selectClass = 'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
@@ -26,10 +27,11 @@ const CATEGORY_SUGGESTIONS = {
   INCOME: ['Servicios de transporte', 'Venta de activos', 'Otros ingresos'],
 } as const
 
-export function TransactionForm({ trucks }: TransactionFormProps) {
+export function TransactionForm({ trucks, fixedTruckId }: TransactionFormProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [truckId, setTruckId] = useState('')
+  const [truckId, setTruckId] = useState(fixedTruckId ?? '')
+  const fixedTruck = trucks.find((truck) => truck.id === fixedTruckId)
   const [type, setType] = useState<'INCOME' | 'EXPENSE'>('EXPENSE')
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
@@ -39,7 +41,7 @@ export function TransactionForm({ trucks }: TransactionFormProps) {
   const [loading, setLoading] = useState(false)
 
   function resetForm() {
-    setTruckId('')
+    setTruckId(fixedTruckId ?? '')
     setType('EXPENSE')
     setAmount('')
     setDescription('')
@@ -58,7 +60,7 @@ export function TransactionForm({ trucks }: TransactionFormProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          truckId,
+          truckId: fixedTruckId ?? truckId,
           type,
           amount: parseFloat(amount),
           description,
@@ -99,7 +101,11 @@ export function TransactionForm({ trucks }: TransactionFormProps) {
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           <div className="space-y-1">
             <Label htmlFor="tx-truck">Camión</Label>
-            <select
+            {fixedTruckId ? (
+              <p id="tx-truck" className="rounded-md border border-input px-3 py-2">
+                {fixedTruck ? `${fixedTruck.plate} — ${fixedTruck.brand} ${fixedTruck.model}` : 'Camión no disponible'}
+              </p>
+            ) : <select
               id="tx-truck"
               value={truckId}
               onChange={(e) => setTruckId(e.target.value)}
@@ -112,7 +118,7 @@ export function TransactionForm({ trucks }: TransactionFormProps) {
                   {t.plate} — {t.brand} {t.model}
                 </option>
               ))}
-            </select>
+            </select>}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -195,7 +201,7 @@ export function TransactionForm({ trucks }: TransactionFormProps) {
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || (!!fixedTruckId && !fixedTruck)}>
               {loading ? 'Guardando...' : 'Guardar Transacción'}
             </Button>
           </div>
