@@ -263,6 +263,137 @@ describe('DailyPayPanel', () => {
     })
   })
 
+  it('ignores an older month GET arriving after the latest worker request', async () => {
+    let resolveOld!: (value: unknown) => void
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes('/history?')) return Promise.resolve({ ok: true, json: async () => ({ months: [] }) })
+      if (url.includes('/workers/w1/')) return new Promise(resolve => { resolveOld = resolve })
+      return Promise.resolve({ ok: true, json: async () => monthDto({ status: 'PAID', dailyRate: '240.00' }) })
+    })
+    const { rerender } = render(<DailyPayPanel workerId="w1" />)
+    await waitFor(() => expect(resolveOld).toBeTypeOf('function'))
+    rerender(<DailyPayPanel workerId="w2" />)
+    expect(await screen.findByText('Pagado')).toBeInTheDocument()
+    resolveOld({ ok: true, json: async () => monthDto({ dailyRate: '100.00' }) })
+    await waitFor(() => expect(screen.getByLabelText('Tarifa diaria')).toHaveValue(240))
+    expect(screen.getByRole('button', { name: 'Marcar día' })).toBeDisabled()
+  })
+
+  it('starts DELETE month and history refresh together and blocks stale edits when month fails', async () => {
+    const date = todayCivil()
+    const calls: string[] = []
+    let resolveMonth!: (value: unknown) => void
+    let resolveHistory!: (value: unknown) => void
+    let deleted = false
+    mockFetch.mockImplementation((url: string, options?: { method?: string }) => {
+      if (options?.method === 'DELETE') { calls.push('DELETE'); deleted = true; return Promise.resolve({ ok: true }) }
+      if (url.includes('/operations/days/')) return Promise.resolve({ ok: true, json: async () => ({ date, operation: null }) })
+      if (deleted && url.includes('/history?')) { calls.push('history'); return new Promise(resolve => { resolveHistory = resolve }) }
+      if (deleted && url.includes('periodStart=')) { calls.push('month'); return new Promise(resolve => { resolveMonth = resolve }) }
+      return Promise.resolve({ ok: true, json: async () => url.includes('/history?') ? { months: [] } : monthDto({ days: [{ date, rateSnapshot: '100.00' }] }) })
+    })
+    const user = userEvent.setup()
+    render(<DailyPayPanel workerId="w1" />)
+    await screen.findByText(/detalles históricos/)
+    await user.click(screen.getByRole('button', { name: 'Quitar día' }))
+    await waitFor(() => expect(calls).toEqual(['DELETE', 'month', 'history']))
+    resolveHistory({ ok: true, json: async () => ({ months: [] }) })
+    resolveMonth({ ok: false })
+    expect(await screen.findByText('Error al cargar datos del mes')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Quitar día' })).not.toBeInTheDocument()
+    expect(mockFetch.mock.calls.filter(([, options]) => options?.method === 'DELETE')).toHaveLength(1)
+  })
+
+  it('keeps a saved rate when an older toggle refresh GET finishes afterward', async () => {
+    const user = userEvent.setup()
+    let resolveOldMonth!: (value: unknown) => void
+    let resolveHistory!: (value: unknown) => void
+    let toggled = false
+    mockFetch.mockImplementation((url: string, options?: { method?: string }) => {
+      if (options?.method === 'PUT') {
+        toggled = true
+        return Promise.resolve({ ok: true })
+      }
+      if (options?.method === 'PATCH') return Promise.resolve({
+        ok: true,
+        json: async () => monthDto({ dailyRate: '125.00', totals: { accrued: '125.00' }, days: [{ date: todayCivil(), rateSnapshot: '125.00' }] }),
+      })
+      if (toggled && url.includes('/history?')) return new Promise(resolve => { resolveHistory = resolve })
+      if (toggled && url.includes('periodStart=')) return new Promise(resolve => { resolveOldMonth = resolve })
+      return Promise.resolve({ ok: true, json: async () => url.includes('/history?') ? { months: [] } : monthDto() })
+    })
+    render(<DailyPayPanel workerId="w1" />)
+    await screen.findByRole('button', { name: 'Marcar día' })
+    await user.click(screen.getByRole('button', { name: 'Marcar día' }))
+    await waitFor(() => expect(resolveOldMonth).toBeTypeOf('function'))
+    await waitFor(() => expect(resolveHistory).toBeTypeOf('function'))
+    const input = screen.getByLabelText('Tarifa diaria')
+    await user.clear(input)
+    await user.type(input, '125')
+    await user.click(screen.getByRole('button', { name: 'Guardar tarifa' }))
+    expect(await screen.findByText('Tarifa diaria guardada.')).toBeInTheDocument()
+    expect(input).toHaveValue(125)
+    resolveOldMonth({ ok: true, json: async () => monthDto({ dailyRate: '100.00' }) })
+    resolveHistory({ ok: true, json: async () => ({ months: [] }) })
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Quitar día' })).toBeInTheDocument())
+    expect(input).toHaveValue(125)
+    expect(screen.getAllByText('125.00').length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('starts independent history refresh before the deferred month response after PUT', async () => {
+    const user = userEvent.setup()
+    const calls: string[] = []
+    let resolveMonth!: (value: unknown) => void
+    let resolveHistory!: (value: unknown) => void
+    let refreshing = false
+    mockFetch.mockImplementation((url: string, options?: { method?: string }) => {
+      if (options?.method === 'PUT') {
+        refreshing = true
+        calls.push('PUT')
+        return Promise.resolve({ ok: true })
+      }
+      if (refreshing && url.includes('/history?')) {
+        calls.push('history')
+        return new Promise(resolve => { resolveHistory = resolve })
+      }
+      if (refreshing && url.includes('periodStart=')) {
+        calls.push('month')
+        return new Promise(resolve => { resolveMonth = resolve })
+      }
+      return Promise.resolve({ ok: true, json: async () => url.includes('/history?') ? { months: [] } : monthDto() })
+    })
+    render(<DailyPayPanel workerId="w1" />)
+    await screen.findByRole('button', { name: 'Marcar día' })
+    await user.click(screen.getByRole('button', { name: 'Marcar día' }))
+    await waitFor(() => expect(calls).toContain('month'))
+    expect(calls).toEqual(['PUT', 'month', 'history'])
+    resolveHistory({ ok: true, json: async () => ({ months: [] }) })
+    resolveMonth({ ok: true, json: async () => monthDto({ days: [{ date: todayCivil(), rateSnapshot: '100.00' }] }) })
+    expect(await screen.findByRole('button', { name: 'Quitar día' })).toBeDisabled()
+  })
+
+  it('keeps DELETE guarded until detail confirms legacy, and ignores failed history after PAID refresh', async () => {
+    const user = userEvent.setup()
+    const date = todayCivil()
+    let resolveDetail!: (value: unknown) => void
+    let paid = false
+    mockFetch.mockImplementation((url: string, options?: { method?: string }) => {
+      if (url.includes('/operations/days/')) return new Promise(resolve => { resolveDetail = resolve })
+      if (options?.method === 'DELETE') throw new Error('DELETE must remain guarded')
+      if (options?.method === 'POST') { paid = true; return Promise.resolve({ ok: true }) }
+      if (url.includes('/history?')) return paid ? Promise.reject(new Error('history unavailable')) : Promise.resolve({ ok: true, json: async () => ({ months: [] }) })
+      return Promise.resolve({ ok: true, json: async () => monthDto({ status: paid ? 'PAID' : 'PENDING', days: [{ date, rateSnapshot: '100.00' }] }) })
+    })
+    render(<DailyPayPanel workerId="w1" />)
+    await waitFor(() => expect(resolveDetail).toBeTypeOf('function'))
+    expect(screen.getByRole('button', { name: 'Quitar día' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Marcar como pagado' }))
+    expect(await screen.findByText('Pagado')).toBeInTheDocument()
+    resolveDetail({ ok: true, json: async () => ({ date, operation: null }) })
+    expect(screen.getByRole('button', { name: 'Quitar día' })).toBeDisabled()
+    expect(mockFetch.mock.calls.some(([, options]) => options?.method === 'DELETE')).toBe(false)
+  })
+
   it('marca un día pasado seleccionado con la ruta específica', async () => {
     const user = userEvent.setup()
     render(<DailyPayPanel workerId="w1" />)

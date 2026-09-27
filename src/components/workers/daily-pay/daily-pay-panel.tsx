@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -50,6 +50,8 @@ export function DailyPayPanel({ workerId, trucks = [] }: DailyPayPanelProps) {
   const [selectedDate, setSelectedDate] = useState(today)
   const [year, setYear] = useState(() => Number(today.slice(0, 4)))
   const [history, setHistory] = useState<HistoryMonth[]>([])
+  const monthRequest = useRef(0)
+  const historyRequest = useRef(0)
   const [dailyRateInput, setDailyRateInput] = useState('')
   const [isSavingRate, setIsSavingRate] = useState(false)
   const [isUpdatingDay, setIsUpdatingDay] = useState(false)
@@ -83,17 +85,18 @@ export function DailyPayPanel({ workerId, trucks = [] }: DailyPayPanelProps) {
 
   useEffect(() => {
     let cancelled = false
+    const request = ++monthRequest.current
 
     void fetchMonth()
       .then((data) => {
-        if (!cancelled) {
+        if (!cancelled && request === monthRequest.current) {
           setMonth(data)
           setDailyRateInput(data.dailyRate ?? '')
           setError(null)
         }
       })
       .catch(() => {
-        if (!cancelled) setError('Error al cargar datos del mes')
+        if (!cancelled && request === monthRequest.current) setError('Error al cargar datos del mes')
       })
 
     return () => {
@@ -103,10 +106,11 @@ export function DailyPayPanel({ workerId, trucks = [] }: DailyPayPanelProps) {
 
   useEffect(() => {
     let cancelled = false
+    const request = ++historyRequest.current
 
     void fetchHistory()
       .then((data) => {
-        if (!cancelled) setHistory(data)
+        if (!cancelled && request === historyRequest.current) setHistory(data)
       })
       .catch(() => {
         // History failure is non-blocking
@@ -120,20 +124,28 @@ export function DailyPayPanel({ workerId, trucks = [] }: DailyPayPanelProps) {
   const loading = month === null && error === null
 
   async function refreshData() {
-    try {
-      const data = await fetchMonth()
-      setMonth(data)
-      setDailyRateInput(data.dailyRate ?? '')
-      setError(null)
-    } catch {
-      setError('Error al cargar datos del mes')
-    }
-
-    try {
-      setHistory(await fetchHistory())
-    } catch {
-      // History failure is non-blocking
-    }
+    const monthId = ++monthRequest.current
+    const historyId = ++historyRequest.current
+    const monthRefresh = (async () => {
+      try {
+        const data = await fetchMonth()
+        if (monthId !== monthRequest.current) return
+        setMonth(data)
+        setDailyRateInput(data.dailyRate ?? '')
+        setError(null)
+      } catch {
+        if (monthId === monthRequest.current) setError('Error al cargar datos del mes')
+      }
+    })()
+    const historyRefresh = (async () => {
+      try {
+        const data = await fetchHistory()
+        if (historyId === historyRequest.current) setHistory(data)
+      } catch {
+        // History failure is non-blocking
+      }
+    })()
+    await Promise.all([monthRefresh, historyRefresh])
   }
 
   async function saveDailyRate(event: React.FormEvent<HTMLFormElement>) {
@@ -173,6 +185,7 @@ export function DailyPayPanel({ workerId, trucks = [] }: DailyPayPanelProps) {
       }
 
       const data: MonthData = await res.json()
+      ++monthRequest.current
       setMonth(data)
       setDailyRateInput(data.dailyRate ?? '')
       setError(null)
