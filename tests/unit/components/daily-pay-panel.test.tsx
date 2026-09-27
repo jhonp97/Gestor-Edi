@@ -44,6 +44,72 @@ describe('DailyPayPanel', () => {
     vi.restoreAllMocks()
   })
 
+  it('shows operational detail and guards removal without changing paid snapshot', async () => {
+    const date = todayCivil()
+    mockFetch.mockImplementation((url: string) => Promise.resolve({ ok: true, json: async () =>
+      url.includes('/operations/days/')
+        ? { date, operation: { companyName: 'Acme', segments: [{ truckId: 't1', share: 100, kilometers: '42', incident: 'Pinchazo' }] } }
+        : monthDto({ status: 'PAID', days: [{ date, rateSnapshot: '100.00' }], totals: { accrued: '100.00' } }) }))
+    render(<DailyPayPanel workerId="w1" trucks={[{ id: 't1', name: 'Volvo FH (ABC123)' }]} />)
+    expect(await screen.findByText('Acme')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Volvo FH/ })).toHaveAttribute('href', '/trucks/t1')
+    expect(screen.getByText('Pinchazo')).toBeInTheDocument()
+    expect(screen.getAllByText('100.00')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'Quitar día' })).toBeDisabled()
+    expect(mockFetch.mock.calls.some(([url, options]) => String(url).includes('/daily-pay/days/') && options?.method === 'DELETE')).toBe(false)
+  })
+
+  it('reads an earlier operational day in a paid current month without allowing deletion', async () => {
+    const date = currentPeriodStart()
+    mockFetch.mockImplementation((url: string) => Promise.resolve({ ok: true, json: async () =>
+      url.includes('/operations/days/')
+        ? { date, operation: { companyName: 'Acme', segments: [{ truckId: 't1', share: 100, kilometers: null, incident: null }] } }
+        : monthDto({ status: 'PAID', days: [{ date, rateSnapshot: '100.00' }] }) }))
+    const user = userEvent.setup()
+    render(<DailyPayPanel workerId="w1" trucks={[{ id: 't1', name: 'Volvo FH' }]} />)
+    const input = await screen.findByLabelText('Fecha trabajada')
+    expect(input).toBeEnabled()
+    await user.clear(input)
+    await user.type(input, date)
+    expect(await screen.findByText('Acme')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Volvo FH' })).toHaveAttribute('href', '/trucks/t1')
+    expect(screen.getByRole('button', { name: 'Quitar día' })).toBeDisabled()
+    expect(mockFetch.mock.calls.some(([, options]) => options?.method === 'DELETE' || options?.method === 'PUT')).toBe(false)
+  })
+
+  it('does not treat a failed operation request as a legacy day', async () => {
+    const date = todayCivil()
+    mockFetch.mockImplementation((url: string) => url.includes('/operations/days/')
+      ? Promise.reject(new Error('offline'))
+      : Promise.resolve({ ok: true, json: async () => monthDto({ days: [{ date, rateSnapshot: '100.00' }] }) }))
+    render(<DailyPayPanel workerId="w1" />)
+    expect(await screen.findByText(/No se pudieron cargar los detalles/)).toBeInTheDocument()
+    expect(screen.queryByText(/detalles históricos/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Quitar día' })).toBeDisabled()
+  })
+
+  it('ignores a late response from a previously selected date', async () => {
+    const first = currentPeriodStart()
+    const second = todayCivil()
+    let resolveFirst!: (value: unknown) => void
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes(`/operations/days/${first}`)) return new Promise(resolve => { resolveFirst = resolve })
+      if (url.includes('/operations/days/')) return Promise.resolve({ ok: true, json: async () => ({ date: second, operation: null }) })
+      return Promise.resolve({ ok: true, json: async () => monthDto({ days: [first, second].map(date => ({ date, rateSnapshot: '100.00' })) }) })
+    })
+    const user = userEvent.setup()
+    render(<DailyPayPanel workerId="w1" />)
+    const input = await screen.findByLabelText('Fecha trabajada')
+    await user.clear(input)
+    await user.type(input, first)
+    await waitFor(() => expect(resolveFirst).toBeTypeOf('function'))
+    await user.clear(input)
+    await user.type(input, second)
+    await screen.findByText(/detalles históricos/)
+    resolveFirst({ ok: true, json: async () => ({ date: first, operation: { companyName: 'Stale', segments: [] } }) })
+    await waitFor(() => expect(screen.queryByText('Stale')).not.toBeInTheDocument())
+  })
+
   it('muestra estado de carga', () => {
     mockFetch.mockReturnValue(new Promise(() => {}))
     render(<DailyPayPanel workerId="w1" />)
@@ -231,13 +297,12 @@ describe('DailyPayPanel', () => {
   it('quita el día seleccionado cuando ya está registrado', async () => {
     const user = userEvent.setup()
     const pastDate = currentPeriodStart()
-    mockFetch.mockResolvedValue({
+    mockFetch.mockImplementation((url: string) => Promise.resolve({
       ok: true,
-      json: async () => monthDto({
-        days: [{ date: pastDate, rateSnapshot: '100.00' }],
-        totals: { accrued: '100.00' },
-      }),
-    })
+      json: async () => url.includes('/operations/days/')
+        ? { date: pastDate, operation: null }
+        : monthDto({ days: [{ date: pastDate, rateSnapshot: '100.00' }], totals: { accrued: '100.00' } }),
+    }))
     render(<DailyPayPanel workerId="w1" />)
 
     const dateInput = await screen.findByLabelText('Fecha trabajada')
@@ -246,11 +311,15 @@ describe('DailyPayPanel', () => {
     await user.clear(dateInput)
     await user.type(dateInput, pastDate)
 
-    const removeButton = screen.getByRole('button', { name: /quitar día/i })
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledWith(
+      `/api/workers/w1/operations/days/${pastDate}`, expect.any(Object)
+    ))
+    // A legacy day is explicitly confirmed by the operation endpoint.
     mockFetch.mockReset()
     mockFetch.mockResolvedValueOnce({ ok: true })
     mockFetch.mockResolvedValue({ ok: true, json: async () => monthDto() })
-    await user.click(removeButton)
+    await screen.findByText(/detalles históricos/)
+    await user.click(screen.getByRole('button', { name: /quitar día/i }))
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
@@ -260,7 +329,7 @@ describe('DailyPayPanel', () => {
     })
   })
 
-  it('deshabilita la fecha y la acción cuando no hay tarifa positiva', async () => {
+  it('permite seleccionar fecha pero no editar cuando no hay tarifa positiva', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => monthDto({ dailyRate: null }),
@@ -268,7 +337,7 @@ describe('DailyPayPanel', () => {
     render(<DailyPayPanel workerId="w1" />)
 
     const dateInput = await screen.findByLabelText('Fecha trabajada')
-    expect(dateInput).toBeDisabled()
+    expect(dateInput).toBeEnabled()
     expect(screen.getByRole('button', { name: /marcar día/i })).toBeDisabled()
     expect(screen.getByLabelText('Tarifa diaria')).toBeEnabled()
     expect(screen.getByRole('button', { name: /guardar tarifa/i })).toBeEnabled()

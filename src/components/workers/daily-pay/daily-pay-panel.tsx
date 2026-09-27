@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -33,12 +34,16 @@ interface MonthData {
 
 interface DailyPayPanelProps {
   workerId: string
+  trucks?: { id: string; name: string }[]
 }
+
+type Operation = { companyName: string; segments: { truckId: string; share: number; kilometers: string | null; incident: string | null }[] }
+type DayDetail = { date: string; operation: Operation | null }
 
 const DAILY_RATE_HELPER = 'Déjala vacía para quitar la tarifa diaria.'
 const DECIMAL_RATE_PATTERN = /^\d+(\.\d+)?$/
 
-export function DailyPayPanel({ workerId }: DailyPayPanelProps) {
+export function DailyPayPanel({ workerId, trucks = [] }: DailyPayPanelProps) {
   const [month, setMonth] = useState<MonthData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [today] = useState(() => formatCivilDate(new Date()))
@@ -49,6 +54,9 @@ export function DailyPayPanel({ workerId }: DailyPayPanelProps) {
   const [isSavingRate, setIsSavingRate] = useState(false)
   const [isUpdatingDay, setIsUpdatingDay] = useState(false)
   const [dayError, setDayError] = useState<string | null>(null)
+  const [detail, setDetail] = useState<DayDetail | null>(null)
+  const [detailError, setDetailError] = useState(false)
+  const [detailLoading, setDetailLoading] = useState(false)
   const [rateFeedback, setRateFeedback] = useState({
     message: DAILY_RATE_HELPER,
     isError: false,
@@ -186,7 +194,32 @@ export function DailyPayPanel({ workerId }: DailyPayPanelProps) {
 
   const isSelectedDateMarked = month?.days.some((day) => day.date === selectedDate) ?? false
 
+  useEffect(() => {
+    if (!month?.days.some(day => day.date === selectedDate)) return
+    let cancelled = false
+    const controller = new AbortController()
+    // Clear the previous selection immediately; failures must never look like legacy data.
+    void Promise.resolve().then(async () => {
+      if (cancelled) return
+      setDetail(null)
+      setDetailError(false)
+      setDetailLoading(true)
+      try {
+        const res = await fetch(`/api/workers/${workerId}/operations/days/${selectedDate}`, { signal: controller.signal })
+        if (!res.ok) throw new Error('Failed to load operation')
+        const data: DayDetail = await res.json()
+        if (!cancelled) setDetail(data)
+      } catch {
+        if (!cancelled) setDetailError(true)
+      } finally {
+        if (!cancelled) setDetailLoading(false)
+      }
+    })
+    return () => { cancelled = true; controller.abort() }
+  }, [workerId, selectedDate, month])
+
   async function toggleSelectedDate() {
+    if (dayEditingDisabled || isSelectedDateMarked && (detailLoading || detailError || !detail || detail.operation)) return
     const method = isSelectedDateMarked ? 'DELETE' : 'PUT'
     setIsUpdatingDay(true)
     setDayError(null)
@@ -260,6 +293,8 @@ export function DailyPayPanel({ workerId }: DailyPayPanelProps) {
 
   const noRate = !month?.dailyRate || Number(month.dailyRate) <= 0
   const dayEditingDisabled = month?.status === 'PAID' || noRate || isUpdatingDay
+  const selectedDetail = isSelectedDateMarked && detail?.date === selectedDate ? detail : null
+  const removalGuarded = isSelectedDateMarked && (detailLoading || detailError || !selectedDetail || !!selectedDetail.operation)
 
   return (
     <div className="space-y-4">
@@ -344,9 +379,11 @@ export function DailyPayPanel({ workerId }: DailyPayPanelProps) {
                   value={selectedDate}
                   onChange={(event) => {
                     setSelectedDate(event.target.value)
+                    setDetail(null)
+                    setDetailError(false)
+                    setDetailLoading(true)
                     setDayError(null)
                   }}
-                  disabled={dayEditingDisabled}
                   aria-describedby="selected-worked-day daily-pay-day-error"
                 />
                 <p id="selected-worked-day" className="text-xs text-muted-foreground">
@@ -358,7 +395,7 @@ export function DailyPayPanel({ workerId }: DailyPayPanelProps) {
                 size="sm"
                 className="w-full sm:w-auto"
                 onClick={toggleSelectedDate}
-                disabled={dayEditingDisabled}
+                disabled={dayEditingDisabled || removalGuarded}
                 aria-label={isSelectedDateMarked ? 'Quitar día' : 'Marcar día'}
               >
                 {isUpdatingDay
@@ -368,6 +405,24 @@ export function DailyPayPanel({ workerId }: DailyPayPanelProps) {
                     : 'Marcar día'}
               </Button>
             </div>
+            {isSelectedDateMarked && (
+              <div className="space-y-2 text-sm" aria-live="polite">
+                {detailLoading && <p>Cargando detalles del día...</p>}
+                {detailError && <p role="alert">No se pudieron cargar los detalles. Reintentá seleccionando la fecha nuevamente; no se puede quitar el día sin verificarlo.</p>}
+                {selectedDetail?.operation === null && <p>Los detalles históricos de este día son desconocidos. Solo se puede quitar este registro legado desde aquí.</p>}
+                {selectedDetail?.operation && <div className="space-y-1">
+                  <p>Empresa: <span>{selectedDetail.operation.companyName}</span></p>
+                  <p>Este día tiene una operación: editá el registro desde el detalle del camión; no se puede quitar desde pago diario.</p>
+                  {selectedDetail.operation.segments.map((segment, index) => (
+                    <div key={segment.truckId}>
+                      <p>{index === 0 ? 'Camión principal' : 'Camión de reemplazo'}: <Link className="underline" href={`/trucks/${segment.truckId}`}>{trucks.find(truck => truck.id === segment.truckId)?.name ?? 'Camión registrado'}</Link></p>
+                      <p>Actividad: {segment.share}% · Kilómetros: {segment.kilometers ?? 'Sin registrar'}</p>
+                      {segment.incident && <p>Incidente: <span>{segment.incident}</span></p>}
+                    </div>
+                  ))}
+                </div>}
+              </div>
+            )}
             {dayError && (
               <p id="daily-pay-day-error" className="text-sm text-destructive" role="alert">
                 {dayError}
