@@ -20,6 +20,7 @@ model Truck {
   transactions   Transaction[]
   workers        Worker[]
   mileages       TruckMileage[]
+  operationalSegments WorkerDayTruckSegment[]
 
   organizationId  String
   organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -158,6 +159,8 @@ model Organization {
   auditLogs    AuditLog[]
   dailyPayDays   DailyPayDay[]
   dailyPayMonths  DailyPayMonthControl[]
+  workerDayOperations WorkerDayOperation[]
+  workerDaySegments WorkerDayTruckSegment[]
 
   @@index([ownerId])
 }
@@ -332,10 +335,45 @@ model DailyPayDay {
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  operation      WorkerDayOperation?
 
   @@unique([workerId, workDate])
   @@index([workerId])
   @@index([workDate])
+  @@index([organizationId])
+}
+
+model WorkerDayOperation {
+  id             String @id @default(uuid())
+  dailyPayDayId  String @unique
+  dailyPayDay    DailyPayDay @relation(fields: [dailyPayDayId], references: [id], onDelete: Cascade)
+  companyName    String @db.VarChar(160)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  segments       WorkerDayTruckSegment[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+model WorkerDayTruckSegment {
+  id             String @id @default(uuid())
+  operationId    String
+  operation      WorkerDayOperation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  truckId        String
+  truck          Truck @relation(fields: [truckId], references: [id], onDelete: Restrict)
+  workDate       DateTime @db.Date
+  position       Int
+  share          Int
+  kilometers     Decimal? @db.Decimal(12, 2)
+  incident       String? @db.VarChar(1000)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([truckId, workDate])
+  @@unique([operationId, position])
+  @@index([operationId])
   @@index([organizationId])
 }
 
