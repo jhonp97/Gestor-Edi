@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TruckEditDialog } from '@/components/trucks/truck-edit-dialog'
 import { TruckDeleteButton } from '@/components/trucks/truck-delete-button'
+import { WorkerDayOperationEntry } from '@/components/trucks/worker-day-operation-entry'
 import Link from 'next/link'
 import { ArrowLeft, User, Gauge } from 'lucide-react'
 import { TruckMileageModal, TruckMileageSummary, TruckMileageHistory } from '@/components/trucks'
@@ -65,6 +66,11 @@ export default async function TruckDetailPage({
   })
 
   if (!truck) notFound()
+
+  const [workers, trucks] = await Promise.all([
+    prisma.worker.findMany({ where: { organizationId: orgId }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+    prisma.truck.findMany({ where: { organizationId: orgId }, select: { id: true, brand: true, model: true, plate: true }, orderBy: { plate: 'asc' } }),
+  ])
 
   const totalIncome = truck.transactions
     .filter((t) => t.type === 'INCOME')
@@ -144,6 +150,17 @@ export default async function TruckDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader><CardTitle>Jornada operativa</CardTitle></CardHeader>
+        <CardContent>
+          <WorkerDayOperationEntry
+            truckId={truck.id}
+            workers={workers.map(worker => ({ id: worker.id, name: worker.name }))}
+            trucks={trucks.map(item => ({ id: item.id, name: `${item.plate} · ${item.brand} ${item.model}` }))}
+          />
+        </CardContent>
+      </Card>
 
       {/* Kilometraje */}
       <div className="space-y-4">
