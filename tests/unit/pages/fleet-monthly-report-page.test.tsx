@@ -6,7 +6,7 @@ vi.mock('next/navigation', () => ({ notFound: mocks.notFound, redirect: mocks.re
 vi.mock('@/lib/prisma', () => ({ prisma: { truck: { findMany: mocks.trucks }, transaction: { findMany: mocks.transactions }, workerDayTruckSegment: { findMany: mocks.segments } } }))
 import Page from '@/app/(app)/trucks/report/page'
 
-const page = (params: { month?: string | string[]; truck?: string | string[] } = {}) => Page({ searchParams: Promise.resolve(params) })
+const page = (params: { month?: string | string[]; truck?: string | string[]; period?: string | string[] } = {}) => Page({ searchParams: Promise.resolve(params) })
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.session.mockResolvedValue({ user: { organizationId: 'tenant-a' } })
@@ -23,7 +23,7 @@ it('redirects unauthenticated requests before any database read', async () => {
 })
 
 it('rejects invalid month and repeated/invalid truck selections before database reads', async () => {
-  for (const params of [{ month: '2026-13' }, { truck: ['owned', 'other'] }, { truck: 'bad/id' }]) {
+  for (const params of [{ month: '2026-13' }, { truck: ['owned', 'other'] }, { truck: 'bad/id' }, { period: 'week' }, { period: ['month', 'year'] }]) {
     await expect(page(params)).rejects.toThrow('NOT_FOUND')
   }
   expect(mocks.trucks).not.toHaveBeenCalled()

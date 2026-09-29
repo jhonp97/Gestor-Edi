@@ -1,11 +1,58 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 
 const queries = vi.hoisted(() => ({ transactions: vi.fn().mockResolvedValue([]), segments: vi.fn().mockResolvedValue([]), trucks: vi.fn().mockResolvedValue([{ id: 'truck-a', plate: 'AAA' }, { id: 'truck-b', plate: 'BBB' }]) }))
 vi.mock('@/lib/prisma', () => ({ prisma: { transaction: { findMany: queries.transactions }, workerDayTruckSegment: { findMany: queries.segments }, truck: { findMany: queries.trucks } } }))
-import { madridMonthRange, resolveReportMonth, recordedTotals, loadTruckMonthlyReport, loadFleetMonthlyReport, recordedAmount, sanitizeTransactionFilters } from '@/lib/truck-monthly-report'
+import { madridMonthRange, resolveReportMonth, resolveReportPeriod, madridPeriodRange, recordedTotals, loadTruckMonthlyReport, loadFleetMonthlyReport, recordedAmount, sanitizeTransactionFilters } from '@/lib/truck-monthly-report'
+
+beforeEach(() => { queries.transactions.mockReset().mockResolvedValue([]); queries.segments.mockReset().mockResolvedValue([]); queries.trucks.mockReset().mockResolvedValue([{ id: 'truck-a', plate: 'AAA' }, { id: 'truck-b', plate: 'BBB' }]) })
 
 describe('fleet monthly report', () => {
+  it('resolves calendar periods across year and DST boundaries', () => {
+    expect(resolveReportPeriod(undefined)).toBe('month')
+    for (const invalid of ['weekly', '', ['quarter', 'year']]) expect(() => resolveReportPeriod(invalid)).toThrow()
+    expect(madridPeriodRange('2026-12', 'quarter')).toEqual({ start: new Date('2026-09-30T22:00:00Z'), end: new Date('2026-12-31T23:00:00Z'), civilStart: new Date('2026-10-01T00:00:00Z'), civilEnd: new Date('2027-01-01T00:00:00Z') })
+    expect(madridPeriodRange('2026-03', 'half-year').end).toEqual(new Date('2026-06-30T22:00:00Z'))
+    expect(madridPeriodRange('2026-08', 'half-year').civilStart).toEqual(new Date('2026-07-01T00:00:00Z'))
+    expect(madridPeriodRange('2026-01', 'year').end).toEqual(new Date('2026-12-31T23:00:00Z'))
+  })
+  it('pages aggregate-only rows with exact decimal totals and unique split days', async () => {
+    const transaction = (id: string, truckId: string) => ({ id, truckId, type: 'INCOME', amount: 1.005 })
+    const transactions = Array.from({ length: 201 }, (_, i) => transaction(`t${String(i).padStart(3, '0')}`, i === 0 || i === 200 ? 'truck-a' : 'truck-b'))
+    const segments = Array.from({ length: 201 }, (_, i) => ({ id: `s${String(i).padStart(3, '0')}`, operation: { dailyPayDay: { id: i === 200 ? 'other' : 'day' } } }))
+    const page = <T extends { id: string }>(rows: T[], args: { cursor?: { id: string }; skip?: number; take: number; orderBy: { id: string } }) => {
+      expect(args.orderBy).toEqual({ id: 'asc' })
+      expect(args.take).toBe(200)
+      const index = args.cursor ? rows.findIndex(row => row.id === args.cursor!.id) : -1
+      if (args.cursor) { expect(index).toBeGreaterThanOrEqual(0); expect(args.skip).toBe(1) }
+      return rows.slice(index + 1, index + 1 + args.take)
+    }
+    queries.transactions.mockImplementation(async args => { expect(queries.transactions.mock.calls.length).toBeLessThanOrEqual(3); return page(transactions, args) })
+    queries.segments.mockImplementation(async args => { expect(queries.segments.mock.calls.length).toBeLessThanOrEqual(3); return page(segments, args) })
+    const report = await loadFleetMonthlyReport('tenant-a', 'all', '2026-03', 'year')
+    expect(report.transactions).toEqual([])
+    expect(report.segments).toEqual([])
+    expect(report.workerDays).toBe(2)
+    expect(report.totals.income).toBe('202.01')
+    expect(report.byTruck.map(truck => truck.totals.income)).toEqual(['2.01', '200.00'])
+    expect(queries.transactions.mock.calls.at(-1)?.[0]).toMatchObject({ cursor: { id: 't199' }, skip: 1 })
+    expect(queries.segments.mock.calls.at(-1)?.[0]).toMatchObject({ cursor: { id: 's199' }, skip: 1 })
+    expect(queries.transactions.mock.lastCall?.[0]).toMatchObject({ where: { organizationId: 'tenant-a', truckId: { in: ['truck-a', 'truck-b'] }, date: { gte: new Date('2025-12-31T23:00:00Z'), lt: new Date('2026-12-31T23:00:00Z') } }, select: { id: true, truckId: true, type: true, amount: true } })
+    expect(queries.segments.mock.lastCall?.[0]).toMatchObject({ where: { organizationId: 'tenant-a', truckId: { in: ['truck-a', 'truck-b'] }, workDate: { gte: new Date('2026-01-01T00:00:00Z'), lt: new Date('2027-01-01T00:00:00Z') }, operation: { organizationId: 'tenant-a', dailyPayDay: { organizationId: 'tenant-a', worker: { organizationId: 'tenant-a' } } } }, select: { id: true, operation: { select: { dailyPayDay: { select: { id: true } } } } } })
+  })
+  it('terminates after an exact full batch followed by an empty page, filtering one owned truck', async () => {
+    const rows = Array.from({ length: 200 }, (_, i) => ({ id: `t${String(i).padStart(3, '0')}`, truckId: 'truck-a', type: 'INCOME', amount: 0.01 }))
+    queries.transactions.mockImplementation(async args => {
+      expect(queries.transactions.mock.calls.length).toBeLessThanOrEqual(2)
+      expect(args.where.truckId).toBe('truck-a')
+      return args.cursor ? (expect(args).toMatchObject({ cursor: { id: 't199' }, skip: 1 }), []) : rows
+    })
+    queries.segments.mockImplementation(async args => { expect(args.where.truckId).toBe('truck-a'); return [] })
+    const report = await loadFleetMonthlyReport('tenant-a', 'truck-a', '2026-03', 'quarter')
+    expect(report.totals.income).toBe('2.00')
+    expect(report.byTruck).toHaveLength(1)
+    expect(queries.transactions).toHaveBeenCalledTimes(2)
+  })
   it('does not query rows for an empty owned fleet', async () => {
     queries.trucks.mockResolvedValueOnce([])
     queries.transactions.mockClear(); queries.segments.mockClear()
@@ -52,6 +99,10 @@ describe('truck monthly period', () => {
     expect(resolveReportMonth('2026-02')).toBe('2026-02')
     expect(() => resolveReportMonth('2026-13')).toThrow()
     expect(() => resolveReportMonth(['2026-01', '2026-02'])).toThrow()
+  })
+  it('preserves historical Madrid offset seconds at the 1900 boundary', () => {
+    expect(madridMonthRange('1900-01').start.toISOString()).toBe('1900-01-01T00:14:44.000Z')
+    expect(madridPeriodRange('1900-01', 'year').start.toISOString()).toBe('1900-01-01T00:14:44.000Z')
   })
   it('uses exclusive UTC boundaries across both DST changes', () => {
     expect(madridMonthRange('2026-03').start.toISOString()).toBe('2026-02-28T23:00:00.000Z')
