@@ -67,6 +67,23 @@ export async function loadTruckMonthlyReport(organizationId: string, truckId: st
   return { month, transactions, segments, totals: recordedTotals(transactions) }
 }
 
+export class InvalidFleetSelectionError extends Error {}
+
+export async function loadFleetMonthlyReport(organizationId: string, selectedTruck: string, month: string) {
+  if (!organizationId || !selectedTruck || (selectedTruck !== 'all' && !/^[\w-]+$/.test(selectedTruck))) throw new InvalidFleetSelectionError('Invalid fleet selection')
+  const { start, end, civilStart, civilEnd } = madridMonthRange(month)
+  const trucks = await prisma.truck.findMany({ where: { organizationId }, select: { id: true, plate: true }, orderBy: { plate: 'asc' } })
+  if (selectedTruck !== 'all' && !trucks.some(truck => truck.id === selectedTruck)) throw new InvalidFleetSelectionError('Truck not found')
+  if (trucks.length === 0) return { month, selectedTruck, trucks, byTruck: [], transactions: [], segments: [], totals: recordedTotals([]), workerDays: 0 }
+  const truckId = selectedTruck === 'all' ? { in: trucks.map(truck => truck.id) } : selectedTruck
+  const [transactions, segments] = await Promise.all([
+    prisma.transaction.findMany({ where: { organizationId, truckId, type: { in: ['INCOME', 'EXPENSE'] }, date: { gte: start, lt: end } }, select: { id: true, truckId: true, date: true, type: true, amount: true, description: true, category: true }, orderBy: { date: 'desc' } }),
+    prisma.workerDayTruckSegment.findMany({ where: { organizationId, truckId, workDate: { gte: civilStart, lt: civilEnd }, operation: { organizationId, dailyPayDay: { organizationId, worker: { organizationId } } } }, select: { id: true, truckId: true, workDate: true, share: true, kilometers: true, incident: true, operation: { select: { companyName: true, dailyPayDay: { select: { id: true, worker: { select: { name: true } } } } } } }, orderBy: { workDate: 'desc' } }),
+  ])
+  const byTruck = trucks.filter(truck => selectedTruck === 'all' || truck.id === selectedTruck).map(truck => ({ ...truck, totals: recordedTotals(transactions.filter(row => row.truckId === truck.id)) }))
+  return { month, selectedTruck, trucks, byTruck, transactions, segments, totals: recordedTotals(transactions), workerDays: new Set(segments.map(segment => segment.operation.dailyPayDay.id)).size }
+}
+
 export function madridTimestamp(date: Date) {
   return new Intl.DateTimeFormat('es-ES', { timeZone: zone, dateStyle: 'short', timeStyle: 'short' }).format(date)
 }
