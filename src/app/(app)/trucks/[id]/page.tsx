@@ -10,6 +10,8 @@ import { TransactionForm } from '@/components/transactions/transaction-form'
 import Link from 'next/link'
 import { ArrowLeft, User, Gauge } from 'lucide-react'
 import { TruckMileageModal, TruckMileageSummary, TruckMileageHistory } from '@/components/trucks'
+import { TruckMonthlyReport } from '@/components/trucks/truck-monthly-report'
+import { loadTruckMonthlyReport, resolveReportMonth, sanitizeTransactionFilters } from '@/lib/truck-monthly-report'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,10 +38,11 @@ export default async function TruckDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ type?: string; sort?: string }>
+  searchParams: Promise<{ type?: string; sort?: string; month?: string | string[] }>
 }) {
   const { id } = await params
-  const { type, sort } = await searchParams
+  const { type, sort, month } = await searchParams
+  const filters = sanitizeTransactionFilters(type, sort)
 
   const session = await getSessionUniversal()
   if (!session?.user?.organizationId) redirect('/login')
@@ -57,8 +60,8 @@ export default async function TruckDetailPage({
         orderBy: { name: 'asc' },
       },
       transactions: {
-        where: type === 'INCOME' || type === 'EXPENSE' ? { type } : undefined,
-        orderBy: { date: sort === 'asc' ? 'asc' : 'desc' },
+        where: filters.type ? { type: filters.type } : undefined,
+        orderBy: { date: filters.sort },
       },
       mileages: {
         orderBy: { date: 'desc' },
@@ -67,6 +70,14 @@ export default async function TruckDetailPage({
   })
 
   if (!truck) notFound()
+
+  let reportMonth: string
+  try {
+    reportMonth = resolveReportMonth(month)
+  } catch {
+    notFound()
+  }
+  const report = await loadTruckMonthlyReport(orgId, truck.id, reportMonth)
 
   const [workers, trucks] = await Promise.all([
     prisma.worker.findMany({ where: { organizationId: orgId }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
@@ -163,6 +174,8 @@ export default async function TruckDetailPage({
         </CardContent>
       </Card>
 
+      <TruckMonthlyReport report={report} {...filters} />
+
       {/* Kilometraje */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
@@ -218,9 +231,10 @@ export default async function TruckDetailPage({
             />
             {/* Filtros */}
             <form className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <input type="hidden" name="month" value={reportMonth} />
               <select
                 name="type"
-                defaultValue={type ?? ''}
+                defaultValue={filters.type}
                 className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
               >
                 <option value="">Todos</option>
@@ -229,7 +243,7 @@ export default async function TruckDetailPage({
               </select>
               <select
                 name="sort"
-                defaultValue={sort ?? 'desc'}
+                defaultValue={filters.sort}
                 className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
               >
                 <option value="desc">Más reciente</option>
