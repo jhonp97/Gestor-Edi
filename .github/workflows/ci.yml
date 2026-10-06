@@ -31,11 +31,8 @@ jobs:
         with:
           node-version: 20
 
-      - name: Remove lockfile to avoid conflicts
-        run: rm -f pnpm-lock.yaml
-
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma Client
         run: pnpm prisma generate
@@ -67,11 +64,8 @@ jobs:
         with:
           node-version: 20
 
-      - name: Remove lockfile to avoid conflicts
-        run: rm -f pnpm-lock.yaml
-
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma Client
         run: pnpm prisma generate
@@ -101,11 +95,8 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Remove lockfile to avoid conflicts
-        run: rm -f pnpm-lock.yaml
-
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma Client
         run: pnpm prisma generate
@@ -133,11 +124,8 @@ jobs:
         with:
           node-version: 20
 
-      - name: Remove lockfile to avoid conflicts
-        run: rm -f pnpm-lock.yaml
-
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Security Audit
         run: pnpm audit --audit-level=critical
