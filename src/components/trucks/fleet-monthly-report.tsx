@@ -2,9 +2,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatCivilDate } from '@/lib/daily-pay'
 import { madridTimestamp, recordedAmount, type loadFleetMonthlyReport } from '@/lib/truck-monthly-report'
 
+import { ReportDetailNavigation } from '@/components/trucks/truck-monthly-report'
+
 type Report = Awaited<ReturnType<typeof loadFleetMonthlyReport>>
 
 export function FleetMonthlyReport({ report }: { report: Report }) {
+  const filters = { month: report.month, period: report.period, truck: report.selectedTruck, transactionsCursor: report.pages.transactions.current, segmentsCursor: report.pages.segments.current }
   const plates = new Map(report.trucks.map(truck => [truck.id, truck.plate]))
   const [year, month] = report.month.split('-').map(Number)
   const periodLabel = report.period === 'year' ? `Año ${year}`
@@ -39,9 +42,11 @@ export function FleetMonthlyReport({ report }: { report: Report }) {
       </section>
       {report.period === 'month' ? <><section aria-label="Transacciones registradas"><h3 className="font-semibold">Transacciones registradas</h3>
         {report.transactions.length === 0 ? <p>No hay transacciones registradas este mes.</p> : <ul>{report.transactions.map(row => <li key={row.id}>{plates.get(row.truckId)} · {madridTimestamp(row.date)} · {row.type === 'INCOME' ? 'Ingreso' : 'Gasto'} · {row.description}{row.category ? ` · ${row.category}` : ''} · €{recordedAmount(row.amount)}</li>)}</ul>}
+        <ReportDetailNavigation label="transacciones" page={report.pages.transactions} parameter="transactionsCursor" filters={filters} />
       </section>
       <section aria-label="Jornadas atribuidas"><h3 className="font-semibold">Jornadas atribuidas</h3>
         {report.segments.length === 0 ? <p>No hay jornadas atribuidas este mes.</p> : <ul>{report.segments.map(segment => <li key={segment.id}>{plates.get(segment.truckId)} · {formatCivilDate(segment.workDate)} · {segment.operation.companyName} · {segment.operation.dailyPayDay.worker.name} · {segment.share}%{segment.kilometers !== null ? ` · ${segment.kilometers.toString()} km` : ''}{segment.incident ? ` · Incidencia: ${segment.incident}` : ''}</li>)}</ul>}
+        <ReportDetailNavigation label="jornadas" page={report.pages.segments} parameter="segmentsCursor" filters={filters} />
       </section></> : <p>Período agregado: solo totales y jornadas únicas; sin filas de detalle.</p>}
     </CardContent>
   </Card>

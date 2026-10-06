@@ -74,60 +74,108 @@ export function recordedTotals(rows: readonly { type: string; amount: number }[]
   return { income: income.toFixed(2), expense: expense.toFixed(2) }
 }
 
-export async function loadTruckMonthlyReport(organizationId: string, truckId: string, month: string) {
+export class InvalidReportCursorError extends Error {}
+
+export type ReportCursors = { transactions?: string | string[]; segments?: string | string[] }
+export type DetailPage = { previous: string | null; next: string | null; current: string | undefined; hasMore: boolean; count: number }
+const detailSize = 50
+
+function parseCursor(value: string | string[] | undefined) {
+  if (value === undefined) return undefined
+  if (typeof value !== 'string' || value.length > 160 || !/^(next|prev):[\w-]+$/.test(value)) throw new InvalidReportCursorError('Invalid report cursor')
+  const [direction, id] = value.split(':')
+  return { direction, id }
+}
+
+export function validateReportCursors(cursors: ReportCursors) {
+  parseCursor(cursors.transactions)
+  parseCursor(cursors.segments)
+  return cursors
+}
+
+function detailPage<T extends { id: string }>(rows: T[], cursor: ReturnType<typeof parseCursor>, current: string | undefined) {
+  const more = rows.length > detailSize
+  const visible = rows.slice(0, detailSize)
+  if (cursor?.direction === 'prev') visible.reverse()
+  if (cursor && visible.length === 0) throw new InvalidReportCursorError('Empty cursor page')
+  const previous = visible.length && (cursor?.direction === 'prev' ? more : !!cursor) ? `prev:${visible[0].id}` : null
+  const next = visible.length && (cursor?.direction === 'prev' ? true : more) ? `next:${visible[visible.length - 1].id}` : null
+  return { rows: visible, page: { previous, next, current, hasMore: next !== null, count: visible.length } }
+}
+
+async function streamTotals(where: Prisma.TransactionWhereInput) {
+  const sums = new Map<string, { income: Prisma.Decimal; expense: Prisma.Decimal }>()
+  const total = { income: new Prisma.Decimal(0), expense: new Prisma.Decimal(0) }
+  let cursor: string | undefined
+  while (true) {
+    const rows = await prisma.transaction.findMany({ where, select: { id: true, truckId: true, type: true, amount: true }, orderBy: { id: 'asc' }, take: 200, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}) })
+    for (const row of rows) {
+      const key = row.type === 'INCOME' ? 'income' : 'expense'
+      const amounts = sums.get(row.truckId) ?? { income: new Prisma.Decimal(0), expense: new Prisma.Decimal(0) }
+      const amount = new Prisma.Decimal(String(row.amount))
+      amounts[key] = amounts[key].plus(amount)
+      total[key] = total[key].plus(amount)
+      sums.set(row.truckId, amounts)
+    }
+    if (rows.length < 200) break
+    cursor = rows[rows.length - 1].id
+  }
+  const formatted = (value: typeof total) => ({ income: value.income.toFixed(2), expense: value.expense.toFixed(2) })
+  return { totals: formatted(total), forTruck: (id: string) => formatted(sums.get(id) ?? { income: new Prisma.Decimal(0), expense: new Prisma.Decimal(0) }) }
+}
+
+async function monthlyDetails(transactionWhere: Prisma.TransactionWhereInput, segmentWhere: Prisma.WorkerDayTruckSegmentWhereInput, cursors: ReportCursors) {
+  const tx = parseCursor(cursors.transactions)
+  const segment = parseCursor(cursors.segments)
+  // Verify cursor membership before Prisma resolves its unique anchor.
+  if (tx && !await prisma.transaction.findFirst({ where: { ...transactionWhere, id: tx.id }, select: { id: true } })) throw new InvalidReportCursorError('Transaction cursor not found')
+  if (segment && !await prisma.workerDayTruckSegment.findFirst({ where: { ...segmentWhere, id: segment.id }, select: { id: true } })) throw new InvalidReportCursorError('Segment cursor not found')
+  const txOrder = tx?.direction === 'prev' ? 'asc' : 'desc'
+  const segmentOrder = segment?.direction === 'prev' ? 'asc' : 'desc'
+  const [transactions, segments] = await Promise.all([
+    prisma.transaction.findMany({ where: transactionWhere, select: { id: true, truckId: true, date: true, type: true, amount: true, description: true, category: true }, orderBy: [{ date: txOrder }, { id: txOrder }], take: detailSize + 1, ...(tx ? { cursor: { id: tx.id }, skip: 1 } : {}) }),
+    prisma.workerDayTruckSegment.findMany({ where: segmentWhere, select: { id: true, truckId: true, workDate: true, share: true, kilometers: true, incident: true, operation: { select: { companyName: true, dailyPayDay: { select: { id: true, worker: { select: { name: true } } } } } } }, orderBy: [{ workDate: segmentOrder }, { id: segmentOrder }], take: detailSize + 1, ...(segment ? { cursor: { id: segment.id }, skip: 1 } : {}) }),
+  ])
+  const txPage = detailPage(transactions, tx, cursors.transactions as string | undefined)
+  const segmentPage = detailPage(segments, segment, cursors.segments as string | undefined)
+  return { transactions: txPage.rows, segments: segmentPage.rows, pages: { transactions: txPage.page, segments: segmentPage.page } }
+}
+
+export async function loadTruckMonthlyReport(organizationId: string, truckId: string, month: string, cursors: ReportCursors = {}) {
   if (!organizationId || !truckId) throw new Error('Tenant and truck required')
   const { start, end, civilStart, civilEnd } = madridMonthRange(month)
-  const [transactions, segments] = await Promise.all([
-    prisma.transaction.findMany({ where: { organizationId, truckId, type: { in: ['INCOME', 'EXPENSE'] }, date: { gte: start, lt: end } }, select: { id: true, date: true, type: true, amount: true, description: true, category: true }, orderBy: { date: 'desc' } }),
-    prisma.workerDayTruckSegment.findMany({ where: { organizationId, truckId, workDate: { gte: civilStart, lt: civilEnd }, operation: { organizationId, dailyPayDay: { organizationId, worker: { organizationId } } } }, select: { id: true, workDate: true, share: true, kilometers: true, incident: true, operation: { select: { companyName: true, dailyPayDay: { select: { worker: { select: { name: true } } } } } } }, orderBy: { workDate: 'desc' } }),
-  ])
-  return { month, transactions, segments, totals: recordedTotals(transactions) }
+  validateReportCursors(cursors)
+  const where: Prisma.TransactionWhereInput = { organizationId, truckId, type: { in: ['INCOME', 'EXPENSE'] }, date: { gte: start, lt: end } }
+  const details = await monthlyDetails(where, { organizationId, truckId, workDate: { gte: civilStart, lt: civilEnd }, operation: { organizationId, dailyPayDay: { organizationId, worker: { organizationId } } } }, cursors)
+  const totals = await streamTotals(where)
+  return { month, ...details, totals: totals.totals }
 }
 
 export class InvalidFleetSelectionError extends Error {}
 
-export async function loadFleetMonthlyReport(organizationId: string, selectedTruck: string, month: string, period: ReportPeriod = 'month') {
+export async function loadFleetMonthlyReport(organizationId: string, selectedTruck: string, month: string, period: ReportPeriod = 'month', cursors: ReportCursors = {}) {
+  validateReportCursors(cursors)
+  if (period !== 'month' && (cursors.transactions !== undefined || cursors.segments !== undefined)) throw new InvalidReportCursorError('Aggregate period has no details')
   if (!organizationId || !selectedTruck || (selectedTruck !== 'all' && !/^[\w-]+$/.test(selectedTruck))) throw new InvalidFleetSelectionError('Invalid fleet selection')
   const { start, end, civilStart, civilEnd } = madridPeriodRange(month, period)
   const trucks = await prisma.truck.findMany({ where: { organizationId }, select: { id: true, plate: true }, orderBy: { plate: 'asc' } })
   if (selectedTruck !== 'all' && !trucks.some(truck => truck.id === selectedTruck)) throw new InvalidFleetSelectionError('Truck not found')
-  if (trucks.length === 0) return { month, period, selectedTruck, trucks, byTruck: [], transactions: [], segments: [], totals: recordedTotals([]), workerDays: 0 }
-  const truckId = selectedTruck === 'all' ? { in: trucks.map(truck => truck.id) } : selectedTruck
-  if (period !== 'month') {
-    const sums = new Map<string, { income: Prisma.Decimal; expense: Prisma.Decimal }>()
-    const total = { income: new Prisma.Decimal(0), expense: new Prisma.Decimal(0) }
-    const dayIds = new Set<string>()
-    const batchSize = 200
-    let transactionCursor: string | undefined
-    while (true) {
-      const rows = await prisma.transaction.findMany({ where: { organizationId, truckId, type: { in: ['INCOME', 'EXPENSE'] }, date: { gte: start, lt: end } }, select: { id: true, truckId: true, type: true, amount: true }, orderBy: { id: 'asc' }, take: batchSize, ...(transactionCursor ? { cursor: { id: transactionCursor }, skip: 1 } : {}) })
-      for (const row of rows) {
-        const key = row.type === 'INCOME' ? 'income' : 'expense'
-        const amounts = sums.get(row.truckId) ?? { income: new Prisma.Decimal(0), expense: new Prisma.Decimal(0) }
-        const amount = new Prisma.Decimal(String(row.amount))
-        amounts[key] = amounts[key].plus(amount)
-        total[key] = total[key].plus(amount)
-        sums.set(row.truckId, amounts)
-      }
-      if (rows.length < batchSize) break
-      transactionCursor = rows[rows.length - 1].id
-    }
-    let segmentCursor: string | undefined
-    while (true) {
-      const rows = await prisma.workerDayTruckSegment.findMany({ where: { organizationId, truckId, workDate: { gte: civilStart, lt: civilEnd }, operation: { organizationId, dailyPayDay: { organizationId, worker: { organizationId } } } }, select: { id: true, operation: { select: { dailyPayDay: { select: { id: true } } } } }, orderBy: { id: 'asc' }, take: batchSize, ...(segmentCursor ? { cursor: { id: segmentCursor }, skip: 1 } : {}) })
-      for (const row of rows) dayIds.add(row.operation.dailyPayDay.id)
-      if (rows.length < batchSize) break
-      segmentCursor = rows[rows.length - 1].id
-    }
-    const formatted = (value: { income: Prisma.Decimal; expense: Prisma.Decimal }) => ({ income: value.income.toFixed(2), expense: value.expense.toFixed(2) })
-    return { month, period, selectedTruck, trucks, byTruck: trucks.filter(truck => selectedTruck === 'all' || truck.id === selectedTruck).map(truck => ({ ...truck, totals: formatted(sums.get(truck.id) ?? { income: new Prisma.Decimal(0), expense: new Prisma.Decimal(0) }) })), transactions: [], segments: [], totals: formatted(total), workerDays: dayIds.size }
+  const emptyDetails = { transactions: [], segments: [], pages: { transactions: detailPage([], undefined, undefined).page, segments: detailPage([], undefined, undefined).page } }
+  if (trucks.length === 0) {
+    if (cursors.transactions !== undefined || cursors.segments !== undefined) throw new InvalidReportCursorError('Cursor in empty fleet')
+    return { month, period, selectedTruck, trucks, byTruck: [], ...emptyDetails, totals: recordedTotals([]), workerDays: 0 }
   }
-  const [transactions, segments] = await Promise.all([
-    prisma.transaction.findMany({ where: { organizationId, truckId, type: { in: ['INCOME', 'EXPENSE'] }, date: { gte: start, lt: end } }, select: { id: true, truckId: true, date: true, type: true, amount: true, description: true, category: true }, orderBy: { date: 'desc' } }),
-    prisma.workerDayTruckSegment.findMany({ where: { organizationId, truckId, workDate: { gte: civilStart, lt: civilEnd }, operation: { organizationId, dailyPayDay: { organizationId, worker: { organizationId } } } }, select: { id: true, truckId: true, workDate: true, share: true, kilometers: true, incident: true, operation: { select: { companyName: true, dailyPayDay: { select: { id: true, worker: { select: { name: true } } } } } } }, orderBy: { workDate: 'desc' } }),
+  const truckId = selectedTruck === 'all' ? { in: trucks.map(truck => truck.id) } : selectedTruck
+  const transactionWhere: Prisma.TransactionWhereInput = { organizationId, truckId, type: { in: ['INCOME', 'EXPENSE'] }, date: { gte: start, lt: end } }
+  const segmentWhere: Prisma.WorkerDayTruckSegmentWhereInput = { organizationId, truckId, workDate: { gte: civilStart, lt: civilEnd }, operation: { organizationId, dailyPayDay: { organizationId, worker: { organizationId } } } }
+  const details = period === 'month' ? await monthlyDetails(transactionWhere, segmentWhere, cursors) : emptyDetails
+  const [amounts, workerDays] = await Promise.all([
+    streamTotals(transactionWhere),
+    // Count the parent workday once even when its operation has multiple selected segments.
+    prisma.dailyPayDay.count({ where: { organizationId, worker: { organizationId }, workDate: { gte: civilStart, lt: civilEnd }, operation: { is: { organizationId, segments: { some: { organizationId, truckId, workDate: { gte: civilStart, lt: civilEnd } } } } } } }),
   ])
-  const byTruck = trucks.filter(truck => selectedTruck === 'all' || truck.id === selectedTruck).map(truck => ({ ...truck, totals: recordedTotals(transactions.filter(row => row.truckId === truck.id)) }))
-  return { month, period, selectedTruck, trucks, byTruck, transactions, segments, totals: recordedTotals(transactions), workerDays: new Set(segments.map(segment => segment.operation.dailyPayDay.id)).size }
+  const byTruck = trucks.filter(truck => selectedTruck === 'all' || truck.id === selectedTruck).map(truck => ({ ...truck, totals: amounts.forTruck(truck.id) }))
+  return { month, period, selectedTruck, trucks, byTruck, ...details, totals: amounts.totals, workerDays }
 }
 
 export function madridTimestamp(date: Date) {

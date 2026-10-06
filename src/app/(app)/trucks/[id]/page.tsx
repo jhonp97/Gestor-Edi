@@ -11,7 +11,7 @@ import Link from 'next/link'
 import { ArrowLeft, User, Gauge } from 'lucide-react'
 import { TruckMileageModal, TruckMileageSummary, TruckMileageHistory } from '@/components/trucks'
 import { TruckMonthlyReport } from '@/components/trucks/truck-monthly-report'
-import { loadTruckMonthlyReport, resolveReportMonth, sanitizeTransactionFilters } from '@/lib/truck-monthly-report'
+import { InvalidReportCursorError, loadTruckMonthlyReport, resolveReportMonth, sanitizeTransactionFilters, validateReportCursors } from '@/lib/truck-monthly-report'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,10 +38,10 @@ export default async function TruckDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ type?: string; sort?: string; month?: string | string[] }>
+  searchParams: Promise<{ type?: string; sort?: string; month?: string | string[]; transactionsCursor?: string | string[]; segmentsCursor?: string | string[] }>
 }) {
   const { id } = await params
-  const { type, sort, month } = await searchParams
+  const { type, sort, month, transactionsCursor, segmentsCursor } = await searchParams
   const filters = sanitizeTransactionFilters(type, sort)
 
   const session = await getSessionUniversal()
@@ -73,11 +73,18 @@ export default async function TruckDetailPage({
 
   let reportMonth: string
   try {
+    validateReportCursors({ transactions: transactionsCursor, segments: segmentsCursor })
     reportMonth = resolveReportMonth(month)
   } catch {
     notFound()
   }
-  const report = await loadTruckMonthlyReport(orgId, truck.id, reportMonth)
+  let report: Awaited<ReturnType<typeof loadTruckMonthlyReport>>
+  try {
+    report = await loadTruckMonthlyReport(orgId, truck.id, reportMonth, { transactions: transactionsCursor, segments: segmentsCursor })
+  } catch (error) {
+    if (error instanceof InvalidReportCursorError) notFound()
+    throw error
+  }
 
   const [workers, trucks] = await Promise.all([
     prisma.worker.findMany({ where: { organizationId: orgId }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
