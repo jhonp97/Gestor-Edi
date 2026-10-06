@@ -14,7 +14,7 @@ Preserve all unrelated working-tree changes. Only the T1 and T2 files listed bel
   - `node --test tests/unit/scripts/prisma-fresh-install.test.mjs` — **21/21 passed**; harness syntax and scoped lint passed; independent source review **CLEAR**.
   - `node scripts/test-prisma-fresh-install.mjs` — native exit 0, `{ok:true, failure:null, cleanup:"passed"}`. The owned Docker run proved both datasource targets before writes, applied only the separate baseline, checked Prisma no-diff and PostgreSQL catalog/ledger parity, closed clients, and removed owned resources by immutable IDs.
   - Existing historical `prisma migrate deploy` on an empty database still fails because `Organization` is missing before a later ALTER. The separate baseline does not fix or certify production migration compatibility.
-  - Commit identity will be recorded after the baseline work-unit commit.
+  - Commit: `776af53` (`test(db): add isolated Prisma baseline verification`).
 
 ## Remaining limits
 App/browser integration, upgrade compatibility against the existing production database, backup/rollback, and deployment approval remain unverified. These commits only prepare and push the feature branch; they do not authorize merge or production deployment.
