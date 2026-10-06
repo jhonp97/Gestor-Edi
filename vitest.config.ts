@@ -3,6 +3,8 @@ import path from "path";
 
 export default defineConfig({
   test: {
+    pool: 'threads',
+    maxWorkers: 2,
     environment: "jsdom",
     globals: true,
     setupFiles: ["./tests/setup.ts"],
