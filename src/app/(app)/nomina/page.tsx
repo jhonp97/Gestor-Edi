@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { mapPayrollWorkerIdentity } from '@/lib/payroll-worker-identity'
 import { getSessionUniversal } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { PayrollTable } from '@/components/nomina/payroll-table'
@@ -49,6 +50,8 @@ export default async function PayrollPage({
       },
     }),
   ])
+
+  const displayPayrolls = await Promise.all(payrolls.map(mapPayrollWorkerIdentity))
 
   const totalGross = summary._sum.grossPay ?? 0
   const totalNet = summary._sum.netPay ?? 0
@@ -133,7 +136,7 @@ export default async function PayrollPage({
       </div>
 
       {/* Table */}
-      <PayrollTable payrolls={payrolls} />
+      <PayrollTable payrolls={displayPayrolls} />
     </div>
   )
 }

@@ -4,16 +4,25 @@ import { NominaDocument } from '@/lib/pdf/nomina-document'
 import { PayrollService } from '@/services/payroll.service'
 import { PayrollRepository } from '@/repositories/payroll.repository'
 import { WorkerRepository } from '@/repositories/worker.repository'
+import { getSessionUniversal } from '@/lib/session'
+import { mapPayrollWorkerIdentity } from '@/lib/payroll-worker-identity'
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getSessionUniversal()
+  if (!session?.user?.organizationId) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  }
+
   const { id } = await params
-  const service = new PayrollService(new PayrollRepository(), new WorkerRepository())
-  const payroll = await service.getById(id)
-  
-  if (!payroll) {
+  const orgId = session.user.organizationId
+  const service = new PayrollService(new PayrollRepository(orgId), new WorkerRepository(orgId))
+  const storedPayroll = await service.getById(id)
+
+  if (!storedPayroll) {
     return NextResponse.json({ error: 'Nómina no encontrada' }, { status: 404 })
   }
 
+  const payroll = await mapPayrollWorkerIdentity(storedPayroll)
   const buffer = await renderToBuffer(
     <NominaDocument payroll={{
       ...payroll,

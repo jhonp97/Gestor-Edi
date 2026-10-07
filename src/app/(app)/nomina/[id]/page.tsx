@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { mapPayrollWorkerIdentity } from '@/lib/payroll-worker-identity'
 import { getSessionUniversal } from '@/lib/session'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -25,12 +26,13 @@ export default async function PayrollDetailPage({
   if (!session?.user?.organizationId) redirect('/login')
   const orgId = session.user.organizationId
 
-  const payroll = await prisma.payroll.findFirst({
+  const storedPayroll = await prisma.payroll.findFirst({
     where: { id, organizationId: orgId },
     include: { worker: true },
   })
 
-  if (!payroll) notFound()
+  if (!storedPayroll) notFound()
+  const payroll = await mapPayrollWorkerIdentity(storedPayroll)
 
   return (
     <div className="space-y-6">
