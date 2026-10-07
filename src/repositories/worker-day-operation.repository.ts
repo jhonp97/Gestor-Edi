@@ -4,9 +4,13 @@ import { parseCivilDate, toMoney } from '@/lib/daily-pay'
 import { DailyPayRepository } from '@/repositories/daily-pay.repository'
 import type { WorkerDayOperationInput } from '@/schemas/worker-day-operation.schema'
 
+export class ManualMileageConflictError extends Error {
+  readonly code = 'MANUAL_MILEAGE_CONFLICT'
+}
+
 export class WorkerDayOperationRepository {
   private readonly days: DailyPayRepository
-  constructor(private readonly organizationId: string, private readonly client: PrismaClient = prisma) {
+  constructor(private readonly organizationId: string, client: PrismaClient = prisma) {
     if (!organizationId) throw new Error('Organization is required')
     this.days = new DailyPayRepository(organizationId, client)
   }
@@ -35,6 +39,16 @@ export class WorkerDayOperationRepository {
   }
 
   async save(workerId: string, date: string, input: WorkerDayOperationInput, tx: Prisma.TransactionClient) {
+    const workDate = parseCivilDate(date)
+    for (const segment of input.segments) {
+      if (segment.kilometers === undefined) continue
+      const manualMileage = await tx.truckMileage.findFirst({
+        where: { organizationId: this.organizationId, truckId: segment.truckId, date: workDate, sourceWorkerDaySegmentId: null },
+        select: { id: true },
+      })
+      if (manualMileage) throw new ManualMileageConflictError('Manual mileage already exists for this truck and date')
+    }
+
     let day = await this.findDay(workerId, date, tx)
     if (!day) {
       const worker = await this.findWorker(workerId, tx)
@@ -55,12 +69,31 @@ export class WorkerDayOperationRepository {
     // continues to protect the entire civil day from competing workers.
     await tx.workerDayTruckSegment.deleteMany({ where: { operationId: operation.id, organizationId: this.organizationId } })
     for (const [index, segment] of input.segments.entries()) {
-      await tx.workerDayTruckSegment.create({
+      const createdSegment = await tx.workerDayTruckSegment.create({
         data: { operationId: operation.id, organizationId: this.organizationId,
-          truckId: segment.truckId, workDate: parseCivilDate(date), position: index + 1, share: segment.share,
+          truckId: segment.truckId, workDate, position: index + 1, share: segment.share,
           kilometers: segment.kilometers === undefined ? null : new Prisma.Decimal(segment.kilometers),
           incident: segment.incident ?? null },
       })
+      if (createdSegment.kilometers !== null) {
+        try {
+          await tx.truckMileage.create({
+            data: {
+              organizationId: this.organizationId,
+              truckId: createdSegment.truckId,
+              date: createdSegment.workDate,
+              km: createdSegment.kilometers.toNumber(),
+              notes: null,
+              sourceWorkerDaySegmentId: createdSegment.id,
+            },
+          })
+        } catch (error) {
+          if ((error as { code?: string } | null)?.code === 'P2002') {
+            throw new ManualMileageConflictError('Manual mileage already exists for this truck and date')
+          }
+          throw error
+        }
+      }
     }
     return this.findDay(workerId, date, tx)
   }

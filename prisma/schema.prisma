@@ -120,11 +120,13 @@ model TruckMileage {
   truck          Truck    @relation(fields: [truckId], references: [id], onDelete: Cascade)
   date           DateTime @db.Date
   km             Float
-  notes          String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  notes                    String?
+  sourceWorkerDaySegmentId String?  @unique
+  sourceWorkerDaySegment   WorkerDayTruckSegment? @relation("WorkerDayMileage", fields: [sourceWorkerDaySegmentId], references: [id], onDelete: Cascade)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  organizationId           String
+  organization             Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([truckId, date])
   @@index([truckId])
@@ -363,6 +365,7 @@ model WorkerDayTruckSegment {
   operation      WorkerDayOperation @relation(fields: [operationId], references: [id], onDelete: Cascade)
   truckId        String
   truck          Truck @relation(fields: [truckId], references: [id], onDelete: Restrict)
+  mileageRecord  TruckMileage? @relation("WorkerDayMileage")
   workDate       DateTime @db.Date
   position       Int
   share          Int
