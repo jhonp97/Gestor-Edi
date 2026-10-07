@@ -533,6 +533,73 @@ test('M2 admits both endpoint sessions before schema on the SAME owned bootstrap
   assert.equal(fixture.commands.filter(args => args.includes('push')).length, 1)
 })
 
+for (const [boundary, fails] of [['endpoint-proof', args => args.includes('-i')], ['schema-push', args => args.includes('push')]]) {
+  test(`bootstrap native failure marks ${boundary} without private output`, () => {
+    const steps = []
+    const fixture = bootstrapFixture((args, result) => fails(args)
+      ? { ...result, status: 1, stdout: 'private stdout', stderr: 'private stderr' } : undefined)
+    assert.throws(() => staging.bootstrapOwned(fixture.execute, id, 'owned-compose', networkId, step => steps.push(step)), /Bootstrap/)
+    assert.equal(steps.at(-1), boundary)
+    assert.doesNotMatch(JSON.stringify(steps), /private/)
+  })
+}
+
+for (const [boundary, fails] of [['endpoint-proof', args => args.includes('-i')], ['schema-push', args => args.includes('push')]]) {
+  test(`canonical staging receipt retains ${boundary} and redacted native failure`, async () => {
+    const privateOutput = 'private bootstrap payload'
+    const fixture = bootstrapFixture((args, result) => fails(args)
+      ? { ...result, status: 1, stdout: privateOutput, stderr: privateOutput } : undefined)
+    const owned = []
+    let networkLists = 0
+    const execute = (program, args, options) => {
+      if (program === 'docker-compose' && args.join(' ') === 'version --short') {
+        return { status: 0, signal: null, stdout: '2.40.3\n', stderr: '' }
+      }
+      if (program === 'docker-compose') return args.includes('run')
+        ? fixture.execute(['compose', ...args], 30000) : { status: 0, signal: null, stdout: '', stderr: '' }
+      if (args[0] === 'network' && args[1] === 'ls') {
+        const stdout = networkLists++ ? networkId + '\n' : ''
+        return { status: 0, signal: null, stdout, stderr: '' }
+      }
+      if (args[0] === 'network' && args[1] === 'inspect' && args.includes('{{.Internal}} {{index .Labels "io.gestor-edi.local-staging"}}')) {
+        return { status: 0, signal: null, stdout: `true ${id}\n`, stderr: '' }
+      }
+      if (args[0] === 'container' && args[1] === 'ls' && args.includes('--filter') && !args.some(value => value.includes('service=db') || value.startsWith('name='))) {
+        return { status: 0, signal: null, stdout: '', stderr: '' }
+      }
+      if (args[0] === 'volume' || args[0] === 'image') return { status: 0, signal: null, stdout: '', stderr: '' }
+      return fixture.execute(program === 'docker-compose' ? ['compose', ...args] : args, 30000, options?.input)
+    }
+    const report = await vm.runInNewContext(`(${staging.runStaging.toString()})({ execute, clock: () => 0 })`, {
+      execute, OWNER: 'io.gestor-edi.local-staging', fs: { mkdtempSync: () => 'literal-owned-temp', chmodSync() {}, mkdirSync() {}, writeFileSync() {},
+        readFileSync: () => 'public-compose', rmSync() {} },
+      path, os: { tmpdir: () => 'literal-root' }, ROOT: 'literal-public-root',
+      process: { platform: 'linux', env: {} }, randomBytes: () => Buffer.from(id, 'hex'), ownedTarget,
+      portAvailable: async () => {}, inventoryContext: () => [], stageContext() {}, runtimeFiles: () => ({ app: 'literal' }),
+      commandEnvironment, nativeSucceeded, composeCommand, smokeSummary, Buffer,
+      nativeFailure: staging.nativeFailure, createBudget: staging.createBudget,
+      bootstrapOwned: staging.bootstrapOwned, net: { isIPv4: value => value === address }, bootstrapQuery: staging.bootstrapQuery,
+      cleanupOwned: (_must, runId) => { owned.push(runId); throw new Error('literal unknown cleanup') },
+    })
+    assert.equal(report.phase, 'bootstrap')
+    assert.equal(report.bootstrapStep, boundary)
+    assert.equal(report.preflightStep, null)
+    assert.equal(report.passed, false)
+    assert.equal(report.cleanup, 'unknown-stop')
+    assert.equal(report.smoke, null)
+    assert.equal(report.runId, id)
+    assert.equal(report.failure?.phase, 'bootstrap')
+    assert.equal(report.failure?.status, 1)
+    assert.equal(report.failure?.signal, null)
+    assert.equal(report.failure?.errorCode, null)
+    assert.equal(report.failure?.timedOut, false)
+    assert.equal(report.cleanupFailure, null)
+    assert.deepEqual(owned, [id])
+    assert.equal(fixture.commands.filter(args => fails(args)).length, 1)
+    assert.doesNotMatch(JSON.stringify(report), /private bootstrap payload/)
+  })
+}
+
 test('M2 schema native failure remains fatal', () => {
   const fixture = bootstrapFixture((args, result) => args.includes('push') ? { ...result, status: 1 } : undefined)
   assert.throws(() => staging.bootstrapOwned(fixture.execute, id, 'owned-compose', networkId), /Bootstrap/)

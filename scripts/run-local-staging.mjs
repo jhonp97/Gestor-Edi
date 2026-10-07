@@ -321,7 +321,7 @@ export async function bootstrapQuery() {
   process.stdout.write(JSON.stringify(outputs) + '\n')
 }
 
-export function bootstrapOwned(execute, id, composeFile, network) {
+export function bootstrapOwned(execute, id, composeFile, network, markStep = () => {}) {
   const target = ownedTarget(id)
   const checked = (args, input) => {
     const result = execute(args, 30000, input)
@@ -369,12 +369,14 @@ export function bootstrapOwned(execute, id, composeFile, network) {
   }
   assertContext()
   const script = `(${bootstrapQuery.toString()})().catch(() => { process.exitCode = 1 })`
+  markStep('endpoint-proof')
   const proof = checked(['exec', '-i', container, 'node', '-', JSON.stringify(expected)], script)
   const canonical = ['DATABASE_URL', 'DIRECT_URL'].map(endpoint => ({ endpoint,
     database: target.database, role: target.role, address, port: '5432', oid: match[1], readonly: 'on', tables: '0' }))
   // Closed exact result; empty/multiple/malformed rows, extra fields and output fail.
   if (proof !== JSON.stringify(canonical) + '\n') throw new Error('Bootstrap endpoint proof refused')
   assertContext()
+  markStep('schema-push')
   checked(['exec', container, 'node', 'node_modules/prisma/build/index.js',
     'db', 'push', '--schema', 'prisma/schema.prisma', '--skip-generate'])
   assertContext()
@@ -554,6 +556,7 @@ export async function runStaging({ execute = spawnSync, clock = () => performanc
   let phase = 'preflight', primary = null, cleanupFailed = false, summary = null
   // Closed operation marker: retained only for a preflight failure, never cleanup.
   let preflightStep = null
+  let bootstrapStep = null
   let commandUncertain = false
   let failure = null, cleanupFailure = null, cleaning = false
   const run = (args, timeout = 120000, input) => {
@@ -665,7 +668,8 @@ export async function runStaging({ execute = spawnSync, clock = () => performanc
       `{{.Internal}} {{index .Labels "${OWNER}"}}`, networks[0]]).trim() !== `true ${id}`) throw new Error('Isolation refused')
     for (const container of list('container')) verifyContainer(container)
     phase = 'bootstrap'
-    bootstrapOwned(run, id, composeFile, networks[0])
+    bootstrapOwned(run, id, composeFile, networks[0], step => { bootstrapStep = step })
+    bootstrapStep = null
     phase = 'application'
     compose(['up', '--detach', '--wait', '--wait-timeout', '120', 'app'])
     for (const container of list('container')) verifyContainer(container)
@@ -689,7 +693,7 @@ export async function runStaging({ execute = spawnSync, clock = () => performanc
   }
   cleanupFailed ||= commandUncertain
   return { passed: primary === null && !cleanupFailed && summary !== null,
-    phase: primary ?? 'completed', preflightStep, cleanup: cleanupFailed ? 'unknown-stop' : 'complete', smoke: summary,
+    phase: primary ?? 'completed', preflightStep, bootstrapStep: primary === 'bootstrap' ? bootstrapStep : null, cleanup: cleanupFailed ? 'unknown-stop' : 'complete', smoke: summary,
     runId: id, failure, cleanupFailure }
 }
 
