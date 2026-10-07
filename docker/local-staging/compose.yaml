@@ -1,0 +1,98 @@
+# Invoke only through the runner; substitutions never use ambient dotenv.
+x-restrictions: &restrictions
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  restart: "no"
+  pids_limit: 256
+  logging:
+    driver: none
+  labels:
+    io.gestor-edi.local-staging: ${STAGING_OWNER:?owned run required}
+
+services:
+  db:
+    <<: *restrictions
+    image: postgres:16.13-bookworm
+    env_file: ["${STAGING_DB_ENV:?owned database environment required}"]
+    networks: [runtime]
+    cpus: 1
+    mem_limit: 512m
+    shm_size: 64m
+    tmpfs:
+      - /var/lib/postgresql/data:rw,nosuid,nodev,size=512m,uid=999,gid=999
+      - /var/run/postgresql:rw,nosuid,nodev,size=16m,uid=999,gid=999
+      - /tmp:rw,nosuid,nodev,size=16m
+    # Official entrypoint normally chowns a volume. Owned tmpfs is set for
+    # postgres UID/GID directly, so there is no need for root or capabilities.
+    user: "999:999"
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    stop_grace_period: 20s
+
+  app:
+    <<: *restrictions
+    image: ${STAGING_APP_IMAGE:?owned image required}
+    build:
+      context: ${STAGING_CONTEXT:?allowlisted context required}
+      dockerfile: docker/local-staging/Dockerfile
+      target: app
+      args:
+        STAGING_OWNER: ${STAGING_OWNER:?owned run required}
+    env_file: ["${STAGING_APP_ENV:?owned app environment required}"]
+    networks: [runtime]
+    ports: ["127.0.0.1:3000:3000"]
+    cpus: 2
+    mem_limit: 1536m
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=128m,uid=1000,gid=1000
+      - /app/.next/cache:rw,nosuid,nodev,size=128m,uid=1000,gid=1000
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch("http://127.0.0.1:3000/login")
+          .then(r=>process.exit(r.status===200?0:1))
+          .catch(()=>process.exit(1))
+      interval: 3s
+      timeout: 5s
+      retries: 30
+    stop_grace_period: 20s
+
+  browser:
+    <<: *restrictions
+    image: ${STAGING_BROWSER_IMAGE:?owned image required}
+    build:
+      context: ${STAGING_CONTEXT:?allowlisted context required}
+      dockerfile: docker/local-staging/Dockerfile
+      target: browser
+      args:
+        STAGING_OWNER: ${STAGING_OWNER:?owned run required}
+    # Real localhost to the app, including Chromium's Secure-cookie exception.
+    # No separate bridge, port publication, or host networking.
+    network_mode: service:app
+    cpus: 2
+    mem_limit: 1536m
+    shm_size: 256m
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=512m,uid=1000,gid=1000
+    depends_on:
+      app:
+        condition: service_healthy
+
+networks:
+  runtime:
+    internal: true
+    driver: bridge
+    labels:
+      io.gestor-edi.local-staging: ${STAGING_OWNER:?owned run required}
