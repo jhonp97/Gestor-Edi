@@ -150,18 +150,22 @@ export function TruckMileageHistory({ truckId, records }: TruckMileageHistoryPro
                       {record.km.toLocaleString('es-ES')} km
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {record.notes || '—'}
+                      {record.sourceWorkerDaySegmentId ? 'Jornada operativa' : record.notes || '—'}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => handleDelete(record.id)}
-                        disabled={deleting === record.id}
-                        aria-label="Eliminar registro"
-                      >
-                        <Trash2 className="size-4 text-destructive" />
-                      </Button>
+                      {record.sourceWorkerDaySegmentId ? (
+                        <span className="text-xs text-muted-foreground">Editar jornada</span>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => handleDelete(record.id)}
+                          disabled={deleting === record.id}
+                          aria-label="Eliminar registro"
+                        >
+                          <Trash2 className="size-4 text-destructive" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -7,7 +7,9 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { CalendarDays, CheckCircle2, Undo2 } from 'lucide-react'
+import { CalendarDays, CheckCircle2, Undo2, Pencil } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { WorkerDayOperationEntry } from '@/components/trucks/worker-day-operation-entry'
 import {
   DailyPayCalendar,
   type HistoryMonth,
@@ -34,6 +36,7 @@ interface MonthData {
 
 interface DailyPayPanelProps {
   workerId: string
+  workerName?: string
   trucks?: { id: string; name: string }[]
 }
 
@@ -43,7 +46,7 @@ type DayDetail = { date: string; operation: Operation | null }
 const DAILY_RATE_HELPER = 'Déjala vacía para quitar la tarifa diaria.'
 const DECIMAL_RATE_PATTERN = /^\d+(\.\d+)?$/
 
-export function DailyPayPanel({ workerId, trucks = [] }: DailyPayPanelProps) {
+export function DailyPayPanel({ workerId, workerName = 'Trabajador', trucks = [] }: DailyPayPanelProps) {
   const [month, setMonth] = useState<MonthData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [today] = useState(() => formatCivilDate(new Date()))
@@ -59,6 +62,8 @@ export function DailyPayPanel({ workerId, trucks = [] }: DailyPayPanelProps) {
   const [detail, setDetail] = useState<DayDetail | null>(null)
   const [detailError, setDetailError] = useState(false)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [detailRevision, setDetailRevision] = useState(0)
+  const [editingOperation, setEditingOperation] = useState(false)
   const [rateFeedback, setRateFeedback] = useState({
     message: DAILY_RATE_HELPER,
     isError: false,
@@ -229,7 +234,7 @@ export function DailyPayPanel({ workerId, trucks = [] }: DailyPayPanelProps) {
       }
     })
     return () => { cancelled = true; controller.abort() }
-  }, [workerId, selectedDate, month])
+  }, [workerId, selectedDate, month, detailRevision])
 
   async function toggleSelectedDate() {
     if (dayEditingDisabled || isSelectedDateMarked && (detailLoading || detailError || !detail || detail.operation)) return
@@ -392,6 +397,7 @@ export function DailyPayPanel({ workerId, trucks = [] }: DailyPayPanelProps) {
                   value={selectedDate}
                   onChange={(event) => {
                     setSelectedDate(event.target.value)
+                    setEditingOperation(false)
                     setDetail(null)
                     setDetailError(false)
                     setDetailLoading(true)
@@ -434,6 +440,37 @@ export function DailyPayPanel({ workerId, trucks = [] }: DailyPayPanelProps) {
                     </div>
                   ))}
                 </div>}
+                {selectedDetail && !dayEditingDisabled && (
+                  <Button type="button" variant="outline" size="sm" onClick={() => setEditingOperation(true)}>
+                    <Pencil className="mr-2 size-4" />
+                    {selectedDetail.operation ? 'Editar datos de la jornada' : 'Completar datos de la jornada'}
+                  </Button>
+                )}
+                {editingOperation && selectedDetail && (
+                  <Dialog open onOpenChange={setEditingOperation}>
+                    <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle>{selectedDetail.operation ? 'Editar jornada trabajada' : 'Completar jornada anterior'}</DialogTitle>
+                      </DialogHeader>
+                      <WorkerDayOperationEntry
+                        key={`${workerId}-${selectedDate}-${selectedDetail.operation?.segments[0]?.truckId ?? 'legacy'}`}
+                        truckId={selectedDetail.operation?.segments[0]?.truckId ?? ''}
+                        workers={[{ id: workerId, name: workerName }]}
+                        trucks={trucks}
+                        initialWorkerId={workerId}
+                        initialDate={selectedDate}
+                        allowPrimaryTruckSelection={!selectedDetail.operation}
+                        onSaved={() => {
+                          setEditingOperation(false)
+                          setDetail(null)
+                          setDetailLoading(true)
+                          setDetailRevision(value => value + 1)
+                          void refreshData()
+                        }}
+                      />
+                    </DialogContent>
+                  </Dialog>
+                )}
               </div>
             )}
             {dayError && (

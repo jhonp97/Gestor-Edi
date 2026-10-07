@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { DailyPayPanel } from '@/components/workers/daily-pay/daily-pay-panel'
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
 }))
 
 const mockFetch = vi.fn()
@@ -57,6 +57,73 @@ describe('DailyPayPanel', () => {
     expect(screen.getAllByText('100.00')).toHaveLength(2)
     expect(screen.getByRole('button', { name: 'Quitar día' })).toBeDisabled()
     expect(mockFetch.mock.calls.some(([url, options]) => String(url).includes('/daily-pay/days/') && options?.method === 'DELETE')).toBe(false)
+  })
+
+  it('opens a prefilled operational-day editor directly from a worker record', async () => {
+    const date = todayCivil()
+    const operation = { companyName: 'Acme', segments: [{ truckId: 't1', share: 100, kilometers: '42.00', incident: null }] }
+    mockFetch.mockImplementation((url: string) => Promise.resolve({ ok: true, json: async () =>
+      url.includes('/operations/days/')
+        ? { date, operation }
+        : url.includes('/history?')
+          ? { months: [] }
+          : monthDto({ days: [{ date, rateSnapshot: '100.00' }] }) }))
+    const user = userEvent.setup()
+    render(<DailyPayPanel workerId="w1" workerName="Ana" trucks={[{ id: 't1', name: 'Volvo FH (ABC123)' }]} />)
+    await screen.findByText('Acme')
+    await user.click(screen.getByRole('button', { name: /editar datos de la jornada/i }))
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect((screen.getByLabelText('Trabajador') as HTMLSelectElement).value).toBe('w1')
+    expect((screen.getByLabelText('Fecha') as HTMLInputElement).value).toBe(date)
+    expect((screen.getByLabelText('Empresa') as HTMLInputElement).value).toBe('Acme')
+    expect((screen.getByLabelText('Kilómetros del camión principal') as HTMLInputElement).value).toBe('42.00')
+  })
+
+  it('reloads the selected day after saving without displaying stale company details', async () => {
+    const date = todayCivil()
+    let company = 'Acme'
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    mockFetch.mockImplementation((url: string, options?: RequestInit) => {
+      if (url.includes('/operations/days/') && options?.method === 'PUT') {
+        company = 'Nueva empresa'
+        return Promise.resolve({ ok: true, json: async () => ({}) })
+      }
+      return Promise.resolve({ ok: true, json: async () =>
+        url.includes('/operations/days/')
+          ? { date, operation: { companyName: company, segments: [{ truckId: 't1', share: 100, kilometers: '42.00', incident: null }] } }
+          : url.includes('/history?')
+            ? { months: [] }
+            : monthDto({ days: [{ date, rateSnapshot: '100.00' }] }) })
+    })
+    const user = userEvent.setup()
+    render(<DailyPayPanel workerId="w1" workerName="Ana" trucks={[{ id: 't1', name: 'Volvo FH' }]} />)
+    await screen.findByText('Acme')
+    await user.click(screen.getByRole('button', { name: /editar datos de la jornada/i }))
+    await screen.findByRole('dialog')
+    await user.clear(screen.getByLabelText('Empresa'))
+    await user.type(screen.getByLabelText('Empresa'), 'Nueva empresa')
+    await user.click(screen.getByRole('button', { name: /guardar jornada/i }))
+    await screen.findByText('Nueva empresa')
+    expect(screen.queryByText('Acme')).not.toBeInTheDocument()
+    expect(confirm).toHaveBeenCalledTimes(1)
+    expect(mockFetch.mock.calls.some(([url, options]) => String(url).includes('/operations/days/') && options?.method === 'PUT')).toBe(true)
+  })
+
+  it('lets a legacy marked day receive explicitly selected operational details', async () => {
+    const date = todayCivil()
+    mockFetch.mockImplementation((url: string) => Promise.resolve({ ok: true, json: async () =>
+      url.includes('/operations/days/')
+        ? { date, operation: null }
+        : url.includes('/history?')
+          ? { months: [] }
+          : monthDto({ days: [{ date, rateSnapshot: '100.00' }] }) }))
+    const user = userEvent.setup()
+    render(<DailyPayPanel workerId="w1" workerName="Ana" trucks={[{ id: 't1', name: 'Volvo FH' }]} />)
+    await screen.findByText(/detalles históricos/)
+    await user.click(screen.getByRole('button', { name: /completar datos de la jornada/i }))
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(await screen.findByLabelText('Camión principal de esta jornada')).toBeInTheDocument()
+    expect(screen.getByLabelText('Camión principal de esta jornada')).toHaveValue('')
   })
 
   it('reads an earlier operational day in a paid current month without allowing deletion', async () => {

@@ -159,7 +159,7 @@ export default async function WorkerDetailPage({
       </Card>
 
       {/* Daily Pay Panel */}
-      <DailyPayPanel workerId={worker.id} trucks={trucks} />
+      <DailyPayPanel workerId={worker.id} workerName={worker.name} trucks={trucks} />
 
       {/* Actions */}
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">

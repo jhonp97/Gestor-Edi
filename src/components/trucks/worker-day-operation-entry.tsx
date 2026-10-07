@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useRouter } from 'next/navigation'
 
 type Option = { id: string; name: string }
 type Segment = { truckId: string; share: number; kilometers: string; incident: string }
@@ -12,13 +13,19 @@ type LoadState = 'idle' | 'loading' | 'ready' | 'legacy' | 'other-primary' | 'sa
 
 const initial = (truckId: string): Segment[] => [{ truckId, share: 100, kilometers: '', incident: '' }]
 
-export function WorkerDayOperationEntry({ truckId, workers, trucks }: {
+export function WorkerDayOperationEntry({ truckId, workers, trucks, initialWorkerId, initialDate, allowPrimaryTruckSelection = false, onSaved }: {
   truckId: string
   workers: Option[]
   trucks: Option[]
+  initialWorkerId?: string
+  initialDate?: string
+  allowPrimaryTruckSelection?: boolean
+  onSaved?: () => void
 }) {
-  const [worker, setWorker] = useState('')
-  const [date, setDate] = useState('')
+  const router = useRouter()
+  const [worker, setWorker] = useState(initialWorkerId ?? '')
+  const [date, setDate] = useState(initialDate ?? '')
+  const [primaryTruckId, setPrimaryTruckId] = useState(truckId)
   const [company, setCompany] = useState('')
   const [segments, setSegments] = useState<Segment[]>(() => initial(truckId))
   const [state, setState] = useState<LoadState>('idle')
@@ -43,6 +50,7 @@ export function WorkerDayOperationEntry({ truckId, workers, trucks }: {
         if (!active) return
         if (response.status === 404) {
           setCompany('')
+          setPrimaryTruckId(truckId)
           setSegments(initial(truckId))
           setLoaded(false)
           setPrimary('')
@@ -55,6 +63,7 @@ export function WorkerDayOperationEntry({ truckId, workers, trucks }: {
         if (!active) return
         if (!data.operation) {
           setCompany('')
+          setPrimaryTruckId(truckId)
           setSegments(initial(truckId))
           setLoaded(false)
           setPrimary('')
@@ -71,6 +80,7 @@ export function WorkerDayOperationEntry({ truckId, workers, trucks }: {
           incident: segment.incident ?? '',
         })))
         setLoaded(true)
+        setPrimaryTruckId(operationPrimary)
         setState(operationPrimary === truckId ? 'ready' : 'other-primary')
         setMessage(operationPrimary === truckId
           ? 'Jornada existente cargada para editar.'
@@ -91,6 +101,7 @@ export function WorkerDayOperationEntry({ truckId, workers, trucks }: {
     if (kind === 'worker') setWorker(value)
     else setDate(value)
     setCompany('')
+    setPrimaryTruckId(truckId)
     setSegments(initial(truckId))
     setLoaded(false)
     setPrimary('')
@@ -112,7 +123,7 @@ export function WorkerDayOperationEntry({ truckId, workers, trucks }: {
     segments.reduce((sum, segment) => sum + segment.share, 0) === 100 &&
     (segments.length === 1 || (!!segments[0].incident.trim() &&
       segments[0].truckId !== segments[1].truckId)) &&
-    segments[0].truckId === truckId
+    !!primaryTruckId && segments[0].truckId === primaryTruckId
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -140,17 +151,25 @@ export function WorkerDayOperationEntry({ truckId, workers, trucks }: {
         }),
       })
       if (!response.ok) {
+        const data: unknown = typeof response.json === 'function'
+          ? await response.json().catch(() => null)
+          : null
+        const apiError = data && typeof data === 'object' && 'error' in data ? String(data.error) : ''
         setState('idle')
-        setMessage(response.status === 409
-          ? 'Conflicto: mes pagado o camión/trabajador ocupado. Consultá la jornada antes de reintentar.'
-          : response.status === 400
-            ? 'Datos inválidos. Revisá empresa, kilómetros e incidencias; consultá antes de reintentar.'
-            : 'No se pudo guardar la jornada. Consultá de nuevo antes de reintentar.')
+        setMessage(apiError.toLowerCase().includes('kilometraje manual')
+          ? 'Ya existe kilometraje manual para este camión y fecha. No se cambió la jornada ni el kilometraje; resolvé el registro desde Kilometraje antes de guardar.'
+          : response.status === 409
+            ? 'Conflicto: mes pagado o camión/trabajador ocupado. Consultá la jornada antes de reintentar.'
+            : response.status === 400
+              ? 'Datos inválidos. Revisá empresa, kilómetros e incidencias; consultá antes de reintentar.'
+              : 'No se pudo guardar la jornada. Consultá de nuevo antes de reintentar.')
         return
       }
       setLoaded(true)
       setState('ready')
       setMessage('Jornada guardada correctamente.')
+      router.refresh()
+      onSaved?.()
     } catch {
       setState('idle')
       setMessage('No se pudo confirmar el guardado. Consultá la jornada antes de reintentar.')
@@ -162,6 +181,7 @@ export function WorkerDayOperationEntry({ truckId, workers, trucks }: {
   const editable = state === 'ready' || state === 'legacy'
   const fieldClass = 'block w-full rounded border p-2'
   const buttonClass = 'w-full rounded border px-3 py-2 sm:w-auto'
+  const primaryOptions = allowPrimaryTruckSelection && state === 'legacy'
 
   return (
     <form onSubmit={submit} className="space-y-4">
@@ -189,7 +209,21 @@ export function WorkerDayOperationEntry({ truckId, workers, trucks }: {
             <input className={fieldClass} value={company} maxLength={160}
               onChange={event => setCompany(event.target.value)} required />
           </label>
-          <p className="text-sm">Camión principal de esta entrada: {trucks.find(truck => truck.id === truckId)?.name ?? truckId}</p>
+          {primaryOptions ? (
+            <label className="block">
+              Camión principal de esta jornada
+              <select className={fieldClass} value={primaryTruckId}
+                onChange={event => {
+                  setPrimaryTruckId(event.target.value)
+                  setSegments(initial(event.target.value))
+                }} required>
+                <option value="">Seleccioná el camión real</option>
+                {trucks.map(option => <option key={option.id} value={option.id}>{option.name}</option>)}
+              </select>
+            </label>
+          ) : (
+            <p className="text-sm">Camión principal de esta entrada: {trucks.find(truck => truck.id === primaryTruckId)?.name ?? primaryTruckId}</p>
+          )}
           <label className="block">
             Kilómetros del camión principal
             <input className={fieldClass} type="number" min="0" max="1000000" step="any"
@@ -208,7 +242,7 @@ export function WorkerDayOperationEntry({ truckId, workers, trucks }: {
                 <select className={fieldClass} value={segments[1].truckId}
                   onChange={event => changeSegment(1, { truckId: event.target.value })} required>
                   <option value="">Seleccioná un camión</option>
-                  {trucks.filter(truck => truck.id !== truckId).map(option => (
+                  {trucks.filter(truck => truck.id !== primaryTruckId).map(option => (
                     <option key={option.id} value={option.id}>{option.name}</option>
                   ))}
                 </select>
@@ -233,7 +267,7 @@ export function WorkerDayOperationEntry({ truckId, workers, trucks }: {
                     onChange={event => changeSegment(1, { share: Number(event.target.value) })} />
                 </label>
               </div>
-              <button type="button" className={buttonClass} onClick={() => setSegments(initial(truckId))}>
+              <button type="button" className={buttonClass} onClick={() => setSegments(initial(primaryTruckId))}>
                 Quitar sustitución
               </button>
             </div>

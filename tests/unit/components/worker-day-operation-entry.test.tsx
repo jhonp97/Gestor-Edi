@@ -2,6 +2,8 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { WorkerDayOperationEntry } from '@/components/trucks/worker-day-operation-entry'
 
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
+
 const workers = [{ id: 'worker-a', name: 'Ana' }, { id: 'worker-b', name: 'Bea' }]
 const trucks = [{ id: 'truck-a', name: 'ABC' }, { id: 'truck-b', name: 'DEF' }]
 const renderEntry = () => render(<WorkerDayOperationEntry truckId="truck-a" workers={workers} trucks={trucks} />)
@@ -101,6 +103,52 @@ it('does not invent legacy details but allows deliberate attachment of known det
   await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2))
   expect(confirm).toHaveBeenCalledTimes(2)
   expect(JSON.parse(fetcher.mock.calls[1][1].body).segments[0].truckId).toBe('truck-a')
+})
+
+it('prefills a selected worker day and refreshes the caller after editing', async () => {
+  const onSaved = vi.fn()
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+  const fetcher = vi.fn()
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ operation: { companyName: 'Acme', segments: [{ truckId: 'truck-a', share: 100, kilometers: '42.00', incident: null }] } }) })
+    .mockResolvedValueOnce({ ok: true })
+  vi.stubGlobal('fetch', fetcher)
+  render(<WorkerDayOperationEntry truckId="truck-a" workers={workers} trucks={trucks} initialWorkerId="worker-a" initialDate="2026-05-10" onSaved={onSaved} />)
+  await waitFor(() => expect((screen.getByLabelText('Empresa') as HTMLInputElement).value).toBe('Acme'))
+  expect((screen.getByLabelText('Trabajador') as HTMLSelectElement).value).toBe('worker-a')
+  expect((screen.getByLabelText('Fecha') as HTMLInputElement).value).toBe('2026-05-10')
+  expect((screen.getByLabelText('Kilómetros del camión principal') as HTMLInputElement).value).toBe('42.00')
+  fireEvent.change(screen.getByLabelText('Empresa'), { target: { value: 'Nueva empresa' } })
+  save()
+  await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
+  expect(confirm).toHaveBeenCalledWith('¿Querés reemplazar los datos operativos existentes de esta jornada?')
+})
+
+it('requires an explicit truck for a legacy day in worker detail', async () => {
+  const fetcher = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ operation: null }) }).mockResolvedValueOnce({ ok: true })
+  vi.spyOn(window, 'confirm').mockReturnValue(true)
+  vi.stubGlobal('fetch', fetcher)
+  render(<WorkerDayOperationEntry truckId="" workers={[workers[0]]} trucks={trucks} initialWorkerId="worker-a" initialDate="2026-05-10" allowPrimaryTruckSelection />)
+  await waitFor(() => expect(screen.getByLabelText('Camión principal de esta jornada')).toBeTruthy())
+  fireEvent.change(screen.getByLabelText('Empresa'), { target: { value: 'Acme' } })
+  fireEvent.change(screen.getByLabelText('Camión principal de esta jornada'), { target: { value: 'truck-b' } })
+  expect((screen.getByRole('button', { name: /guardar jornada/i }) as HTMLButtonElement).disabled).toBe(false)
+  save()
+  await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2))
+  expect(JSON.parse(fetcher.mock.calls[1][1].body).segments[0].truckId).toBe('truck-b')
+})
+
+it('explains manual mileage conflict without claiming the workday was saved', async () => {
+  const fetcher = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ operation: { companyName: 'Acme', segments: [{ truckId: 'truck-a', share: 100, kilometers: null, incident: null }] } }) })
+    .mockResolvedValueOnce({ ok: false, status: 409, json: async () => ({ error: 'Ya existe kilometraje manual para este camión y fecha' }) })
+  vi.spyOn(window, 'confirm').mockReturnValue(true)
+  vi.stubGlobal('fetch', fetcher)
+  renderEntry()
+  selectDay()
+  await waitFor(() => expect(screen.getByLabelText('Empresa')).toBeTruthy())
+  fireEvent.change(screen.getByLabelText('Kilómetros del camión principal'), { target: { value: '125' } })
+  save()
+  await waitFor(() => expect(screen.getByText(/no se cambió la jornada ni el kilometraje/i)).toBeTruthy())
+  expect(screen.queryByText(/guardada correctamente/i)).toBeNull()
 })
 
 it('directs editing an operation with another primary truck to its primary view', async () => {
