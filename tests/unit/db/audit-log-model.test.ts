@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { execSync } from 'child_process'
+import { execFileSync } from 'child_process'
 
 describe('T4.1: AuditLog Prisma model', () => {
   describe('Schema validation', () => {
@@ -85,18 +85,12 @@ describe('T4.1: AuditLog Prisma model', () => {
     })
 
     it('debería generar el cliente Prisma sin errores', { timeout: 60000 }, () => {
-      // This test validates that the schema is syntactically correct
-      // We run prisma generate and check it succeeds
-      try {
-        execSync('pnpm prisma generate', { 
-          cwd: process.cwd(), 
-          stdio: 'pipe',
-          timeout: 60000 
-        })
-        expect(true).toBe(true)
-      } catch (error) {
-        expect(error).toBeNull()
-      }
+      // Generate through the installed Prisma CLI without invoking a shell or package manager.
+      expect(() => execFileSync(process.execPath, [require.resolve('prisma'), 'generate'], {
+        cwd: process.cwd(),
+        stdio: 'pipe',
+        timeout: 60000,
+      })).not.toThrow()
     })
   })
 })

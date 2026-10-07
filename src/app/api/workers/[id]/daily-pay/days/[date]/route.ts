@@ -1,7 +1,7 @@
 import { getUserFromRequest } from "@/lib/auth-edge";
 import { toMoney } from "@/lib/daily-pay";
 import { DailyPayRepository } from "@/repositories/daily-pay.repository";
-import { snapshotRate } from "@/lib/daily-pay";
+import { snapshotRate, parseCivilDate } from "@/lib/daily-pay";
 import { civilDateSchema } from "@/schemas/daily-pay.schema";
 import type { CivilDate, Money } from "@/types/daily-pay";
 import type { Prisma } from "@prisma/client";
@@ -12,18 +12,19 @@ const DAY_NOT_FOUND = { error: "Worked day not found" };
 const RATE_REQUIRED = { error: "A positive daily rate is required" };
 const MONTH_LOCKED = { error: "Month is marked PAID; day edits are locked" };
 const DAY_DUPLICATE = { error: "Worked day already marked for this date" };
+const OPERATION_LOCKED = { error: "Operational day cannot be removed" };
+
+class OperationalDayConflict extends Error {}
+
 const INTERNAL_ERROR = { error: "Internal server error" };
 
 function unauthorized(): Response {
   return Response.json(UNAUTHORIZED, { status: 401 });
 }
 
-/**
- * Sanitized catch-all: raw failures are logged server-side only, and the
- * response never carries exception text, database details, or credentials.
- */
-function unexpected(error: unknown): Response {
-  console.error("Daily-pay day route error:", error);
+/** Return a generic failure without logging exception text or credentials. */
+function unexpected(): Response {
+  console.error("Daily-pay day route failed");
   return Response.json(INTERNAL_ERROR, { status: 500 });
 }
 
@@ -99,14 +100,15 @@ export async function PUT(
         );
       },
     );
-  } catch (error) {
-    return unexpected(error);
+  } catch {
+    return unexpected();
   }
 }
 
 /**
  * Unmarks an explicit worked day inside the same Serializable flow: lock,
- * conflict on PAID, then delete. An unmarked date resolves as not found.
+ * conflict on PAID or an operational day, then delete legacy-only days.
+ * An unmarked date resolves as not found.
  */
 export async function DELETE(
   request: Request,
@@ -137,12 +139,40 @@ export async function DELETE(
         if (control.status === "PAID")
           return Response.json(MONTH_LOCKED, { status: 409 });
 
-        const deleted = await repository.deleteDay(id, parsedDate.data, tx);
-        if (deleted < 1) return Response.json(DAY_NOT_FOUND, { status: 404 });
+        const scope = {
+          organizationId: user.organizationId,
+          dailyPayDay: {
+            workerId: id,
+            organizationId: user.organizationId,
+            workDate: parseCivilDate(parsedDate.data),
+          },
+        };
+        if (await tx.workerDayOperation.findFirst({ where: scope, select: { id: true } }))
+          throw new OperationalDayConflict();
+
+        // The predicate also protects against an operation inserted after the read.
+        const deleted = await tx.dailyPayDay.deleteMany({
+          where: {
+            workerId: id,
+            organizationId: user.organizationId,
+            workDate: parseCivilDate(parsedDate.data),
+            operation: { is: null },
+          },
+        });
+        if (deleted.count < 1) {
+          if (await tx.workerDayOperation.findFirst({ where: scope, select: { id: true } }))
+            throw new OperationalDayConflict();
+          return Response.json(DAY_NOT_FOUND, { status: 404 });
+        }
         return new Response(null, { status: 204 });
       },
     );
   } catch (error) {
-    return unexpected(error);
+    if (error instanceof OperationalDayConflict)
+      return Response.json(OPERATION_LOCKED, { status: 409 });
+    const code = (error as { code?: unknown } | null)?.code;
+    if (code === "P2034" || code === "40001")
+      return Response.json(OPERATION_LOCKED, { status: 409 });
+    return unexpected();
   }
 }

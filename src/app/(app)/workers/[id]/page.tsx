@@ -41,6 +41,15 @@ export default async function WorkerDetailPage({
 
   if (!rawWorker) notFound()
 
+  const truckOptions = await prisma.truck.findMany({
+    where: { organizationId: orgId },
+    select: { id: true, brand: true, model: true, plate: true },
+  })
+  const trucks = truckOptions.map(truck => ({
+    id: truck.id,
+    name: `${truck.brand} ${truck.model} (${truck.plate})`,
+  }))
+
   // Decrypt DNI for display
   const decryptedDni = await decryptWorkerDni(rawWorker.dni)
   const docType = rawWorker.docType || detectDocType(decryptedDni)
@@ -150,7 +159,7 @@ export default async function WorkerDetailPage({
       </Card>
 
       {/* Daily Pay Panel */}
-      <DailyPayPanel workerId={worker.id} />
+      <DailyPayPanel workerId={worker.id} workerName={worker.name} trucks={trucks} />
 
       {/* Actions */}
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">

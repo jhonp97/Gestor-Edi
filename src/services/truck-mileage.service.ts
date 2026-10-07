@@ -12,7 +12,10 @@ export class TruckMileageService {
     // Check for duplicate
     const existing = await this.repo.findByTruckAndDate(validated.truckId, validated.date)
     if (existing) {
-      throw Object.assign(new Error('Ya existe un registro de kilometraje para esta fecha'), { statusCode: 409 })
+      const message = existing.sourceWorkerDaySegmentId
+        ? 'El kilometraje de esta fecha se administra desde la jornada del trabajador'
+        : 'Ya existe un registro de kilometraje para esta fecha'
+      throw Object.assign(new Error(message), { statusCode: 409 })
     }
 
     return this.repo.create({
@@ -36,6 +39,7 @@ export class TruckMileageService {
         km: r.km,
         notes: r.notes,
         createdAt: r.createdAt,
+        sourceWorkerDaySegmentId: r.sourceWorkerDaySegmentId,
       })),
       totalKm,
     }

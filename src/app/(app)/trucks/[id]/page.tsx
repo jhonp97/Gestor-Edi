@@ -5,9 +5,13 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TruckEditDialog } from '@/components/trucks/truck-edit-dialog'
 import { TruckDeleteButton } from '@/components/trucks/truck-delete-button'
+import { WorkerDayOperationEntry } from '@/components/trucks/worker-day-operation-entry'
+import { TransactionForm } from '@/components/transactions/transaction-form'
 import Link from 'next/link'
 import { ArrowLeft, User, Gauge } from 'lucide-react'
-import { TruckMileageModal, TruckMileageSummary, TruckMileageHistory } from '@/components/trucks'
+import { TruckMileageSummary, TruckMileageHistory } from '@/components/trucks'
+import { TruckMonthlyReport } from '@/components/trucks/truck-monthly-report'
+import { InvalidReportCursorError, loadTruckMonthlyReport, resolveReportMonth, sanitizeTransactionFilters, validateReportCursors } from '@/lib/truck-monthly-report'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,10 +38,11 @@ export default async function TruckDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ type?: string; sort?: string }>
+  searchParams: Promise<{ type?: string; sort?: string; month?: string | string[]; transactionsCursor?: string | string[]; segmentsCursor?: string | string[] }>
 }) {
   const { id } = await params
-  const { type, sort } = await searchParams
+  const { type, sort, month, transactionsCursor, segmentsCursor } = await searchParams
+  const filters = sanitizeTransactionFilters(type, sort)
 
   const session = await getSessionUniversal()
   if (!session?.user?.organizationId) redirect('/login')
@@ -55,8 +60,8 @@ export default async function TruckDetailPage({
         orderBy: { name: 'asc' },
       },
       transactions: {
-        where: type === 'INCOME' || type === 'EXPENSE' ? { type } : undefined,
-        orderBy: { date: sort === 'asc' ? 'asc' : 'desc' },
+        where: filters.type ? { type: filters.type } : undefined,
+        orderBy: { date: filters.sort },
       },
       mileages: {
         orderBy: { date: 'desc' },
@@ -65,6 +70,26 @@ export default async function TruckDetailPage({
   })
 
   if (!truck) notFound()
+
+  let reportMonth: string
+  try {
+    validateReportCursors({ transactions: transactionsCursor, segments: segmentsCursor })
+    reportMonth = resolveReportMonth(month)
+  } catch {
+    notFound()
+  }
+  let report: Awaited<ReturnType<typeof loadTruckMonthlyReport>>
+  try {
+    report = await loadTruckMonthlyReport(orgId, truck.id, reportMonth, { transactions: transactionsCursor, segments: segmentsCursor })
+  } catch (error) {
+    if (error instanceof InvalidReportCursorError) notFound()
+    throw error
+  }
+
+  const [workers, trucks] = await Promise.all([
+    prisma.worker.findMany({ where: { organizationId: orgId }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+    prisma.truck.findMany({ where: { organizationId: orgId }, select: { id: true, brand: true, model: true, plate: true }, orderBy: { plate: 'asc' } }),
+  ])
 
   const totalIncome = truck.transactions
     .filter((t) => t.type === 'INCOME')
@@ -112,7 +137,14 @@ export default async function TruckDetailPage({
           </div>
         </div>
         <div className="flex gap-2">
-          <TruckEditDialog truck={truck} />
+          <TruckEditDialog truck={{
+            id: truck.id,
+            plate: truck.plate,
+            brand: truck.brand,
+            model: truck.model,
+            year: truck.year,
+            status: truck.status,
+          }} />
           <TruckDeleteButton truckId={truck.id} truckName={`${truck.brand} ${truck.model}`} />
         </div>
       </div>
@@ -145,6 +177,19 @@ export default async function TruckDetailPage({
         </Card>
       </div>
 
+      <Card>
+        <CardHeader><CardTitle>Jornada operativa</CardTitle></CardHeader>
+        <CardContent>
+          <WorkerDayOperationEntry
+            truckId={truck.id}
+            workers={workers.map(worker => ({ id: worker.id, name: worker.name }))}
+            trucks={trucks.map(item => ({ id: item.id, name: `${item.plate} · ${item.brand} ${item.model}` }))}
+          />
+        </CardContent>
+      </Card>
+
+      <TruckMonthlyReport report={report} {...filters} />
+
       {/* Kilometraje */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
@@ -152,9 +197,6 @@ export default async function TruckDetailPage({
           <h2 className="text-lg font-semibold">Kilometraje</h2>
         </div>
         <TruckMileageSummary totalKm={totalKm} monthlyKm={monthlyKm} yearlyKm={yearlyKm} />
-        <div className="flex justify-end">
-          <TruckMileageModal truckId={truck.id} />
-        </div>
         <TruckMileageHistory truckId={truck.id} records={truck.mileages} />
       </div>
 
@@ -193,11 +235,17 @@ export default async function TruckDetailPage({
             <CardTitle>
               Transacciones ({truck.transactions.length})
             </CardTitle>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <TransactionForm
+              trucks={[{ id: truck.id, plate: truck.plate, brand: truck.brand, model: truck.model }]}
+              fixedTruckId={truck.id}
+            />
             {/* Filtros */}
             <form className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <input type="hidden" name="month" value={reportMonth} />
               <select
                 name="type"
-                defaultValue={type ?? ''}
+                defaultValue={filters.type}
                 className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
               >
                 <option value="">Todos</option>
@@ -206,7 +254,7 @@ export default async function TruckDetailPage({
               </select>
               <select
                 name="sort"
-                defaultValue={sort ?? 'desc'}
+                defaultValue={filters.sort}
                 className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
               >
                 <option value="desc">Más reciente</option>
@@ -219,6 +267,7 @@ export default async function TruckDetailPage({
                 Filtrar
               </button>
             </form>
+            </div>
           </div>
         </CardHeader>
         <CardContent>

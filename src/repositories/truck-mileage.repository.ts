@@ -14,6 +14,10 @@ type MileageFilters = {
   month?: number
 }
 
+export class LinkedMileageDeletionError extends Error {
+  readonly statusCode = 409
+}
+
 export class TruckMileageRepository extends BaseRepository {
   constructor(organizationId?: string | null) {
     super(organizationId)
@@ -113,6 +117,14 @@ export class TruckMileageRepository extends BaseRepository {
   }
 
   async delete(id: string): Promise<void> {
+    const record = await this.prisma.truckMileage.findFirst({
+      where: { id, ...this.tenantFilter() },
+      select: { id: true, sourceWorkerDaySegmentId: true },
+    })
+    if (!record) throw new Error('Mileage record not found')
+    if (record.sourceWorkerDaySegmentId) {
+      throw new LinkedMileageDeletionError('Mileage is managed by its worker-day entry')
+    }
     await this.prisma.truckMileage.delete({ where: { id } })
   }
 

@@ -81,6 +81,7 @@ export type MileageRecord = {
   km: number
   notes: string | null
   createdAt: Date
+  sourceWorkerDaySegmentId: string | null
 }
 
 export type MileageSummaryProps = {

@@ -70,7 +70,8 @@ const DATE = '2026-03-15'
 const USER_ID = 'user-1'
 const PAID_AT = new Date('2026-03-15T10:30:00.000Z')
 const PAID_AT_ISO = PAID_AT.toISOString()
-const TX = { __txMarker: true } as unknown as Prisma.TransactionClient
+const txState = vi.hoisted(() => ({ findFirst: vi.fn(), deleteMany: vi.fn() }))
+const TX = { __txMarker: true, workerDayOperation: { findFirst: txState.findFirst }, dailyPayDay: { deleteMany: txState.deleteMany } } as unknown as Prisma.TransactionClient
 
 type Actor = { userId: string; email: string; role: 'USER' | 'PLATFORM_ADMIN'; organizationId?: string }
 
@@ -137,6 +138,8 @@ beforeEach(() => {
   repoState.acquireMonthControl.mockResolvedValue(makeControl())
   repoState.createDay.mockResolvedValue({ id: 'day-1' })
   repoState.deleteDay.mockResolvedValue(1)
+  txState.findFirst.mockReset().mockResolvedValue(null)
+  txState.deleteMany.mockReset().mockResolvedValue({ count: 1 })
   repoState.runSerializable.mockImplementation(
     async (work: (tx: Prisma.TransactionClient) => unknown) => work(TX)
   )
@@ -337,11 +340,63 @@ describe('DELETE day — unmarking worked days', () => {
     const res = await deleteDay(request(dayUrl, 'DELETE'), ctx({ id: WORKER_ID, date: DATE }))
     expect(res.status).toBe(204)
     await expect(res.text()).resolves.toBe('')
-    expect(repoState.deleteDay).toHaveBeenCalledWith(WORKER_ID, DATE, TX)
+    expect(txState.deleteMany).toHaveBeenCalledWith({ where: { workerId: WORKER_ID, organizationId: ORG_A, workDate: new Date(`${DATE}T00:00:00.000Z`), operation: { is: null } } })
   })
 
-  it('answers 404 when the civil date was never marked', async () => {
-    repoState.deleteDay.mockResolvedValue(0)
+   it('rejects an operational day in a pending month without deleting it', async () => {
+     repoState.acquireMonthControl.mockResolvedValue(makeControl({ status: 'PENDING' }))
+     const findFirst = vi.fn().mockResolvedValue({ id: 'operation-1' })
+     const tx = { ...TX, workerDayOperation: { findFirst } } as unknown as Prisma.TransactionClient
+     let rejected = false
+     repoState.runSerializable.mockImplementation(async (work: (tx: Prisma.TransactionClient) => unknown) => {
+       try { return await work(tx) } catch (error) { rejected = true; throw error }
+     })
+     const res = await deleteDay(request(dayUrl, 'DELETE'), ctx({ id: WORKER_ID, date: DATE }))
+     expect(rejected).toBe(true)
+     expect(res.status).toBe(409)
+     expect(findFirst).toHaveBeenCalledWith({ where: { organizationId: ORG_A, dailyPayDay: { workerId: WORKER_ID, organizationId: ORG_A, workDate: new Date(`${DATE}T00:00:00.000Z`) } }, select: { id: true } })
+     expect(txState.deleteMany).not.toHaveBeenCalled()
+     expect(repoState.deleteDay).not.toHaveBeenCalled()
+   })
+
+   it('rolls back when an operation appears after conditional delete returns zero', async () => {
+     txState.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 'operation-1' })
+     txState.deleteMany.mockResolvedValue({ count: 0 })
+     let rejected = false
+     repoState.runSerializable.mockImplementation(async (work: (tx: Prisma.TransactionClient) => unknown) => {
+       try { return await work(TX) } catch (error) { rejected = true; throw error }
+     })
+     const res = await deleteDay(request(dayUrl, 'DELETE'), ctx({ id: WORKER_ID, date: DATE }))
+     expect(rejected).toBe(true)
+     expect(res.status).toBe(409)
+     expect(txState.deleteMany).toHaveBeenCalledTimes(1)
+     expect(txState.findFirst).toHaveBeenCalledTimes(2)
+   })
+
+   it('maps a concurrent serializable conflict to 409 without exposing details', async () => {
+     repoState.runSerializable.mockRejectedValue({ code: 'P2034', message: 'sensitive database detail' })
+     const res = await deleteDay(request(dayUrl, 'DELETE'), ctx({ id: WORKER_ID, date: DATE }))
+     expect(res.status).toBe(409)
+     expect(await res.text()).not.toContain('sensitive database detail')
+   })
+
+   it('maps exhausted SQLSTATE 40001 retries to a sanitized DELETE conflict', async () => {
+     repoState.runSerializable.mockRejectedValue({ code: '40001', message: 'sensitive database detail' })
+     const res = await deleteDay(request(dayUrl, 'DELETE'), ctx({ id: WORKER_ID, date: DATE }))
+     expect(res.status).toBe(409)
+     expect(await res.json()).toEqual({ error: 'Operational day cannot be removed' })
+     expect(txState.deleteMany).not.toHaveBeenCalled()
+   })
+
+   it('does not classify other SQLSTATE errors as DELETE conflicts', async () => {
+     repoState.runSerializable.mockRejectedValue({ code: '40002', message: 'sensitive database detail' })
+     const res = await deleteDay(request(dayUrl, 'DELETE'), ctx({ id: WORKER_ID, date: DATE }))
+     expect(res.status).toBe(500)
+     expect(await res.json()).toEqual({ error: 'Internal server error' })
+   })
+
+   it('answers 404 when the civil date was never marked', async () => {
+    txState.deleteMany.mockResolvedValue({ count: 0 })
     const res = await deleteDay(request(dayUrl, 'DELETE'), ctx({ id: WORKER_ID, date: DATE }))
     expect(res.status).toBe(404)
   })

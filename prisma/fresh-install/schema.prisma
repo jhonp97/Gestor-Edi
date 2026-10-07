@@ -1,0 +1,401 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Truck {
+  id             String        @id @default(uuid())
+  plate           String
+  brand          String
+  model          String
+  year           Int
+  status         TruckStatus   @default(ACTIVE)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  transactions   Transaction[]
+  workers        Worker[]
+  mileages       TruckMileage[]
+  operationalSegments WorkerDayTruckSegment[]
+
+  organizationId  String
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([plate])
+  @@index([organizationId])
+  @@unique([plate, organizationId])
+}
+
+model Transaction {
+  id              String          @id @default(uuid())
+  truckId         String
+  truck           Truck           @relation(fields: [truckId], references: [id], onDelete: Cascade)
+  type            TransactionType
+  amount          Float
+  description     String
+  date            DateTime
+  category        String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  organizationId  String
+  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([truckId])
+  @@index([type])
+  @@index([date])
+  @@index([organizationId])
+}
+
+model Worker {
+  id              String       @id @default(uuid())
+  name            String
+  dni             String
+  dniHash         String?
+  docType         String       @default("DNI")
+  position        String
+  baseSalary      Float
+  dailyRate       Decimal?     @db.Decimal(12, 2)
+  startDate       DateTime
+  endDate         DateTime?
+  status          WorkerStatus @default(ACTIVE)
+  truckId         String?
+  truck           Truck?       @relation(fields: [truckId], references: [id], onDelete: SetNull)
+  payrolls        Payroll[]
+  dailyPayDays    DailyPayDay[]
+  dailyPayMonths  DailyPayMonthControl[]
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([dni])
+  @@index([dniHash])
+  @@index([truckId])
+  @@index([organizationId])
+  @@unique([dniHash, organizationId])
+}
+
+model Payroll {
+  id                    String   @id @default(uuid())
+  workerId              String
+  worker                Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  month                 Int
+  year                  Int
+  baseSalary            Float
+  irpfPercent           Float    @default(0)
+  irpfAmount            Float    @default(0)
+  socialSecurityPercent Float    @default(6.35)
+  socialSecurityAmount  Float    @default(0)
+  otherDeductions       Float    @default(0)
+  otherDeductionsDesc   String?
+  bonuses               Float    @default(0)
+  bonusesDesc           String?
+  grossPay              Float
+  netPay                Float
+  paidAt                DateTime?
+  notes                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  organizationId        String
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([workerId, month, year])
+  @@index([workerId])
+  @@index([month, year])
+  @@index([organizationId])
+}
+
+model TruckMileage {
+  id             String   @id @default(uuid())
+  truckId        String
+  truck          Truck    @relation(fields: [truckId], references: [id], onDelete: Cascade)
+  date           DateTime @db.Date
+  km             Float
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([truckId, date])
+  @@index([truckId])
+  @@index([date])
+  @@index([organizationId])
+}
+
+model Organization {
+  id           String        @id @default(uuid())
+  name         String
+  ownerId      String?       @unique
+  owner        User?         @relation("OrganizationOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Plan & billing fields (subscription-ready)
+  planType           PlanType     @default(FREE)
+  planStatus         PlanStatus   @default(TRIAL)
+  billingEmail       String?
+  billingVatId       String?      // NIF/CIF
+  currency           String       @default("EUR")
+  stripeCustomerId   String?
+  stripeSubscriptionId String?
+
+  users        User[]
+  trucks       Truck[]
+  transactions Transaction[]
+  workers      Worker[]
+  payrolls     Payroll[]
+  truckMileages TruckMileage[]
+  consentLogs  ConsentLog[]
+  auditLogs    AuditLog[]
+  dailyPayDays   DailyPayDay[]
+  dailyPayMonths  DailyPayMonthControl[]
+  workerDayOperations WorkerDayOperation[]
+  workerDaySegments WorkerDayTruckSegment[]
+
+  @@index([ownerId])
+}
+
+model ConsentLog {
+  id             String   @id @default(uuid())
+  userId         String?
+  user           User?    @relation(fields: [userId], references: [id])
+  categories     Json     // { analytics: bool, marketing: bool }
+  ip             String?
+  userAgent      String?
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
+  @@index([organizationId])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id             String      @id @default(uuid())
+  action         AuditAction
+  userId         String?
+  user           User?       @relation(fields: [userId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  details        Json?
+  ip             String?
+  userAgent      String?
+  createdAt      DateTime    @default(now())
+
+  @@index([userId])
+  @@index([organizationId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+enum TruckStatus {
+  ACTIVE
+  MAINTENANCE
+  INACTIVE
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum WorkerStatus {
+  ACTIVE
+  INACTIVE
+  ON_LEAVE
+}
+
+model User {
+  id                    String              @id @default(uuid())
+  name                  String
+  email                 String              @unique
+  emailVerified         DateTime?
+  password              String?
+  role                  UserRole            @default(USER)
+  image                 String?
+
+  phone                 String?
+  phoneVerified         DateTime?
+  twoFactorEnabled      Boolean             @default(false)
+  twoFactorMethod       TwoFactorMethod     @default(NONE)
+  language              String              @default("es")
+  notificationsEnabled  Boolean             @default(true)
+  emailNotifications    Boolean             @default(true)
+  smsNotifications      Boolean             @default(false)
+  gdprConsentGiven      Boolean             @default(false)
+  gdprConsentDate       DateTime?
+
+  organizationId        String
+  organization          Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  ownedOrganization     Organization?       @relation("OrganizationOwner")
+
+  passwordResetTokens   PasswordResetToken[]
+  accounts              Account[]
+  consentLogs           ConsentLog[]
+  auditLogs             AuditLog[]
+  deletedAt             DateTime?
+  deletionRequestedAt   DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  @@index([email])
+  @@index([role])
+  @@index([organizationId])
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+enum UserRole {
+  USER
+  ORG_ADMIN
+  PLATFORM_ADMIN
+}
+
+enum TwoFactorMethod {
+  NONE
+  SMS
+}
+
+enum AuditAction {
+  DATA_EXPORT
+  DATA_DELETE_REQUEST
+  ORG_UPDATE
+  ROLE_CHANGE
+  PLATFORM_ADMIN_WRITE
+  CONSENT_CHANGE
+  PASSWORD_CHANGE
+  TWO_FACTOR_CHANGE
+  DAILY_PAY_MONTH_MARKED_PAID
+  DAILY_PAY_MONTH_MARKED_PENDING
+}
+
+enum PlanType {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum PlanStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+model DailyPayDay {
+  id             String   @id @default(uuid())
+  workerId       String
+  worker         Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  workDate       DateTime @db.Date
+  rateSnapshot   Decimal  @db.Decimal(12, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  operation      WorkerDayOperation?
+
+  @@unique([workerId, workDate])
+  @@index([workerId])
+  @@index([workDate])
+  @@index([organizationId])
+}
+
+model WorkerDayOperation {
+  id             String @id @default(uuid())
+  dailyPayDayId  String @unique
+  dailyPayDay    DailyPayDay @relation(fields: [dailyPayDayId], references: [id], onDelete: Cascade)
+  companyName    String @db.VarChar(160)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  segments       WorkerDayTruckSegment[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+model WorkerDayTruckSegment {
+  id             String @id @default(uuid())
+  operationId    String
+  operation      WorkerDayOperation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  truckId        String
+  truck          Truck @relation(fields: [truckId], references: [id], onDelete: Restrict)
+  workDate       DateTime @db.Date
+  position       Int
+  share          Int
+  kilometers     Decimal? @db.Decimal(12, 2)
+  incident       String? @db.VarChar(1000)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([truckId, workDate])
+  @@unique([operationId, position])
+  @@index([operationId])
+  @@index([organizationId])
+}
+
+model DailyPayMonthControl {
+  id             String              @id @default(uuid())
+  workerId       String
+  worker         Worker              @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  periodStart    DateTime            @db.Date
+  status         DailyPayMonthStatus @default(PENDING)
+  paidAt         DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  organizationId String
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, workerId, periodStart])
+  @@index([workerId])
+  @@index([organizationId])
+}
+
+enum DailyPayMonthStatus {
+  PENDING
+  PAID
+}

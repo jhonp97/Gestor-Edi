@@ -3,6 +3,7 @@ import { getSessionUniversal } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { TruckCard } from '@/components/trucks/truck-card'
 import { TruckForm } from '@/components/trucks/truck-form'
+import Link from 'next/link'
 
 // Force dynamic rendering to avoid build-time database connection
 export const dynamic = 'force-dynamic'
@@ -49,7 +50,7 @@ export default async function TrucksPage() {
             Gestión de la flota de camiones
           </p>
         </div>
-        <TruckForm />
+        <div className="flex items-center gap-3"><Link href="/trucks/report" className="rounded border px-3 py-2">Informe mensual de la flota</Link><TruckForm /></div>
       </div>
 
       {trucks.length === 0 ? (
