@@ -9,6 +9,7 @@ afterEach(cleanup)
 it('uses keyboard-accessible anchors preserving fleet filters and the other list cursor', () => {
   render(<FleetMonthlyReport report={{ pages: { transactions: { previous: 'prev:t50', next: 'next:t01', current: 'next:t51', hasMore: true, count: 50 }, segments: { ...page, current: 'prev:s01' } }, period: 'month', month: '2026-03', selectedTruck: 'truck-a', trucks: [], byTruck: [], totals: { income: '0.00', expense: '0.00' }, workerDays: 0, transactions: [], segments: [] }} />)
   const next = screen.getByRole('link', { name: 'Siguiente: transacciones' })
+  expect(screen.getByRole('link', { name: 'Descargar PDF mensual' }).getAttribute('href')).toBe('/api/trucks/report/pdf?month=2026-03&period=month&truck=truck-a')
   expect(next.tagName).toBe('A')
   expect(next.getAttribute('href')).toBe('?month=2026-03&period=month&truck=truck-a&transactionsCursor=next%3At01&segmentsCursor=prev%3As01')
   expect(screen.getByRole('navigation', { name: 'Paginación de transacciones' })).toBeTruthy()
@@ -43,6 +44,7 @@ it('shows only aggregates for annual selection while retaining GET filters', () 
   expect(screen.queryByRole('region', { name: 'Transacciones registradas' })).toBeNull()
   expect(screen.queryByRole('region', { name: 'Jornadas atribuidas' })).toBeNull()
   expect(screen.getByText('Año 2026')).toBeTruthy()
+  expect(screen.queryByRole('link', { name: 'Descargar PDF mensual' })).toBeNull()
 })
 
 it.each([

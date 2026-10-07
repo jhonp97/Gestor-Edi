@@ -31,6 +31,7 @@ export function FleetMonthlyReport({ report }: { report: Report }) {
         </select>
         <button type="submit" className="rounded border px-3 py-1">Ver informe</button>
       </form>
+      {report.period === 'month' && <a className="inline-block rounded border px-3 py-2" href={`/api/trucks/report/pdf?${new URLSearchParams({ month: report.month, period: 'month', truck: report.selectedTruck })}`}>Descargar PDF mensual</a>}
       <p>Transacciones registradas según Europe/Madrid; jornadas según fecha civil. La empresa es solo una etiqueta descriptiva de cada jornada. Sin salarios ni ingresos inferidos. Los totales de flota y de cada camión se redondean de forma independiente desde importes registrados; no se suman cifras ya redondeadas.</p>
       <p>{periodLabel}</p>
       <p>Ingresos registrados de la selección: €{report.totals.income}</p>
