@@ -9,7 +9,7 @@ import { WorkerDayOperationEntry } from '@/components/trucks/worker-day-operatio
 import { TransactionForm } from '@/components/transactions/transaction-form'
 import Link from 'next/link'
 import { ArrowLeft, User, Gauge } from 'lucide-react'
-import { TruckMileageModal, TruckMileageSummary, TruckMileageHistory } from '@/components/trucks'
+import { TruckMileageSummary, TruckMileageHistory } from '@/components/trucks'
 import { TruckMonthlyReport } from '@/components/trucks/truck-monthly-report'
 import { InvalidReportCursorError, loadTruckMonthlyReport, resolveReportMonth, sanitizeTransactionFilters, validateReportCursors } from '@/lib/truck-monthly-report'
 
@@ -137,7 +137,14 @@ export default async function TruckDetailPage({
           </div>
         </div>
         <div className="flex gap-2">
-          <TruckEditDialog truck={truck} />
+          <TruckEditDialog truck={{
+            id: truck.id,
+            plate: truck.plate,
+            brand: truck.brand,
+            model: truck.model,
+            year: truck.year,
+            status: truck.status,
+          }} />
           <TruckDeleteButton truckId={truck.id} truckName={`${truck.brand} ${truck.model}`} />
         </div>
       </div>
@@ -190,9 +197,6 @@ export default async function TruckDetailPage({
           <h2 className="text-lg font-semibold">Kilometraje</h2>
         </div>
         <TruckMileageSummary totalKm={totalKm} monthlyKm={monthlyKm} yearlyKm={yearlyKm} />
-        <div className="flex justify-end">
-          <TruckMileageModal truckId={truck.id} />
-        </div>
         <TruckMileageHistory truckId={truck.id} records={truck.mileages} />
       </div>
 
