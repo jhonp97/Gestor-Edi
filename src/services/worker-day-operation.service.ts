@@ -1,4 +1,4 @@
-import { WorkerDayOperationRepository } from '@/repositories/worker-day-operation.repository'
+import { ManualMileageConflictError, WorkerDayOperationRepository } from '@/repositories/worker-day-operation.repository'
 import type { WorkerDayOperationInput } from '@/schemas/worker-day-operation.schema'
 
 export class WorkerDayOperationError extends Error {
@@ -40,6 +40,9 @@ export class WorkerDayOperationService {
         return WorkerDayOperationRepository.serialize(day)
       })
     } catch (error) {
+      if (error instanceof ManualMileageConflictError) {
+        throw new WorkerDayOperationError(409, 'Ya existe kilometraje manual para este camión y fecha')
+      }
       if (conflict(error)) throw new WorkerDayOperationError(409, 'Truck or worker already booked for this date')
       throw error
     }

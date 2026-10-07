@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth-edge'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
-import { TruckMileageRepository } from '@/repositories/truck-mileage.repository'
+import { LinkedMileageDeletionError, TruckMileageRepository } from '@/repositories/truck-mileage.repository'
 import { TruckMileageService } from '@/services/truck-mileage.service'
 
 export async function DELETE(
@@ -39,7 +39,6 @@ export async function DELETE(
         { status: 404 }
       )
     }
-
     const repo = new TruckMileageRepository(user.organizationId)
     const service = new TruckMileageService(repo)
 
@@ -47,7 +46,10 @@ export async function DELETE(
 
     revalidatePath(`/trucks/${id}`)
     return NextResponse.json({ message: 'Registro de kilometraje eliminado' })
-  } catch {
+  } catch (error) {
+    if (error instanceof LinkedMileageDeletionError) {
+      return NextResponse.json({ error: 'Este kilometraje se actualiza desde la jornada del trabajador' }, { status: 409 })
+    }
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }

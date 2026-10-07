@@ -52,7 +52,7 @@ export async function POST(
   } catch (error) {
     if (error instanceof Error && 'statusCode' in error && error.statusCode === 409) {
       return NextResponse.json(
-        { error: 'Ya existe un registro de kilometraje para esta fecha' },
+        { error: error instanceof Error ? error.message : 'Ya existe un registro de kilometraje para esta fecha' },
         { status: 409 }
       )
     }
