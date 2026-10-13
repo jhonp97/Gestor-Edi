@@ -18,19 +18,22 @@ const statusVariant: Record<string, 'default' | 'secondary' | 'destructive'> = {
 
 interface TruckCardProps {
   truck: Truck
+  statisticsQuery?: Record<string, string>
+  statisticsLabel?: string
   stats?: {
     income: number
     expense: number
   }
 }
 
-export function TruckCard({ truck, stats }: TruckCardProps) {
+export function TruckCard({ truck, stats, statisticsQuery, statisticsLabel }: TruckCardProps) {
+  const query = new URLSearchParams(statisticsQuery).toString()
   const income = stats?.income ?? 0
   const expense = stats?.expense ?? 0
   const net = income - expense
 
   return (
-    <Link href={`/trucks/${truck.id}`}>
+    <Link href={`/trucks/${truck.id}${query ? `?${query}` : ''}`}>
       <Card className="transition-shadow hover:shadow-md">
         <CardHeader>
           <CardTitle className="text-lg">
@@ -52,6 +55,7 @@ export function TruckCard({ truck, stats }: TruckCardProps) {
           
           {/* Stats */}
           <div className="mt-3 pt-3 border-t space-y-1">
+            {statisticsLabel && <p className="text-sm text-muted-foreground break-words">{statisticsLabel}</p>}
             <div className="flex items-center justify-between text-sm">
               <span className="flex items-center gap-1 text-green-600">
                 <TrendingUp className="size-3" />

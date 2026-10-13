@@ -13,6 +13,9 @@ import { TruckMileageSummary, TruckMileageHistory } from '@/components/trucks'
 import { TruckMonthlyReport } from '@/components/trucks/truck-monthly-report'
 import { InvalidReportCursorError, loadTruckMonthlyReport, resolveReportMonth, sanitizeTransactionFilters, validateReportCursors } from '@/lib/truck-monthly-report'
 
+import { resolveTruckStatisticsPeriod, truckStatisticsQuery } from '@/lib/truck-statistics-period'
+import { TruckStatisticsFilter } from '@/components/trucks/truck-statistics-filter'
+
 export const dynamic = 'force-dynamic'
 
 const statusLabels: Record<string, string> = {
@@ -38,15 +41,19 @@ export default async function TruckDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ type?: string; sort?: string; month?: string | string[]; transactionsCursor?: string | string[]; segmentsCursor?: string | string[] }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const { id } = await params
-  const { type, sort, month, transactionsCursor, segmentsCursor } = await searchParams
+  const query = await searchParams
+  const { type, sort, month, transactionsCursor, segmentsCursor } = query
   const filters = sanitizeTransactionFilters(type, sort)
 
   const session = await getSessionUniversal()
   if (!session?.user?.organizationId) redirect('/login')
   const orgId = session.user.organizationId
+  let period
+  try { period = resolveTruckStatisticsPeriod(query) } catch { notFound() }
+  const statisticsQuery = truckStatisticsQuery(period)
 
   const truck = await prisma.truck.findFirst({
     where: { id, organizationId: orgId },
@@ -91,11 +98,16 @@ export default async function TruckDetailPage({
     prisma.truck.findMany({ where: { organizationId: orgId }, select: { id: true, brand: true, model: true, plate: true }, orderBy: { plate: 'asc' } }),
   ])
 
-  const totalIncome = truck.transactions
+  const statisticsTransactions = await prisma.transaction.findMany({
+    where: { organizationId: orgId, truckId: truck.id, ...(period.date ? { date: period.date } : {}) },
+    select: { type: true, amount: true },
+  })
+
+  const totalIncome = statisticsTransactions
     .filter((t) => t.type === 'INCOME')
     .reduce((s, t) => s + t.amount, 0)
 
-  const totalExpense = truck.transactions
+  const totalExpense = statisticsTransactions
     .filter((t) => t.type === 'EXPENSE')
     .reduce((s, t) => s + t.amount, 0)
 
@@ -119,7 +131,7 @@ export default async function TruckDetailPage({
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/trucks">
+          <Link href={`/trucks?${new URLSearchParams(statisticsQuery).toString()}`}>
             <button className="flex size-9 items-center justify-center rounded-md border border-input bg-background hover:bg-accent">
               <ArrowLeft className="size-4" />
             </button>
@@ -149,6 +161,7 @@ export default async function TruckDetailPage({
         </div>
       </div>
 
+      <TruckStatisticsFilter period={period} preservedParams={query} />
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
@@ -188,7 +201,7 @@ export default async function TruckDetailPage({
         </CardContent>
       </Card>
 
-      <TruckMonthlyReport report={report} {...filters} />
+      <TruckMonthlyReport report={report} {...filters} statisticsQuery={statisticsQuery} />
 
       {/* Kilometraje */}
       <div className="space-y-4">
@@ -243,6 +256,7 @@ export default async function TruckDetailPage({
             {/* Filtros */}
             <form className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <input type="hidden" name="month" value={reportMonth} />
+              {Object.entries(statisticsQuery).map(([name, value]) => <input key={name} type="hidden" name={name} value={value} />)}
               <select
                 name="type"
                 defaultValue={filters.type}

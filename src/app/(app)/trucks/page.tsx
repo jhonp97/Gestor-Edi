@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma'
 import { getSessionUniversal } from '@/lib/session'
-import { redirect } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
+import { resolveTruckStatisticsPeriod, truckStatisticsQuery } from '@/lib/truck-statistics-period'
+import { TruckStatisticsFilter } from '@/components/trucks/truck-statistics-filter'
 import { TruckCard } from '@/components/trucks/truck-card'
 import { TruckForm } from '@/components/trucks/truck-form'
 import Link from 'next/link'
@@ -8,10 +10,14 @@ import Link from 'next/link'
 // Force dynamic rendering to avoid build-time database connection
 export const dynamic = 'force-dynamic'
 
-export default async function TrucksPage() {
+export default async function TrucksPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const session = await getSessionUniversal()
   if (!session?.user?.organizationId) redirect('/login')
   const orgId = session.user.organizationId
+  const query = await searchParams
+  let period
+  try { period = resolveTruckStatisticsPeriod(query) } catch { notFound() }
+  const statisticsQuery = truckStatisticsQuery(period)
 
   const [trucks, transactions] = await Promise.all([
     prisma.truck.findMany({
@@ -19,7 +25,7 @@ export default async function TrucksPage() {
       orderBy: { createdAt: 'desc' },
     }),
     prisma.transaction.findMany({
-      where: { organizationId: orgId },
+      where: { organizationId: orgId, ...(period.date ? { date: period.date } : {}) },
       select: {
         truckId: true,
         type: true,
@@ -53,6 +59,8 @@ export default async function TrucksPage() {
         <div className="flex items-center gap-3"><Link href="/trucks/report" className="rounded border px-3 py-2">Informe mensual de la flota</Link><TruckForm /></div>
       </div>
 
+      <TruckStatisticsFilter period={period} preservedParams={query} />
+
       {trucks.length === 0 ? (
         <p className="text-lg text-muted-foreground">
           No hay camiones registrados. Agregá el primero usando el botón de
@@ -65,6 +73,8 @@ export default async function TrucksPage() {
               key={truck.id} 
               truck={truck} 
               stats={statsByTruckId.get(truck.id) || { income: 0, expense: 0 }}
+              statisticsQuery={statisticsQuery}
+              statisticsLabel={period.label}
             />
           ))}
         </div>

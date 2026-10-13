@@ -141,6 +141,12 @@ Para comprobar **Eliminar**, usa una nómina pendiente de prueba: cancela primer
 
 Si falta la migración, iniciar el servidor no habilita por sí solo el nuevo esquema. La prueba manual no realiza push ni merge; son pasos separados después de revisar los resultados.
 
+## 📊 Estadísticas de camiones
+
+En `/trucks` y en el detalle del camión, el filtro de estadísticas permite **Mes actual** (por defecto), **Mes elegido**, **Total histórico** o **Desde/Hasta**. Actualiza ingresos, gastos y balance de las cards y del detalle; la selección se conserva al abrir un camión o volver al listado.
+
+Las fechas usan **Europe/Madrid** y Desde/Hasta incluye ambos días, incluso en cambios de horario. Se admiten fechas entre 1900 y 2199. Solo se suman importes de transacciones registradas, sin salarios ni ingresos inferidos. Los movimientos mantienen sus filtros de tipo/orden; el informe mensual y su PDF conservan sus propios controles y cálculos. El filtro estadístico no utiliza el parámetro `month` del informe.
+
 ## 🧪 Tests
 
 El proyecto tiene 55 tests unitarios que pasan en CI/CD.
