@@ -1,6 +1,8 @@
 // @vitest-environment node
 import { beforeEach, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
+import { readFileSync } from 'node:fs'
+import { isValidElement, type ReactNode } from 'react'
 
 vi.mock('server-only', () => ({}))
 const mocks = vi.hoisted(() => ({ findFirst: vi.fn(), session: vi.fn(), decrypt: vi.fn(), render: vi.fn(), workerRepository: vi.fn() }))
@@ -32,6 +34,31 @@ function documentText(node: unknown): string {
   if (Array.isArray(node)) return node.map(documentText).join('')
   return documentText((node as { props: { children?: unknown } }).props?.children)
 }
+
+function documentNodes(node: ReactNode): ReactNode[] {
+  if (Array.isArray(node)) return node.flatMap(documentNodes)
+  if (!isValidElement<{ children?: ReactNode }>(node)) return []
+  return [node, ...documentNodes(node.props.children)]
+}
+
+const receiptPayroll = { ...source, baseSalary: 1000, irpfPercent: 0, irpfAmount: 0, socialSecurityPercent: 0, socialSecurityAmount: 0, otherDeductions: 0, paidAt: null }
+
+it('receipt identifies Transportes Acevedo Hernandez instead of the old company name', () => {
+  const text = documentText(NominaDocument({ payroll: receiptPayroll }))
+  expect(text).toContain('RECIBO DE NÓMINA')
+  expect(text).toContain('Transportes Acevedo Hernandez')
+  expect(text).not.toContain('Flota Camiones EDI')
+})
+
+it('receipt embeds the supplied PNG in the right header corner without remote requests', () => {
+  const document = NominaDocument({ payroll: receiptPayroll })
+  const images = documentNodes(document).filter((node) => isValidElement(node) && node.type === 'image')
+  expect(images).toHaveLength(1)
+  const image = images[0] as React.ReactElement<{ src: { data: Buffer; format: string }; style: { alignSelf: string; objectFit: string } }>
+  expect(image.props.src.format).toBe('png')
+  expect(image.props.src.data).toEqual(readFileSync('public/branding/transportes-acevedo-hernandez.png'))
+  expect(image.props.style).toMatchObject({ alignSelf: 'flex-end', objectFit: 'contain' })
+})
 
 it('PDF displays saved inclusive dates and preserves the monthly legacy receipt', () => {
   const payroll = { ...source, baseSalary: 1000, irpfPercent: 0, irpfAmount: 0, socialSecurityPercent: 0, socialSecurityAmount: 0, otherDeductions: 0, paidAt: null }

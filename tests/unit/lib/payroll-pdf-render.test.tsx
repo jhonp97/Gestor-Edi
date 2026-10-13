@@ -16,4 +16,5 @@ it('renders a complete custom-period payroll as a real PDF', async () => {
   expect(buffer.subarray(0, 5).toString()).toBe('%PDF-')
   expect(buffer.length).toBeGreaterThan(1000)
   expect(buffer.toString('latin1')).toContain('%%EOF')
+  expect(buffer.toString('latin1')).toContain('/Subtype /Image')
 })

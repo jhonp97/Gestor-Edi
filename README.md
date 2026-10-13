@@ -115,6 +115,7 @@ En **Nómina Individual**, mes y año seleccionan por defecto el mes completo. P
 
 El intervalo se guarda en la nómina y aparece en el detalle, listado y PDF. Para filtrar el listado se utiliza el mes y año de la fecha **Desde**. Las nóminas antiguas sin fechas conservan su significado de mes completo.
 
+El recibo PDF identifica a **Transportes Acevedo Hernandez** y muestra su logo en la esquina superior derecha. La imagen está en `public/branding/transportes-acevedo-hernandez.png` y se incrusta en el documento; no depende de OneDrive ni de una URL externa. Al descargar el PDF, comprueba el encabezado, el logo y que las fechas e importes se mantengan.
 
 Las nóminas **pendientes** no bloquean nuevas generaciones aunque compartan días, y no se eliminan ni se pagan automáticamente. Solo los intervalos **ya pagados** bloquean nuevos documentos o pagos solapados. Al marcar como pagada se comprueba de nuevo el intervalo: dos pendientes que compartan días no pueden quedar ambas pagadas. Los resúmenes siguen sumando los documentos del mes, incluidos los pendientes; una regeneración crea otro documento, no reemplaza el anterior.
 
