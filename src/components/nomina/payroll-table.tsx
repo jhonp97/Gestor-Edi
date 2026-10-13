@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Eye } from 'lucide-react'
 import type { PayrollWithWorker } from '@/types'
 import { payrollPeriodLabel } from '@/lib/payroll-period-label'
+import { DeletePayrollButton } from '@/components/nomina/delete-payroll-button'
 
 interface PayrollTableProps {
   payrolls: PayrollWithWorker[]
@@ -99,6 +100,9 @@ export function PayrollTable({ payrolls }: PayrollTableProps) {
                           <Eye className="size-4" />
                         </Button>
                       </Link>
+                      {!p.paidAt && (
+                        <DeletePayrollButton payrollId={p.id} workerName={p.worker.name} periodLabel={payrollPeriodLabel(p)} compact />
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -154,6 +158,9 @@ export function PayrollTable({ payrolls }: PayrollTableProps) {
                         Ver
                       </Button>
                     </Link>
+                    {!p.paidAt && (
+                      <DeletePayrollButton payrollId={p.id} workerName={p.worker.name} periodLabel={payrollPeriodLabel(p)} />
+                    )}
                   </div>
                 </div>
               </CardContent>

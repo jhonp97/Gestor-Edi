@@ -97,6 +97,26 @@ export async function payPayroll(
   })
 }
 
+/** Deletion cooperates with payment and guards paidAt in the DELETE itself. */
+export async function deletePendingPayroll(db: PrismaClient, organizationId: string, id: string) {
+  const existing = await db.payroll.findFirst({ where: { id, organizationId } })
+  if (!existing) throw new PayrollPeriodError('Nómina no encontrada', 404)
+  return withPayrollWorkerLock(db, organizationId, existing.workerId, async (tx) => {
+    const payroll = await tx.payroll.findFirst({ where: { id, organizationId } })
+    if (!payroll) throw new PayrollPeriodError('Nómina no encontrada', 404)
+    if (payroll.paidAt) throw new PayrollPeriodError('No se puede eliminar una nómina pagada', 409)
+    try {
+      return await tx.payroll.delete({ where: { id, organizationId, paidAt: null } })
+    } catch (error) {
+      // A non-cooperating writer may still change the row after our read.
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'P2025') {
+        throw new PayrollPeriodError('La nómina cambió; actualiza el listado e inténtalo de nuevo', 409)
+      }
+      throw error
+    }
+  })
+}
+
 export function payrollErrorResponse(error: unknown, fallback: string): Response {
   if (error instanceof PayrollPeriodError) return Response.json({ error: error.message }, { status: error.status })
   if (error && typeof error === 'object' && 'code' in error && error.code === 'P2034') {

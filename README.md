@@ -118,6 +118,7 @@ El intervalo se guarda en la nómina y aparece en el detalle, listado y PDF. Par
 
 Las nóminas **pendientes** no bloquean nuevas generaciones aunque compartan días, y no se eliminan ni se pagan automáticamente. Solo los intervalos **ya pagados** bloquean nuevos documentos o pagos solapados. Al marcar como pagada se comprueba de nuevo el intervalo: dos pendientes que compartan días no pueden quedar ambas pagadas. Los resúmenes siguen sumando los documentos del mes, incluidos los pendientes; una regeneración crea otro documento, no reemplaza el anterior.
 
+En `/nomina`, **Acciones → Eliminar** permite borrar únicamente una nómina **pendiente**, tanto en escritorio como en móvil. La confirmación identifica el trabajador y el intervalo; cancelar no cambia nada. El borrado es definitivo, no elimina al trabajador ni sus días trabajados. El listado y sus totales se actualizan tras completarse. Las nóminas **pagadas** no muestran esta opción y el servidor rechaza su eliminación, incluso si se marcaron pagadas mientras la confirmación estaba abierta. Si hay un error, se muestra sin dar la nómina por eliminada.
 
 La generación para **todos los trabajadores** sigue siendo mensual. Los controles de pago del calendario diario son independientes de las nóminas y no se modifican con este flujo.
 
@@ -135,6 +136,7 @@ Cuando la migración esté aplicada en la base elegida, inicia `pnpm dev` y abre
 4. Sin marcarla pagada, genera otra con el mismo intervalo y otro importe: ambas deben quedar pendientes.
 5. Solo sobre documentos de prueba, marca una pagada: la otra debe rechazar el pago si comparte días. Un intervalo posterior sin días compartidos debe permitirse.
 
+Para comprobar **Eliminar**, usa una nómina pendiente de prueba: cancela primero la confirmación y comprueba que siga en el listado; después confirma y verifica que desaparezca. Una nómina pagada no debe ofrecer **Eliminar**. No uses un pago real para probar el bloqueo.
 
 Si falta la migración, iniciar el servidor no habilita por sí solo el nuevo esquema. La prueba manual no realiza push ni merge; son pasos separados después de revisar los resultados.
 

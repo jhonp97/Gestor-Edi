@@ -1,5 +1,5 @@
 import { BaseRepository } from './base.repository'
-import { resolvePayrollPeriod, withPayrollWorkerLock, assertNoPaidOverlap, payPayroll } from '@/lib/payroll-period'
+import { resolvePayrollPeriod, withPayrollWorkerLock, assertNoPaidOverlap, payPayroll, deletePendingPayroll } from '@/lib/payroll-period'
 import type { Payroll, PayrollWithWorker, MonthlyPayrollSummary } from '@/types'
 
 export class PayrollRepository extends BaseRepository {
@@ -103,11 +103,8 @@ export class PayrollRepository extends BaseRepository {
   }
 
   async delete(id: string): Promise<Payroll> {
-    const payroll = await this.findById(id)
-    if (!payroll) throw new Error('Not found')
-    return this.prisma.payroll.delete({
-      where: { id },
-    })
+    if (!this.organizationId) throw new Error('Organization required')
+    return deletePendingPayroll(this.prisma, this.organizationId, id)
   }
 
   async markAsPaid(id: string, paidAt: Date): Promise<Payroll | null> {
