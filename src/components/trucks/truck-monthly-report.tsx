@@ -18,12 +18,13 @@ export function ReportDetailNavigation({ label, page, parameter, filters }: { la
   </nav>
 }
 
-export function TruckMonthlyReport({ report, type, sort }: { report: Report; type: string; sort: string }) {
-  const filters = { month: report.month, type, sort, transactionsCursor: report.pages.transactions.current, segmentsCursor: report.pages.segments.current }
+export function TruckMonthlyReport({ report, type, sort, statisticsQuery = {} }: { report: Report; type: string; sort: string; statisticsQuery?: Record<string, string> }) {
+  const filters = { ...statisticsQuery, month: report.month, type, sort, transactionsCursor: report.pages.transactions.current, segmentsCursor: report.pages.segments.current }
   return <Card>
     <CardHeader><CardTitle>Informe mensual del camión</CardTitle></CardHeader>
     <CardContent className="space-y-4">
       <form method="get" className="flex items-center gap-2">
+        {Object.entries(statisticsQuery).map(([name, value]) => <input key={name} type="hidden" name={name} value={value} />)}
         <input type="hidden" name="type" value={type} />
         <input type="hidden" name="sort" value={sort} />
         <label htmlFor="report-month">Mes</label>
