@@ -3,6 +3,8 @@ import { getUserFromRequest } from '@/lib/auth-edge'
 import { revalidatePath } from 'next/cache'
 import { NextResponse } from 'next/server'
 
+import { resolvePayrollPeriod, withPayrollWorkerLock, assertNoPaidOverlap, PayrollPeriodError, payrollErrorResponse } from '@/lib/payroll-period'
+
 const SS_PERCENT = 6.35
 
 export async function POST(request: Request) {
@@ -30,6 +32,7 @@ export async function POST(request: Request) {
       )
     }
 
+    const period = resolvePayrollPeriod({ month, year })
     const irpf = irpfPercent ?? 15
     const activeWorkers = await prisma.worker.findMany({
       where: { status: 'ACTIVE', organizationId: user.organizationId },
@@ -40,19 +43,7 @@ export async function POST(request: Request) {
     const skipped = []
 
     for (const worker of activeWorkers) {
-      const existing = await prisma.payroll.findFirst({
-        where: {
-          workerId: worker.id,
-          month,
-          year,
-          organizationId: user.organizationId,
-        },
-      })
-
-      if (existing) {
-        skipped.push(worker.name)
-        continue
-      }
+      // Pending documents never block monthly regeneration.
 
       // Calculate amounts
       const bonusAmount = Math.round(worker.baseSalary * (bonusPercent / 100) * 100) / 100
@@ -68,11 +59,13 @@ export async function POST(request: Request) {
       // Net = gross - all deductions
       const netPay = Math.round((grossPay - irpfAmount - ssAmount - otherDedAmount) * 100) / 100
 
-      const payroll = await prisma.payroll.create({
+      try {
+      const payroll = await withPayrollWorkerLock(prisma, user.organizationId, worker.id, async (tx) => {
+        await assertNoPaidOverlap(tx, user.organizationId!, worker.id, period)
+        return tx.payroll.create({
         data: {
           workerId: worker.id,
-          month,
-          year,
+          ...period,
           baseSalary: worker.baseSalary,
           irpfPercent: irpf,
           irpfAmount,
@@ -84,11 +77,16 @@ export async function POST(request: Request) {
           otherDeductionsDesc: otherDeductionsDesc || undefined,
           grossPay,
           netPay,
-          organizationId: user.organizationId,
+          organizationId: user.organizationId!,
         },
       })
 
+      })
       created.push(payroll)
+      } catch (error) {
+        if (error instanceof PayrollPeriodError && error.status === 409) skipped.push(worker.name)
+        else throw error
+      }
     }
 
     revalidatePath('/nomina')
@@ -98,10 +96,6 @@ export async function POST(request: Request) {
       skippedNames: skipped,
     })
   } catch (error) {
-    console.error('Error generating payroll:', error)
-    return Response.json(
-      { error: 'Error al generar la nómina' },
-      { status: 500 }
-    )
+    return payrollErrorResponse(error, 'Error al generar la nómina')
   }
 }

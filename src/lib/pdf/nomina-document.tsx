@@ -1,10 +1,15 @@
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+import { Document, Page, Text, View, Image as PdfImage, StyleSheet } from '@react-pdf/renderer'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+import { payrollPeriodLabel } from '@/lib/payroll-period-label'
 
 // Professional styles
 const styles = StyleSheet.create({
   page: { padding: 30, fontSize: 10 },
   header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   title: { fontSize: 18, fontWeight: 'bold', color: '#1e3a5f' },
+  logo: { width: 88, height: 78.24, objectFit: 'contain', alignSelf: 'flex-end', marginBottom: 6 },
   section: { marginBottom: 15 },
   row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
   label: { color: '#64748b' },
@@ -19,6 +24,8 @@ interface NominaDocumentProps {
     id: string
     month: number
     year: number
+    periodStart?: Date | string | null
+    periodEnd?: Date | string | null
     baseSalary: number
     irpfPercent: number
     irpfAmount: number
@@ -38,6 +45,8 @@ interface NominaDocumentProps {
 
 export function NominaDocument({ payroll }: NominaDocumentProps) {
   const monthNames = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+  // Embed project-local bytes so downloaded receipts do not depend on an image URL.
+  const logo = readFileSync(join(process.cwd(), 'public/branding/transportes-acevedo-hernandez.png'))
   
   return (
     <Document>
@@ -46,10 +55,12 @@ export function NominaDocument({ payroll }: NominaDocumentProps) {
         <View style={styles.header}>
           <View>
             <Text style={styles.title}>RECIBO DE NÓMINA</Text>
-            <Text style={{ color: '#64748b' }}>Flota Camiones EDI</Text>
+            <Text style={{ color: '#64748b' }}>Transportes Acevedo Hernandez</Text>
           </View>
           <View style={{ textAlign: 'right' }}>
+            <PdfImage src={{ data: logo, format: 'png' }} style={styles.logo} />
             <Text>Período: {monthNames[payroll.month]} {payroll.year}</Text>
+            <Text>{payrollPeriodLabel(payroll)}</Text>
             <Text>Fecha: {new Date().toLocaleDateString('es-ES')}</Text>
           </View>
         </View>
@@ -142,7 +153,7 @@ export function NominaDocument({ payroll }: NominaDocumentProps) {
 
         {/* Footer */}
         <Text style={styles.footer}>
-          Este documento es un recibo de nómina generado automáticamente por Flota Camiones EDI.
+          Este documento es un recibo de nómina generado automáticamente por Transportes Acevedo Hernandez.
         </Text>
       </Page>
     </Document>

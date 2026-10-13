@@ -89,6 +89,8 @@ model Payroll {
   worker                Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
   month                 Int
   year                  Int
+  periodStart           DateTime? @db.Date
+  periodEnd             DateTime? @db.Date
   baseSalary            Float
   irpfPercent           Float    @default(0)
   irpfAmount            Float    @default(0)
@@ -108,7 +110,7 @@ model Payroll {
   organizationId        String
   organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  @@unique([workerId, month, year])
+  @@index([workerId, month, year])
   @@index([workerId])
   @@index([month, year])
   @@index([organizationId])

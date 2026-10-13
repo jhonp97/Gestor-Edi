@@ -109,6 +109,38 @@ El proyecto viene con un usuario admin precargado:
 
 También puedes crear nuevos usuarios desde la página de registro.
 
+## 📅 Nóminas por intervalo
+
+En **Nómina Individual**, mes y año seleccionan por defecto el mes completo. Puedes editar **Desde** y **Hasta**, incluso entre distintos meses o años; ambas fechas están incluidas. El formulario muestra los días trabajados registrados y propone la suma de sus importes diarios históricos, sin cambiar las tarifas. El salario puede ajustarse manualmente.
+
+El intervalo se guarda en la nómina y aparece en el detalle, listado y PDF. Para filtrar el listado se utiliza el mes y año de la fecha **Desde**. Las nóminas antiguas sin fechas conservan su significado de mes completo.
+
+El recibo PDF identifica a **Transportes Acevedo Hernandez** y muestra su logo en la esquina superior derecha. La imagen está en `public/branding/transportes-acevedo-hernandez.png` y se incrusta en el documento; no depende de OneDrive ni de una URL externa. Al descargar el PDF, comprueba el encabezado, el logo y que las fechas e importes se mantengan.
+
+Las nóminas **pendientes** no bloquean nuevas generaciones aunque compartan días, y no se eliminan ni se pagan automáticamente. Solo los intervalos **ya pagados** bloquean nuevos documentos o pagos solapados. Al marcar como pagada se comprueba de nuevo el intervalo: dos pendientes que compartan días no pueden quedar ambas pagadas. Los resúmenes siguen sumando los documentos del mes, incluidos los pendientes; una regeneración crea otro documento, no reemplaza el anterior.
+
+En `/nomina`, **Acciones → Eliminar** permite borrar únicamente una nómina **pendiente**, tanto en escritorio como en móvil. La confirmación identifica el trabajador y el intervalo; cancelar no cambia nada. El borrado es definitivo, no elimina al trabajador ni sus días trabajados. El listado y sus totales se actualizan tras completarse. Las nóminas **pagadas** no muestran esta opción y el servidor rechaza su eliminación, incluso si se marcaron pagadas mientras la confirmación estaba abierta. Si hay un error, se muestra sin dar la nómina por eliminada.
+
+La generación para **todos los trabajadores** sigue siendo mensual. Los controles de pago del calendario diario son independientes de las nóminas y no se modifican con este flujo.
+
+### Activación del cambio de esquema
+
+Antes de ejecutar esta versión sobre una base existente, un operador debe revisar y aplicar la migración `20261013130000_payroll_custom_periods` con el procedimiento habitual de despliegue, previa copia de seguridad. Después debe generar el cliente Prisma y reiniciar la aplicación. La migración agrega fechas opcionales y sustituye la unicidad mensual por un índice; conserva los documentos existentes sin recalcularlos. No uses `db push` para sustituir la migración sobre datos reales. Preparar el código no aplica esta migración automáticamente.
+
+### Comprobación manual con `pnpm dev`
+
+Cuando la migración esté aplicada en la base elegida, inicia `pnpm dev` y abre **Nómina Individual**. Usa un trabajador y días de prueba, no pagos reales:
+
+1. Comprueba que mes/año selecciona el mes completo y muestra el acumulado diario.
+2. Cambia **Desde/Hasta** a un intervalo que cruce meses; comprueba los días listados y el importe. Ambas fechas cuentan.
+3. Genera la nómina y revisa las mismas fechas en el listado, detalle y PDF.
+4. Sin marcarla pagada, genera otra con el mismo intervalo y otro importe: ambas deben quedar pendientes.
+5. Solo sobre documentos de prueba, marca una pagada: la otra debe rechazar el pago si comparte días. Un intervalo posterior sin días compartidos debe permitirse.
+
+Para comprobar **Eliminar**, usa una nómina pendiente de prueba: cancela primero la confirmación y comprueba que siga en el listado; después confirma y verifica que desaparezca. Una nómina pagada no debe ofrecer **Eliminar**. No uses un pago real para probar el bloqueo.
+
+Si falta la migración, iniciar el servidor no habilita por sí solo el nuevo esquema. La prueba manual no realiza push ni merge; son pasos separados después de revisar los resultados.
+
 ## 🧪 Tests
 
 El proyecto tiene 55 tests unitarios que pasan en CI/CD.

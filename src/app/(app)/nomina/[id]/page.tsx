@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PayrollBreakdown } from '@/components/nomina/payroll-breakdown'
 import { MarkAsPaidButton } from '@/components/nomina/mark-as-paid-button'
 import { ArrowLeft, Download } from 'lucide-react'
+import { payrollPeriodLabel } from '@/lib/payroll-period-label'
 
 const MONTH_NAMES = [
   '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -48,7 +49,7 @@ export default async function PayrollDetailPage({
               Nómina — {payroll.worker.name}
             </h1>
             <p className="text-lg text-muted-foreground">
-              {MONTH_NAMES[payroll.month]} {payroll.year}
+              {payrollPeriodLabel(payroll)}
             </p>
           </div>
         </div>
@@ -112,7 +113,11 @@ export default async function PayrollDetailPage({
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <p className="text-sm text-muted-foreground">Mes</p>
+              <p className="text-sm text-muted-foreground">Días incluidos</p>
+              <p className="text-lg">{payrollPeriodLabel(payroll)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Mes de inicio</p>
               <p className="text-lg">{MONTH_NAMES[payroll.month]}</p>
             </div>
             <div>

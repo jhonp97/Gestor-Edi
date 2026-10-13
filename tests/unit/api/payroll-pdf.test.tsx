@@ -1,6 +1,8 @@
 // @vitest-environment node
 import { beforeEach, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
+import { readFileSync } from 'node:fs'
+import { isValidElement, type ReactNode } from 'react'
 
 vi.mock('server-only', () => ({}))
 const mocks = vi.hoisted(() => ({ findFirst: vi.fn(), session: vi.fn(), decrypt: vi.fn(), render: vi.fn(), workerRepository: vi.fn() }))
@@ -12,7 +14,7 @@ vi.mock('@/repositories/worker.repository', () => ({
 vi.mock('@/lib/prisma', () => ({ prisma: { payroll: { findFirst: mocks.findFirst } } }))
 vi.mock('@/lib/session', () => ({ getSessionUniversal: mocks.session }))
 vi.mock('@/services/encryption.service', () => ({ getEncryptionService: () => ({ decryptWorkerDni: mocks.decrypt }) }))
-vi.mock('@react-pdf/renderer', () => ({ renderToBuffer: mocks.render, StyleSheet: { create: (styles: unknown) => styles } }))
+vi.mock('@react-pdf/renderer', () => ({ Document: 'document', Page: 'page', Text: 'text', View: 'view', Image: 'image', renderToBuffer: mocks.render, StyleSheet: { create: (styles: unknown) => styles } }))
 import { GET } from '@/app/api/nomina/[id]/pdf/route'
 import { NominaDocument } from '@/lib/pdf/nomina-document'
 
@@ -24,6 +26,53 @@ beforeEach(() => {
   mocks.findFirst.mockResolvedValue(source)
   mocks.decrypt.mockResolvedValue('X0000000T')
   mocks.render.mockResolvedValue(Buffer.from('synthetic-pdf'))
+})
+
+function documentText(node: unknown): string {
+  if (node === null || node === undefined || typeof node === 'boolean') return ''
+  if (typeof node === 'string' || typeof node === 'number') return String(node)
+  if (Array.isArray(node)) return node.map(documentText).join('')
+  return documentText((node as { props: { children?: unknown } }).props?.children)
+}
+
+function documentNodes(node: ReactNode): ReactNode[] {
+  if (Array.isArray(node)) return node.flatMap(documentNodes)
+  if (!isValidElement<{ children?: ReactNode }>(node)) return []
+  return [node, ...documentNodes(node.props.children)]
+}
+
+const receiptPayroll = { ...source, baseSalary: 1000, irpfPercent: 0, irpfAmount: 0, socialSecurityPercent: 0, socialSecurityAmount: 0, otherDeductions: 0, paidAt: null }
+
+it('receipt identifies Transportes Acevedo Hernandez instead of the old company name', () => {
+  const text = documentText(NominaDocument({ payroll: receiptPayroll }))
+  expect(text).toContain('RECIBO DE NÓMINA')
+  expect(text).toContain('Transportes Acevedo Hernandez')
+  expect(text).not.toContain('Flota Camiones EDI')
+})
+
+it('receipt embeds the supplied PNG in the right header corner without remote requests', () => {
+  const document = NominaDocument({ payroll: receiptPayroll })
+  const images = documentNodes(document).filter((node) => isValidElement(node) && node.type === 'image')
+  expect(images).toHaveLength(1)
+  const image = images[0] as React.ReactElement<{ src: { data: Buffer; format: string }; style: { alignSelf: string; objectFit: string } }>
+  expect(image.props.src.format).toBe('png')
+  expect(image.props.src.data).toEqual(readFileSync('public/branding/transportes-acevedo-hernandez.png'))
+  expect(image.props.style).toMatchObject({ alignSelf: 'flex-end', objectFit: 'contain' })
+})
+
+it('PDF displays saved inclusive dates and preserves the monthly legacy receipt', () => {
+  const payroll = { ...source, baseSalary: 1000, irpfPercent: 0, irpfAmount: 0, socialSecurityPercent: 0, socialSecurityAmount: 0, otherDeductions: 0, paidAt: null }
+  const ranged = { ...payroll, periodStart: '2025-12-15', periodEnd: '2026-01-14' }
+  expect(documentText(NominaDocument({ payroll: ranged }))).toContain('Del 15/12/2025 al 14/01/2026')
+  expect(documentText(NominaDocument({ payroll }))).toContain('Del 01/03/2026 al 31/03/2026')
+})
+
+it('PDF route preserves the saved dates on the render input', async () => {
+  const range = { periodStart: new Date('2025-12-15'), periodEnd: new Date('2026-01-14') }
+  mocks.findFirst.mockResolvedValue({ ...source, ...range })
+  const response = await request()
+  expect(response.status).toBe(200)
+  expect(mocks.render.mock.calls[0][0].props.payroll).toMatchObject(range)
 })
 
 it('passes decrypted immutable payroll to the real document render input', async () => {

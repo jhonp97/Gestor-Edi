@@ -1,4 +1,5 @@
 import { BaseRepository } from './base.repository'
+import { resolvePayrollPeriod, withPayrollWorkerLock, assertNoPaidOverlap, payPayroll, deletePendingPayroll } from '@/lib/payroll-period'
 import type { Payroll, PayrollWithWorker, MonthlyPayrollSummary } from '@/types'
 
 export class PayrollRepository extends BaseRepository {
@@ -54,6 +55,8 @@ export class PayrollRepository extends BaseRepository {
     workerId: string
     month: number
     year: number
+    periodStart?: Date
+    periodEnd?: Date
     baseSalary: number
     irpfPercent: number
     irpfAmount: number
@@ -67,11 +70,13 @@ export class PayrollRepository extends BaseRepository {
     netPay: number
     notes?: string
   }): Promise<Payroll> {
-    return this.prisma.payroll.create({
-      data: {
-        ...data,
-        organizationId: this.organizationId!,
-      },
+    if (!this.organizationId) throw new Error('Organization required')
+    const organizationId = this.organizationId
+    const period = resolvePayrollPeriod({ month: data.month, year: data.year,
+      periodStart: data.periodStart?.toISOString().slice(0, 10), periodEnd: data.periodEnd?.toISOString().slice(0, 10) })
+    return withPayrollWorkerLock(this.prisma, organizationId, data.workerId, async (tx) => {
+      await assertNoPaidOverlap(tx, organizationId, data.workerId, period)
+      return tx.payroll.create({ data: { ...data, ...period, organizationId } })
     })
   }
 
@@ -98,20 +103,15 @@ export class PayrollRepository extends BaseRepository {
   }
 
   async delete(id: string): Promise<Payroll> {
-    const payroll = await this.findById(id)
-    if (!payroll) throw new Error('Not found')
-    return this.prisma.payroll.delete({
-      where: { id },
-    })
+    if (!this.organizationId) throw new Error('Organization required')
+    return deletePendingPayroll(this.prisma, this.organizationId, id)
   }
 
   async markAsPaid(id: string, paidAt: Date): Promise<Payroll | null> {
+    if (!this.organizationId) throw new Error('Organization required')
     const payroll = await this.findById(id)
     if (!payroll) return null
-    return this.prisma.payroll.update({
-      where: { id },
-      data: { paidAt },
-    })
+    return payPayroll(this.prisma, this.organizationId, id, paidAt)
   }
 
   async getMonthlySummary(month: number, year: number): Promise<MonthlyPayrollSummary> {

@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { Eye } from 'lucide-react'
 import type { PayrollWithWorker } from '@/types'
+import { payrollPeriodLabel } from '@/lib/payroll-period-label'
+import { DeletePayrollButton } from '@/components/nomina/delete-payroll-button'
 
 interface PayrollTableProps {
   payrolls: PayrollWithWorker[]
@@ -63,6 +65,7 @@ export function PayrollTable({ payrolls }: PayrollTableProps) {
                   </td>
                   <td className="py-3 pr-4 text-sm">
                     {MONTH_NAMES[p.month]} {p.year}
+                    <span className="block text-xs text-muted-foreground">{payrollPeriodLabel(p)}</span>
                   </td>
                   <td className="py-3 pr-4 text-right">
                     ${p.baseSalary.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
@@ -91,11 +94,16 @@ export function PayrollTable({ payrolls }: PayrollTableProps) {
                     </Badge>
                   </td>
                   <td className="py-3">
-                    <Link href={`/nomina/${p.id}`}>
-                      <Button variant="ghost" size="icon">
-                        <Eye className="size-4" />
-                      </Button>
-                    </Link>
+                    <div className="flex items-start gap-2">
+                      <Link href={`/nomina/${p.id}`}>
+                        <Button variant="ghost" size="icon" aria-label={`Ver nómina de ${p.worker.name}`}>
+                          <Eye className="size-4" />
+                        </Button>
+                      </Link>
+                      {!p.paidAt && (
+                        <DeletePayrollButton payrollId={p.id} workerName={p.worker.name} periodLabel={payrollPeriodLabel(p)} compact />
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -122,6 +130,7 @@ export function PayrollTable({ payrolls }: PayrollTableProps) {
                   <div>
                     <p className="text-muted-foreground text-xs">Período</p>
                     <p>{MONTH_NAMES[p.month]} {p.year}</p>
+                    <p className="text-xs text-muted-foreground">{payrollPeriodLabel(p)}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-muted-foreground text-xs">Salario Base</p>
@@ -142,12 +151,17 @@ export function PayrollTable({ payrolls }: PayrollTableProps) {
                     <p className="text-xs text-muted-foreground">Neto</p>
                     <p className="text-lg font-bold">${p.netPay.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
                   </div>
-                  <Link href={`/nomina/${p.id}`}>
-                    <Button variant="outline" size="sm">
-                      <Eye className="size-4 mr-1" />
-                      Ver
-                    </Button>
-                  </Link>
+                  <div className="flex flex-wrap items-start justify-end gap-2">
+                    <Link href={`/nomina/${p.id}`}>
+                      <Button variant="outline" size="sm">
+                        <Eye className="size-4 mr-1" />
+                        Ver
+                      </Button>
+                    </Link>
+                    {!p.paidAt && (
+                      <DeletePayrollButton payrollId={p.id} workerName={p.worker.name} periodLabel={payrollPeriodLabel(p)} />
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

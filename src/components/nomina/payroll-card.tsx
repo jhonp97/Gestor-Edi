@@ -2,6 +2,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { Eye } from 'lucide-react'
+import { payrollPeriodLabel } from '@/lib/payroll-period-label'
 
 interface PayrollCardProps {
   id: string
@@ -10,6 +11,8 @@ interface PayrollCardProps {
   position: string
   month: number
   year: number
+  periodStart?: Date | string | null
+  periodEnd?: Date | string | null
   baseSalary: number
   irpfAmount: number
   ssAmount: number
@@ -31,6 +34,8 @@ export function PayrollCard({
   position,
   month,
   year,
+  periodStart,
+  periodEnd,
   baseSalary,
   irpfAmount,
   ssAmount,
@@ -55,6 +60,7 @@ export function PayrollCard({
             <p className="text-sm text-muted-foreground">
               {MONTH_NAMES[month]} {year}
             </p>
+            <p className="text-sm text-muted-foreground">{payrollPeriodLabel({ month, year, periodStart, periodEnd })}</p>
             <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
               <span className="text-muted-foreground">Salario Base:</span>
               <span className="text-right font-medium">
