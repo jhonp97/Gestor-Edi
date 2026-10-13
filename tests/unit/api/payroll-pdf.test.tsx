@@ -12,7 +12,7 @@ vi.mock('@/repositories/worker.repository', () => ({
 vi.mock('@/lib/prisma', () => ({ prisma: { payroll: { findFirst: mocks.findFirst } } }))
 vi.mock('@/lib/session', () => ({ getSessionUniversal: mocks.session }))
 vi.mock('@/services/encryption.service', () => ({ getEncryptionService: () => ({ decryptWorkerDni: mocks.decrypt }) }))
-vi.mock('@react-pdf/renderer', () => ({ renderToBuffer: mocks.render, StyleSheet: { create: (styles: unknown) => styles } }))
+vi.mock('@react-pdf/renderer', () => ({ Document: 'document', Page: 'page', Text: 'text', View: 'view', Image: 'image', renderToBuffer: mocks.render, StyleSheet: { create: (styles: unknown) => styles } }))
 import { GET } from '@/app/api/nomina/[id]/pdf/route'
 import { NominaDocument } from '@/lib/pdf/nomina-document'
 
@@ -24,6 +24,28 @@ beforeEach(() => {
   mocks.findFirst.mockResolvedValue(source)
   mocks.decrypt.mockResolvedValue('X0000000T')
   mocks.render.mockResolvedValue(Buffer.from('synthetic-pdf'))
+})
+
+function documentText(node: unknown): string {
+  if (node === null || node === undefined || typeof node === 'boolean') return ''
+  if (typeof node === 'string' || typeof node === 'number') return String(node)
+  if (Array.isArray(node)) return node.map(documentText).join('')
+  return documentText((node as { props: { children?: unknown } }).props?.children)
+}
+
+it('PDF displays saved inclusive dates and preserves the monthly legacy receipt', () => {
+  const payroll = { ...source, baseSalary: 1000, irpfPercent: 0, irpfAmount: 0, socialSecurityPercent: 0, socialSecurityAmount: 0, otherDeductions: 0, paidAt: null }
+  const ranged = { ...payroll, periodStart: '2025-12-15', periodEnd: '2026-01-14' }
+  expect(documentText(NominaDocument({ payroll: ranged }))).toContain('Del 15/12/2025 al 14/01/2026')
+  expect(documentText(NominaDocument({ payroll }))).toContain('Del 01/03/2026 al 31/03/2026')
+})
+
+it('PDF route preserves the saved dates on the render input', async () => {
+  const range = { periodStart: new Date('2025-12-15'), periodEnd: new Date('2026-01-14') }
+  mocks.findFirst.mockResolvedValue({ ...source, ...range })
+  const response = await request()
+  expect(response.status).toBe(200)
+  expect(mocks.render.mock.calls[0][0].props.payroll).toMatchObject(range)
 })
 
 it('passes decrypted immutable payroll to the real document render input', async () => {

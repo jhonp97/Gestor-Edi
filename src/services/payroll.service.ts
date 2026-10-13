@@ -1,6 +1,7 @@
 import { PayrollRepository } from '@/repositories/payroll.repository'
 import { WorkerRepository } from '@/repositories/worker.repository'
 import { createPayrollSchema, generatePayrollSchema } from '@/schemas'
+import { resolvePayrollPeriod, PayrollPeriodError } from '@/lib/payroll-period'
 import type {
   PayrollWithWorker,
   MonthlyPayrollSummary,
@@ -53,13 +54,6 @@ export class PayrollService {
     const created: PayrollWithWorker[] = []
 
     for (const worker of activeWorkers) {
-      const existing = await this.repo.findByWorkerAndPeriod(
-        worker.id,
-        validated.month,
-        validated.year,
-      )
-      if (existing) continue
-
       const calc = this.calculatePayroll(
         worker.baseSalary,
         validated.irpfPercent,
@@ -68,10 +62,10 @@ export class PayrollService {
         worker.baseSalary * (otherDeductionsPercent / 100),
       )
 
+      try {
       const payroll = await this.repo.create({
         workerId: worker.id,
-        month: validated.month,
-        year: validated.year,
+        ...resolvePayrollPeriod(validated),
         baseSalary: calc.baseSalary,
         irpfPercent: calc.irpfPercent,
         irpfAmount: calc.irpfAmount,
@@ -84,6 +78,9 @@ export class PayrollService {
       })
 
       created.push({ ...payroll, worker })
+      } catch (error) {
+        if (!(error instanceof PayrollPeriodError && error.status === 409)) throw error
+      }
     }
 
     return created
@@ -141,6 +138,8 @@ export class PayrollService {
     workerId: string
     month: number
     year: number
+    periodStart?: string
+    periodEnd?: string
     baseSalary: number
     irpfPercent: number
     socialSecurityPercent?: number
@@ -148,16 +147,8 @@ export class PayrollService {
     otherDeductionsDesc?: string
     notes?: string
   }): Promise<PayrollWithWorker> {
-    const validated = createPayrollSchema.parse(input)
-
-    const existing = await this.repo.findByWorkerAndPeriod(
-      validated.workerId,
-      validated.month,
-      validated.year,
-    )
-    if (existing) {
-      throw new Error('Ya existe una nómina para este trabajador en este período')
-    }
+    const period = resolvePayrollPeriod(input)
+    const validated = createPayrollSchema.parse({ ...input, month: period.month, year: period.year })
 
     const calc = this.calculatePayroll(
       validated.baseSalary,
@@ -169,8 +160,7 @@ export class PayrollService {
 
     const payroll = await this.repo.create({
       workerId: validated.workerId,
-      month: validated.month,
-      year: validated.year,
+      ...period,
       baseSalary: calc.baseSalary,
       irpfPercent: calc.irpfPercent,
       irpfAmount: calc.irpfAmount,

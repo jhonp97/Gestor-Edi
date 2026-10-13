@@ -13,6 +13,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { UserPlus } from 'lucide-react'
+import { calendarPayrollDates } from '@/lib/payroll-period-label'
 
 const MONTH_NAMES = [
   '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -50,6 +51,11 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
   const [year, setYear] = useState(new Date().getFullYear())
   const [baseSalary, setBaseSalary] = useState(preselectedWorker?.baseSalary.toString() ?? '')
   const [dailyPayTotal, setDailyPayTotal] = useState<string | null>(null)
+  const [periodStart, setPeriodStart] = useState(() => calendarPayrollDates(month, year).start)
+  const [periodEnd, setPeriodEnd] = useState(() => calendarPayrollDates(month, year).end)
+  const [workedDays, setWorkedDays] = useState<string[]>([])
+  const [rangeLoading, setRangeLoading] = useState(false)
+  const [rangeError, setRangeError] = useState('')
   const [applyIrpf, setApplyIrpf] = useState(false)
   const [applySocialSecurity, setApplySocialSecurity] = useState(false)
   const [irpfPercent, setIrpfPercent] = useState('15')
@@ -95,26 +101,42 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
     if (!open || !workerId) return
 
     let cancelled = false
-    const periodStart = `${year}-${String(month).padStart(2, '0')}-01`
-
-    fetch(`/api/workers/${workerId}/daily-pay?periodStart=${periodStart}`)
-      .then(async (response) => (response.ok ? response.json() : null))
+    const controller = new AbortController()
+    setDailyPayTotal(null)
+    setWorkedDays([])
+    setRangeError('')
+    if (!baseSalaryTouched.current) setBaseSalary('')
+    if (!periodStart || !periodEnd || periodStart > periodEnd) {
+      setRangeLoading(false)
+      return
+    }
+    setRangeLoading(true)
+    fetch(`/api/workers/${workerId}/daily-pay/range?periodStart=${periodStart}&periodEnd=${periodEnd}`, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Range unavailable')
+        return response.json()
+      })
       .then((data) => {
         if (cancelled) return
         const accrued = data?.totals?.accrued
-        setDailyPayTotal(typeof accrued === 'string' ? accrued : null)
-        if (!baseSalaryTouched.current && typeof accrued === 'string') {
-          setBaseSalary(accrued)
+        if (typeof accrued !== 'string' || !Number.isFinite(Number(accrued)) || !Array.isArray(data.days)) {
+          throw new Error('Invalid range response')
         }
+        setDailyPayTotal(accrued)
+        setWorkedDays(data.days.map((day: { date: string }) => day.date))
+        if (!baseSalaryTouched.current) setBaseSalary(accrued)
       })
       .catch(() => {
-        if (!cancelled) setDailyPayTotal(null)
+        if (!cancelled) setRangeError('No se pudo cargar el intervalo. Inténtalo de nuevo o introduce el salario manualmente.')
       })
-
+      .finally(() => {
+        if (!cancelled) setRangeLoading(false)
+      })
     return () => {
       cancelled = true
+      controller.abort()
     }
-  }, [open, workerId, month, year])
+  }, [open, workerId, periodStart, periodEnd])
 
   // When worker changes, update base salary
   function handleWorkerChange(id: string) {
@@ -124,6 +146,25 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
     if (w) setBaseSalary(w.baseSalary.toString())
   }
 
+  function changeMonth(nextMonth: number, nextYear: number) {
+    baseSalaryTouched.current = false
+    setDailyPayTotal(null)
+    setMonth(nextMonth)
+    setYear(nextYear)
+    const dates = calendarPayrollDates(nextMonth, nextYear)
+    setPeriodStart(dates.start)
+    setPeriodEnd(dates.end)
+  }
+
+  function changeDate(which: 'start' | 'end', value: string) {
+    baseSalaryTouched.current = false
+    setDailyPayTotal(null)
+    setWorkedDays([])
+    setBaseSalary('')
+    if (which === 'start') setPeriodStart(value)
+    else setPeriodEnd(value)
+  }
+
   function resetForm() {
     setWorkerId(preselectedWorker?.id ?? '')
     setBaseSalary(preselectedWorker?.baseSalary.toString() ?? '')
@@ -131,6 +172,12 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
     baseSalaryTouched.current = false
     setMonth(new Date().getMonth() + 1)
     setYear(new Date().getFullYear())
+    const dates = calendarPayrollDates(new Date().getMonth() + 1, new Date().getFullYear())
+    setPeriodStart(dates.start)
+    setPeriodEnd(dates.end)
+    setWorkedDays([])
+    setRangeError('')
+    setRangeLoading(false)
     setApplyIrpf(false)
     setApplySocialSecurity(false)
     setIrpfPercent('15')
@@ -146,6 +193,14 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
     e.preventDefault()
     setError('')
 
+    if (rangeLoading || (rangeError && !baseSalaryTouched.current)) {
+      setError('Espera el cálculo del intervalo o introduce el salario manualmente')
+      return
+    }
+    if (!periodStart || !periodEnd || periodStart > periodEnd) {
+      setError('Elige desde y hasta; desde no puede ser posterior a hasta')
+      return
+    }
     if (!workerId) {
       setError('Selecciona un trabajador')
       return
@@ -162,8 +217,10 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           workerId,
-          month,
-          year,
+          month: Number(periodStart.slice(5, 7)),
+          year: Number(periodStart.slice(0, 4)),
+          periodStart,
+          periodEnd,
           baseSalary: base,
           irpfPercent: effectiveIrpfPercent,
           socialSecurityPercent: effectiveSsPercent,
@@ -259,8 +316,7 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
                 id="month"
                 value={month}
                 onChange={(e) => {
-                  baseSalaryTouched.current = false
-                  setMonth(parseInt(e.target.value))
+                  changeMonth(parseInt(e.target.value), year)
                 }}
                 className={selectClass}
               >
@@ -275,8 +331,7 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
                 id="year"
                 value={year}
                 onChange={(e) => {
-                  baseSalaryTouched.current = false
-                  setYear(parseInt(e.target.value))
+                  changeMonth(month, parseInt(e.target.value))
                 }}
                 className={selectClass}
               >
@@ -286,6 +341,27 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
               </select>
             </div>
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="periodStart">Desde</Label>
+              <Input id="periodStart" type="date" value={periodStart} onChange={(e) => changeDate('start', e.target.value)} required />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="periodEnd">Hasta</Label>
+              <Input id="periodEnd" type="date" value={periodEnd} onChange={(e) => changeDate('end', e.target.value)} min={periodStart} required />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">Ambas fechas incluidas. Mes y año restablecen el mes completo. Las nóminas pendientes no bloquean otra generación.</p>
+          {periodStart && periodEnd && periodStart > periodEnd && <p className="text-sm text-destructive">Desde no puede ser posterior a hasta</p>}
+          {rangeLoading && <p role="status" className="text-sm text-muted-foreground">Calculando días trabajados...</p>}
+          {rangeError && <p role="alert" className="text-sm text-destructive">{rangeError}</p>}
+          {dailyPayTotal !== null && (
+            <details className="text-sm">
+              <summary>{workedDays.length} {workedDays.length === 1 ? 'día trabajado' : 'días trabajados'} en el intervalo</summary>
+              <ul className="mt-2 grid grid-cols-3 gap-1">{workedDays.map((date) => <li key={date}>{date.split('-').reverse().join('/')}</li>)}</ul>
+            </details>
+          )}
 
           {/* Salario base */}
           <div className="space-y-1">
@@ -305,8 +381,8 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
             />
             <p className="text-xs text-muted-foreground">
               {dailyPayTotal !== null
-                ? `Acumulado diario del mes: €${Number(dailyPayTotal).toFixed(2)}. Puedes modificarlo.`
-                : 'Puedes modificarlo si este mes es diferente al registrado'}
+                ? `Acumulado diario del intervalo: €${Number(dailyPayTotal).toFixed(2)}. Puedes modificarlo.`
+                : 'Puedes introducir o modificar el importe del intervalo manualmente' }
             </p>
           </div>
 
@@ -469,7 +545,7 @@ export function PayrollIndividualDialog({ preselectedWorker }: PayrollIndividual
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || rangeLoading || !periodStart || !periodEnd || periodStart > periodEnd || Boolean(rangeError && !baseSalaryTouched.current)}>
               {loading ? 'Generando...' : 'Generar Nómina'}
             </Button>
           </div>

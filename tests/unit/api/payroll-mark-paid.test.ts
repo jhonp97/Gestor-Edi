@@ -1,0 +1,55 @@
+import { beforeEach, expect, it, vi } from 'vitest'
+const db = vi.hoisted(() => ({ payroll: { findFirst: vi.fn(), findMany: vi.fn(), update: vi.fn() }, worker: { findFirst: vi.fn() }, $transaction: vi.fn(), $queryRaw: vi.fn() }))
+vi.mock('@/lib/prisma', () => ({ prisma: db }))
+vi.mock('@/lib/auth-edge', () => ({ getUserFromRequest: vi.fn() }))
+vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
+import { getUserFromRequest } from '@/lib/auth-edge'
+import { POST } from '@/app/api/payroll/[id]/mark-paid/route'
+const pending = { id: 'p', organizationId: 'org', workerId: 'w', month: 3, year: 2026, periodStart: null, periodEnd: null, paidAt: null }
+const invoke = () => POST(new Request('http://localhost', { method: 'POST' }), { params: Promise.resolve({ id: 'p' }) })
+beforeEach(() => {
+  vi.resetAllMocks()
+  vi.mocked(getUserFromRequest).mockResolvedValue({ organizationId: 'org' } as never)
+  db.payroll.findFirst.mockResolvedValue(pending)
+  db.payroll.findMany.mockResolvedValue([])
+  db.payroll.update.mockImplementation(async ({ data }) => ({ ...pending, ...data }))
+  db.$queryRaw.mockResolvedValue([{ id: 'w' }])
+  db.$transaction.mockImplementation(async (run) => run(db))
+})
+it('pays a pending document only in a worker-serialized transaction', async () => {
+  const response = await invoke()
+  expect(response.status).toBe(200)
+  expect(await response.json()).toMatchObject({ id: 'p', paidAt: expect.any(String) })
+  expect(db.$transaction).toHaveBeenCalled()
+  expect(db.$queryRaw).toHaveBeenCalled()
+  expect(db.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(db.payroll.findMany.mock.invocationCallOrder[0])
+})
+it('rejects an inclusive paid overlap and leaves payroll unchanged', async () => {
+  db.payroll.findMany.mockResolvedValue([{ ...pending, id: 'other', periodStart: new Date('2026-02-15'), periodEnd: new Date('2026-03-01'), paidAt: new Date() }])
+  const response = await invoke()
+  expect(response.status).toBe(409)
+  expect(await response.json()).toEqual({ error: expect.any(String) })
+  expect(db.payroll.update).not.toHaveBeenCalled()
+})
+it('existing paid state is idempotent, including its original timestamp', async () => {
+  db.payroll.findFirst.mockResolvedValue({ ...pending, paidAt: new Date('2026-03-20') })
+  const response = await invoke()
+  expect(response.status).toBe(200)
+  expect(await response.json()).toMatchObject({ paidAt: '2026-03-20T00:00:00.000Z' })
+  expect(db.payroll.update).not.toHaveBeenCalled()
+})
+it('maps transaction contention to safe conflict without updates', async () => {
+  db.$transaction.mockRejectedValue({ code: 'P2034' })
+  const response = await invoke()
+  expect(response.status).toBe(409)
+  expect(await response.json()).toEqual({ error: expect.any(String) })
+  expect(db.payroll.update).not.toHaveBeenCalled()
+})
+it('foreign payroll remains not found and unchanged', async () => {
+  db.payroll.findFirst.mockResolvedValue(null)
+  const response = await invoke()
+  expect(response.status).toBe(404)
+  expect(await response.json()).toEqual({ error: 'Nómina no encontrada' })
+  expect(db.payroll.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'p', organizationId: 'org' } }))
+  expect(db.payroll.update).not.toHaveBeenCalled()
+})

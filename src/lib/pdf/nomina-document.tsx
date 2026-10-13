@@ -1,5 +1,7 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 
+import { payrollPeriodLabel } from '@/lib/payroll-period-label'
+
 // Professional styles
 const styles = StyleSheet.create({
   page: { padding: 30, fontSize: 10 },
@@ -19,6 +21,8 @@ interface NominaDocumentProps {
     id: string
     month: number
     year: number
+    periodStart?: Date | string | null
+    periodEnd?: Date | string | null
     baseSalary: number
     irpfPercent: number
     irpfAmount: number
@@ -50,6 +54,7 @@ export function NominaDocument({ payroll }: NominaDocumentProps) {
           </View>
           <View style={{ textAlign: 'right' }}>
             <Text>Período: {monthNames[payroll.month]} {payroll.year}</Text>
+            <Text>{payrollPeriodLabel(payroll)}</Text>
             <Text>Fecha: {new Date().toLocaleDateString('es-ES')}</Text>
           </View>
         </View>

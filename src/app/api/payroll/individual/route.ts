@@ -3,6 +3,8 @@ import { getUserFromRequest } from '@/lib/auth-edge'
 import { revalidatePath } from 'next/cache'
 import { NextResponse } from 'next/server'
 
+import { resolvePayrollPeriod, withPayrollWorkerLock, assertNoPaidOverlap, payrollErrorResponse } from '@/lib/payroll-period'
+
 const DEFAULT_SS_PERCENT = 0
 
 export async function POST(request: Request) {
@@ -15,8 +17,6 @@ export async function POST(request: Request) {
     const body = await request.json()
     const {
       workerId,
-      month,
-      year,
       baseSalary,
       irpfPercent = 0,
       socialSecurityPercent = DEFAULT_SS_PERCENT,
@@ -27,7 +27,9 @@ export async function POST(request: Request) {
       notes = '',
     } = body
 
-    if (!workerId || !month || !year || !baseSalary) {
+    const period = resolvePayrollPeriod(body)
+
+    if (!workerId || typeof baseSalary !== 'number' || !Number.isFinite(baseSalary) || baseSalary <= 0) {
       return Response.json(
         { error: 'Trabajador, mes, año y salario base son requeridos' },
         { status: 400 }
@@ -53,33 +55,19 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Trabajador no encontrado' }, { status: 404 })
     }
 
-    // Check if payroll already exists for this worker/month/year
-    const existing = await prisma.payroll.findFirst({
-      where: {
-        workerId,
-        month,
-        year,
-        organizationId: user.organizationId,
-      },
-    })
-
-    if (existing) {
-      return Response.json(
-        { error: 'Ya existe una nómina para este trabajador en ese período' },
-        { status: 409 }
-      )
-    }
+    // Pending documents never reserve days; only paid periods do.
 
     const irpfAmount = Math.round(baseSalary * (irpfPercent / 100) * 100) / 100
     const ssAmount = Math.round(baseSalary * (socialSecurityPercent / 100) * 100) / 100
     const grossPay = Math.round((baseSalary + bonusAmount) * 100) / 100
     const netPay = Math.round((grossPay - irpfAmount - ssAmount - otherDeductions) * 100) / 100
 
-    const payroll = await prisma.payroll.create({
+    const payroll = await withPayrollWorkerLock(prisma, user.organizationId, workerId, async (tx) => {
+      await assertNoPaidOverlap(tx, user.organizationId!, workerId, period)
+      return tx.payroll.create({
       data: {
         workerId,
-        month,
-        year,
+        ...period,
         baseSalary,
         irpfPercent,
         irpfAmount,
@@ -92,18 +80,15 @@ export async function POST(request: Request) {
         grossPay,
         netPay,
         notes: notes || undefined,
-        organizationId: user.organizationId,
+        organizationId: user.organizationId!,
       },
       include: { worker: true },
+      })
     })
 
     revalidatePath('/nomina')
     return Response.json(payroll)
   } catch (error) {
-    console.error('Error generating individual payroll:', error)
-    return Response.json(
-      { error: 'Error al generar la nómina' },
-      { status: 500 }
-    )
+    return payrollErrorResponse(error, 'Error al generar la nómina')
   }
 }
