@@ -173,6 +173,20 @@ El ejemplo `25×185 + 28×185 + 5×185 + 5×30` produce **10.880,00 EUR** de sub
 
 El almacenamiento local no está cifrado y borrar datos del navegador puede eliminarlo. Proteja los equipos compartidos y conserve las copias PDF/JSON necesarias. No se añaden tablas ni migraciones.
 
+### Comprobación aislada de Facturas
+
+```bash
+# Navegador móvil, borradores, transferencia y PDF real, con identidad sintética
+node scripts/run-invoice-browser-smoke.mjs
+
+# Diagnóstico del origen recibido por Next; no ejecuta el navegador
+node scripts/run-invoice-browser-smoke.mjs --diagnose-origin
+```
+
+El servidor de prueba usa exclusivamente `127.0.0.1:3118`, rechaza reutilizar un servidor existente y no copia `.env`, middleware ni configuración de base de datos. La autenticación sintética solo existe dentro de `.pi/invoice-browser-harness`, excluido de Git. El diagnóstico registra origen/Host y estado HTTP, nunca credenciales ni contenido de facturas. Un estado 403 es un rechazo, no una comprobación correcta. El proceso termina al acabar; los resultados están en esa carpeta.
+
+Para comprobar la aplicación normal, ejecute `pnpm dev` desde el checkout que contiene esta función, con su entorno habitual. Guarde un borrador, recargue y vuelva a abrirlo; exporte e importe el JSON, descargue el PDF y compruebe la propuesta del siguiente número. No hay sincronización entre dispositivos ni numeración centralizada.
+
 ## 🧪 Tests
 
 El proyecto tiene 55 tests unitarios que pasan en CI/CD.
