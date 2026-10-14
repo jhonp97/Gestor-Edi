@@ -153,6 +153,43 @@ El **Resumen del mes** incluye los **Días trabajados por empresa**: fechas regi
 
 En **Días trabajados por trabajador**, la columna **Pago total** suma la tarifa histórica guardada en cada jornada × su porcentaje en ese camión. Una jornada de 100 EUR repartida al 50% aporta 50 EUR a cada camión. No usa la tarifa actual ni indica que el pago se haya efectuado; tampoco modifica los gastos, ingresos o balance de transacciones.
 
+## 🧾 Facturas locales
+
+**Facturas**, debajo de **Nómina**, permite editar número, fecha, emisor, destinatario y conceptos con cantidad y precio. La fecha inicial es el último día del mes actual en Europe/Madrid; puede cambiarse. El emisor utiliza **C/ Germanies 4/4** y el PDF incorpora el logo local de **Transportes Acevedo Hernandez**.
+
+### Cálculo y descarga
+
+El PDF utiliza texto base de 12 puntos y datos secundarios de 11 puntos. El encabezado muestra **FACTURA** a la izquierda en negrita de 30 puntos con un trazo fino adicional que refuerza su grosor sin agrandar ni duplicar el texto. El logo proporcional mantiene su recuadro de 124 × 93 puntos a la derecha y se eleva ligeramente; el título baja un poco para equilibrar su alineación, y la línea separadora queda más próxima al encabezado. Una línea horizontal separa ese bloque del número y la fecha, que aparecen debajo y conservan los valores de cada factura. El nombre de la empresa aparece centrado al pie de cada página, en gris discreto y con la misma tipografía de la numeración. La barra de columnas tiene menos altura y sus letras quedan centradas verticalmente, sin reducir su tamaño ni modificar la alineación horizontal. **EMISOR** y **FACTURAR A** aparecen en mayúsculas y negrita, con una línea gris clara debajo de cada título. Los nombres conservan sus mayúsculas y minúsculas y se destacan en negrita azul oscuro; los demás datos mantienen su formato e interlineado. Se mantienen A4 y los márgenes originales.
+
+Cada concepto es cantidad × precio, redondeado al céntimo. Se resta el **descuento**, inicialmente **5 %**, del subtotal y se aplica el **IVA**, inicialmente **21 %**, sobre esa base; ambos son editables. El servidor valida y recalcula antes de generar el PDF, sin guardar facturas en la base de datos.
+
+El ejemplo `25×185 + 28×185 + 5×185 + 5×30` produce **10.880,00 EUR** de subtotal, **544,00 EUR** de descuento, **10.336,00 EUR** de base, **2.170,56 EUR** de IVA y **12.506,56 EUR** de total. Se admiten coma o punto decimal, hasta dos decimales, sin separadores de miles en los campos.
+
+Las cantidades enteras se muestran sin decimales en el editor y el PDF: `23`, `6` o `15`. Las cantidades fraccionarias conservan sus decimales; los precios y los importes monetarios siguen mostrando dos decimales. Este formato no modifica los cálculos ni los datos guardados.
+
+### Borradores locales
+
+- **Guardar borrador** conserva explícitamente la factura en este navegador y cuenta. **Abrir** recupera su número; **Eliminar** pide confirmación.
+- Tras **Descargar PDF** correctamente, una **Nueva factura** propone el siguiente número. Repetir la descarga no consume otro número. El número es editable, entre 1 y 999999999. Al alcanzar el máximo se mantiene ese valor y aparece un aviso: revise la numeración antes de emitir otra factura.
+- Móvil y ordenador **no sincronizan** borradores ni numeración. Coordine los números; las advertencias de duplicados solo comparan borradores de esta cuenta en este navegador.
+- Máximo 20 borradores locales y 100 conceptos. La interfaz no ofrece importar ni exportar JSON. Si el almacenamiento está bloqueado o lleno, aparece un aviso y puede descargar PDFs válidos sin guardar.
+
+El almacenamiento local no está cifrado y borrar datos del navegador puede eliminarlo. Proteja los equipos compartidos y conserve las copias PDF necesarias. No se añaden tablas ni migraciones.
+
+### Comprobación aislada de Facturas
+
+```bash
+# Navegador móvil, borradores y PDF real, con identidad sintética
+node scripts/run-invoice-browser-smoke.mjs
+
+# Diagnóstico del origen recibido por Next; no ejecuta el navegador
+node scripts/run-invoice-browser-smoke.mjs --diagnose-origin
+```
+
+El servidor de prueba usa exclusivamente `127.0.0.1:3118`, rechaza reutilizar un servidor existente y no copia `.env`, middleware ni configuración de base de datos. La autenticación sintética solo existe dentro de `.pi/invoice-browser-harness`, excluido de Git. El diagnóstico registra origen/Host y estado HTTP, nunca credenciales ni contenido de facturas. Un estado 403 es un rechazo, no una comprobación correcta. El proceso termina al acabar; los resultados están en esa carpeta.
+
+Para comprobar la aplicación normal, ejecute `pnpm dev` desde el checkout que contiene esta función, con su entorno habitual. Guarde un borrador, recargue y vuelva a abrirlo; compruebe las cantidades enteras, descargue el PDF y compruebe la propuesta del siguiente número. No hay sincronización entre dispositivos ni numeración centralizada.
+
 ## 🧪 Tests
 
 El proyecto tiene 55 tests unitarios que pasan en CI/CD.

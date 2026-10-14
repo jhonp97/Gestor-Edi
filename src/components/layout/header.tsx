@@ -26,6 +26,7 @@ const pageLabels: Record<string, string> = {
   '/transactions': 'Transacciones',
   '/workers': 'Trabajadores',
   '/nomina': 'Nómina',
+  '/facturas': 'Facturas',
   '/admin': 'Panel de Administración',
   '/admin/users': 'Usuarios',
   '/admin/orgs': 'Organizaciones',

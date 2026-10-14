@@ -38,6 +38,8 @@ yarn-error.log*
 !.env.example
 
 # local testing
+/.pi/invoice-browser-harness/
+/.pi/verify-local-invoices/
 pruebas.rest
 *.rest
 

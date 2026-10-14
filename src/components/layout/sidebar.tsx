@@ -16,6 +16,7 @@ const navItems = [
   { href: '/transactions', label: 'Transacciones', icon: Receipt },
   { href: '/workers', label: 'Trabajadores', icon: Users },
   { href: '/nomina', label: 'Nómina', icon: Banknote },
+  { href: '/facturas', label: 'Facturas', icon: Receipt },
 ]
 
 interface SessionUser {
