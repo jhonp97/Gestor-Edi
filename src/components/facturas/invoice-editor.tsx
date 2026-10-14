@@ -6,7 +6,7 @@ import { apiFetch } from '@/hooks/use-api'
 import { invoiceSchema, createInvoiceDraft, calculateInvoice, formatInvoiceMoney, MAX_INVOICE_NUMBER, type Invoice } from '@/lib/invoice'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { type Account, type DraftStore, emptyDraftStore, readDraftStore, writeDraftStore, saveDraft, deleteDraft, suggestAfterDownload, exportInvoice, importInvoice, MAX_TRANSFER_BYTES } from '@/lib/invoice-drafts'
+import { type Account, type DraftStore, emptyDraftStore, readDraftStore, writeDraftStore, saveDraft, deleteDraft, suggestAfterDownload } from '@/lib/invoice-drafts'
 
 // Remount the entire session on identity changes, including in-flight operations.
 export function InvoiceEditor(account: Account) {
@@ -14,7 +14,10 @@ export function InvoiceEditor(account: Account) {
 }
 
 type EditableInvoice = Omit<Invoice, 'number'> & { number: string }
-const editable = (invoice: Invoice): EditableInvoice => ({ ...invoice, number: String(invoice.number) })
+const editable = (invoice: Invoice): EditableInvoice => ({
+  ...invoice, number: String(invoice.number),
+  lines: invoice.lines.map(line => ({ ...line, quantity: line.quantity.replace(/\.00$/, '') })),
+})
 const storageWarning = 'El almacenamiento local no está disponible o está lleno. Puede descargar el PDF sin guardar.'
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -101,30 +104,6 @@ function AccountEditor(account: Account) {
     }
   }
 
-  async function importFile(file?: File) {
-    if (!file || operationPending.current) return
-    setError('')
-    setNotice('')
-    if (file.size > MAX_TRANSFER_BYTES) { setError('El archivo supera el tamaño permitido (200 KB).'); return }
-    try {
-      const text = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Invalid file'))
-        reader.onerror = () => reject(new Error('Unreadable file'))
-        reader.readAsText(file)
-      })
-      const invoice = importInvoice(text)
-      if (!mounted.current) return
-      const next = saveDraft(storeRef.current, invoice)
-      if (!persist(next)) return
-      setSelected(next.drafts[next.drafts.length - 1].id)
-      setDraft(editable(invoice))
-      setNotice('Borrador importado. Revise el número antes de descargar.')
-    } catch {
-      if (mounted.current) setError('Archivo JSON inválido. No se han cambiado los datos.')
-    }
-  }
-
   async function downloadPdf() {
     if (operationPending.current) return
     const invoice = validated()
@@ -164,7 +143,6 @@ function AccountEditor(account: Account) {
         <div><p className="text-lg font-semibold">Transportes Acevedo Hernandez</p><h1 className="text-2xl font-bold">Facturas</h1></div>
         <Image src="/branding/transportes-acevedo-hernandez.png" alt="Transportes Acevedo Hernandez" width={120} height={80} className="h-auto w-24 sm:w-32" />
       </div>
-      <p className="rounded-lg border p-3 text-sm">Los borradores y la numeración son locales: no se comparten entre dispositivos. Coordine los números para evitar duplicados. Los archivos JSON contienen datos personales; compártalos solo con personas de confianza.</p>
       {error && <p role="alert" className="rounded-lg border border-red-500 p-3 text-red-700">{error}</p>}
       {notice && <p role="status" className="rounded-lg border p-3">{notice}</p>}
       {draft.number === String(MAX_INVOICE_NUMBER) && <p role="status" className="text-amber-700">Se alcanzó el número máximo. No se propone otro número; revise la numeración antes de emitir otra factura.</p>}
@@ -207,8 +185,6 @@ function AccountEditor(account: Account) {
         <div className="flex flex-wrap gap-3">
           <Button type="button" onClick={() => { setDraft(editable(createInvoiceDraft(undefined, storeRef.current.nextNumber))); setSelected(undefined); setNotice(''); setError('') }}>Nueva factura</Button>
           <Button type="button" variant="outline" onClick={save}>Guardar borrador</Button>
-          <Button type="button" variant="outline" onClick={() => { const invoice = validated(); if (invoice) { try { downloadBlob(new Blob([exportInvoice(invoice)], { type: 'application/json' }), `factura-${invoice.number}.json`) } catch { setError('No se pudo exportar el archivo.') } } }}>Exportar JSON</Button>
-          <label className="rounded-md border p-2">Importar JSON<input className="block max-w-full text-sm" type="file" accept=".json,application/json" onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; void importFile(file) }} /></label>
         </div>
       </fieldset>
       <Button type="button" disabled={!ready || pending} onClick={() => void downloadPdf()}>{pending ? 'Descargando…' : 'Descargar PDF'}</Button>

@@ -20,7 +20,7 @@ test.describe('Facturas locales (servidor autenticado aislado)', () => {
     console.log(`Initial editor hydrated in ${Date.now() - started}ms`)
   })
 
-  test('editor móvil, guardado, recarga, transferencia JSON y descarga PDF', async ({ page }, testInfo) => {
+  test('editor móvil simplificado, guardado, recarga y descarga PDF', async ({ page }, testInfo) => {
     const started = Date.now()
     const storageKey = 'invoice-drafts:v1:invoice-org:invoice-test'
     await page.setViewportSize({ width: 390, height: 844 })
@@ -60,16 +60,12 @@ test.describe('Facturas locales (servidor autenticado aislado)', () => {
     await page.getByRole('button', { name: 'Abrir factura 13', exact: true }).click()
     await expect(page.getByLabel('Número de factura', { exact: true })).toHaveValue('13')
     await expect(page.getByLabel('Descripción 1', { exact: true })).toHaveValue('Transporte de prueba')
-    const jsonDownload = page.waitForEvent('download')
-    await page.getByRole('button', { name: 'Exportar JSON' }).click()
-    const transfer = await jsonDownload
-    const transferPath = await transfer.path()
-    if (!transferPath) throw new Error('Missing JSON download')
-    await page.getByRole('button', { name: 'Nueva factura' }).click()
-    await page.getByLabel('Importar JSON', { exact: true }).setInputFiles(transferPath)
-    await expect(page.getByRole('status').filter({ hasText: 'Borrador importado' })).toBeVisible()
-    await expect(page.getByLabel('Número de factura', { exact: true })).toHaveValue('13')
-    await expect(page.getByText(/Número repetido/)).toBeVisible()
+    await expect(page.getByLabel('Cantidad 1', { exact: true })).toHaveValue('25')
+    await expect(page.getByLabel('Cantidad 2', { exact: true })).toHaveValue('28')
+    await expect(page.getByLabel('Cantidad 3', { exact: true })).toHaveValue('5')
+    await expect(page.getByRole('button', { name: 'Exportar JSON' })).toHaveCount(0)
+    await expect(page.getByLabel('Importar JSON', { exact: true })).toHaveCount(0)
+    await expect(page.getByText(/Los borradores y la numeración son locales/)).toHaveCount(0)
     const pdfDownload = page.waitForEvent('download', { timeout: 45000 }).catch(() => null)
     const pdfResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/invoices/pdf' && response.request().method() === 'POST', { timeout: 45000 })
     await page.getByRole('button', { name: 'Descargar PDF' }).click()

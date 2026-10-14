@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { InvoiceEditor } from '@/components/facturas/invoice-editor'
 import { createInvoiceDraft } from '@/lib/invoice'
-import { draftStorageKey, emptyDraftStore, saveDraft, writeDraftStore, readDraftStore, MAX_TRANSFER_BYTES } from '@/lib/invoice-drafts'
+import { emptyDraftStore, saveDraft, writeDraftStore, readDraftStore } from '@/lib/invoice-drafts'
 const mocks = vi.hoisted(() => ({ fetch: vi.fn() }))
 vi.mock('@/hooks/use-api', () => ({ apiFetch: mocks.fetch }))
 const account = { orgId: 'org', userId: 'user' }
@@ -23,6 +23,23 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 const input = (name: string, value: string) => fireEvent.change(screen.getByLabelText(name), { target: { value } })
 describe('Editor de facturas', () => {
+  it('muestra cantidades enteras sin cambiar los datos de los borradores', async () => {
+    const saved = saveDraft(emptyDraftStore(), { ...validInvoice(), lines: ['23', '6', '15', '6.25'].map(quantity => ({ description: 'Servicio', quantity, unitPrice: '185' })) })
+    writeDraftStore(localStorage, account, saved)
+    render(<InvoiceEditor {...account} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Abrir factura 13' }))
+    for (const [i, value] of ['23', '6', '15', '6.25'].entries()) expect(screen.getByLabelText(`Cantidad ${i + 1}`)).toHaveValue(value)
+    expect(screen.getByLabelText('Precio unitario 1')).toHaveValue('185.00')
+    expect(readDraftStore(localStorage, account)).toEqual(saved)
+  })
+  it('omite los controles JSON y el aviso sin quitar guardado ni PDF', async () => {
+    await openSaved()
+    expect(screen.queryByRole('button', { name: 'Exportar JSON' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Importar JSON')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Los borradores y la numeración son locales/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Guardar borrador' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Descargar PDF' })).toBeEnabled()
+  })
   it('presenta valores predeterminados y permite editar fecha, número y ambas partes', async () => {
     render(<InvoiceEditor {...account} />)
     expect(screen.getByLabelText('Descuento (%)')).toHaveValue('5.00')
@@ -34,7 +51,6 @@ describe('Editor de facturas', () => {
     input('Destinatario · Nombre', 'Cliente editado')
     expect(screen.getByLabelText('Emisor · Nombre')).toHaveValue('Empresa editada')
     expect(screen.getByLabelText('Destinatario · Nombre')).toHaveValue('Cliente editado')
-    expect(screen.getByText(/no se comparten entre dispositivos/i)).toBeInTheDocument()
   })
   it('reproduce los totales de referencia y actualiza conceptos', async () => {
     await openSaved()
@@ -103,27 +119,5 @@ describe('Editor de facturas', () => {
     expect(readDraftStore(localStorage, account).nextNumber).toBe(14)
     fireEvent.click(screen.getByRole('button', { name: 'Nueva factura' }))
     expect(screen.getByLabelText('Número de factura')).toHaveValue('14')
-  })
-  it('exporta JSON y advierte sobre información personal', async () => {
-    await openSaved()
-    fireEvent.click(screen.getByRole('button', { name: 'Exportar JSON' }))
-    expect(URL.createObjectURL).toHaveBeenCalled()
-    expect(screen.getByText(/datos personales/i)).toBeInTheDocument()
-  })
-  it.each(['{', JSON.stringify({ version: 1, invoice: { ...validInvoice(), unknown: true } }), 'x'.repeat(MAX_TRANSFER_BYTES + 1)])('rechaza transferencia sin alterar borrador ni almacenamiento', async text => {
-    await openSaved()
-    const previous = localStorage.getItem(draftStorageKey(account))
-    fireEvent.change(screen.getByLabelText('Importar JSON'), { target: { files: [new File([text], 'invoice.json')] } })
-    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
-    expect(screen.getByLabelText('Número de factura')).toHaveValue('13')
-    expect(localStorage.getItem(draftStorageKey(account))).toBe(previous)
-  })
-  it('importa sin sobrescribir otro borrador y muestra duplicados locales', async () => {
-    await openSaved()
-    const file = new File([JSON.stringify({ version: 1, invoice: validInvoice() })], 'invoice.json')
-    fireEvent.change(screen.getByLabelText('Importar JSON'), { target: { files: [file] } })
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/importado/i))
-    expect(readDraftStore(localStorage, account).drafts).toHaveLength(2)
-    expect(screen.getByText(/Número repetido/i)).toBeInTheDocument()
   })
 })
