@@ -147,6 +147,12 @@ En `/trucks` y en el detalle del camión, el filtro de estadísticas permite **M
 
 Las fechas usan **Europe/Madrid** y Desde/Hasta incluye ambos días, incluso en cambios de horario. Se admiten fechas entre 1900 y 2199. Solo se suman importes de transacciones registradas, sin salarios ni ingresos inferidos. Los movimientos mantienen sus filtros de tipo/orden; el informe mensual y su PDF conservan sus propios controles y cálculos. El filtro estadístico no utiliza el parámetro `month` del informe.
 
+### Informe mensual PDF por camión
+
+El **Resumen del mes** incluye los **Días trabajados por empresa**: fechas registradas y días equivalentes (suma de los porcentajes asignados al camión ÷ 100). Por ejemplo, 18 jornadas completas en CBL y 4 en PALIBEX muestran 18 y 4 días respectivamente; una jornada al 50% cuenta como un día trabajado y 0,5 equivalentes.
+
+En **Días trabajados por trabajador**, la columna **Pago total** suma la tarifa histórica guardada en cada jornada × su porcentaje en ese camión. Una jornada de 100 EUR repartida al 50% aporta 50 EUR a cada camión. No usa la tarifa actual ni indica que el pago se haya efectuado; tampoco modifica los gastos, ingresos o balance de transacciones.
+
 ## 🧪 Tests
 
 El proyecto tiene 55 tests unitarios que pasan en CI/CD.
