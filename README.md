@@ -153,6 +153,26 @@ El **Resumen del mes** incluye los **Días trabajados por empresa**: fechas regi
 
 En **Días trabajados por trabajador**, la columna **Pago total** suma la tarifa histórica guardada en cada jornada × su porcentaje en ese camión. Una jornada de 100 EUR repartida al 50% aporta 50 EUR a cada camión. No usa la tarifa actual ni indica que el pago se haya efectuado; tampoco modifica los gastos, ingresos o balance de transacciones.
 
+## 🧾 Facturas locales
+
+**Facturas**, debajo de **Nómina**, permite editar número, fecha, emisor, destinatario y conceptos con cantidad y precio. La fecha inicial es el último día del mes actual en Europe/Madrid; puede cambiarse. El emisor utiliza **C/ Germanies 4/4** y el PDF incorpora el logo local de **Transportes Acevedo Hernandez**.
+
+### Cálculo y descarga
+
+Cada concepto es cantidad × precio, redondeado al céntimo. Se resta el **descuento**, inicialmente **5 %**, del subtotal y se aplica el **IVA**, inicialmente **21 %**, sobre esa base; ambos son editables. El servidor valida y recalcula antes de generar el PDF, sin guardar facturas en la base de datos.
+
+El ejemplo `25×185 + 28×185 + 5×185 + 5×30` produce **10.880,00 EUR** de subtotal, **544,00 EUR** de descuento, **10.336,00 EUR** de base, **2.170,56 EUR** de IVA y **12.506,56 EUR** de total. Se admiten coma o punto decimal, hasta dos decimales, sin separadores de miles en los campos.
+
+### Borradores y transferencia
+
+- **Guardar borrador** conserva explícitamente la factura en este navegador y cuenta. **Abrir** recupera su número; **Eliminar** pide confirmación.
+- **Exportar JSON** descarga un archivo transferible. **Importar JSON** valida y guarda una copia sin reemplazar otros borradores. Contiene datos personales: compártalo únicamente con personas de confianza.
+- Tras **Descargar PDF** correctamente, una **Nueva factura** propone el siguiente número. Repetir la descarga no consume otro número. El número es editable, entre 1 y 999999999. Al alcanzar el máximo se mantiene ese valor y aparece un aviso: revise la numeración antes de emitir otra factura.
+- Móvil y ordenador **no sincronizan** borradores ni numeración. Coordine los números; las advertencias de duplicados solo comparan borradores de esta cuenta en este navegador.
+- Máximo 20 borradores locales, 100 conceptos y 200 KB (200.000 bytes UTF-8) por importación o exportación. Los archivos inválidos no cambian borrador ni contador. Si el almacenamiento está bloqueado o lleno, aparece un aviso y puede descargar PDFs válidos sin guardar.
+
+El almacenamiento local no está cifrado y borrar datos del navegador puede eliminarlo. Proteja los equipos compartidos y conserve las copias PDF/JSON necesarias. No se añaden tablas ni migraciones.
+
 ## 🧪 Tests
 
 El proyecto tiene 55 tests unitarios que pasan en CI/CD.
