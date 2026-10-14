@@ -9,7 +9,8 @@ export type ExportTruck = {
   id: string
   plate: string
   days: ExportDay[]
-  workers: { id: string; name: string; dates: number; equivalentDays: string }[]
+  companies: { name: string; dates: number; equivalentDays: string }[]
+  workers: { id: string; name: string; dates: number; equivalentDays: string; totalPay: string }[]
   totals: { km: string | null; income: string; expense: string; net: string }
 }
 export type TruckMonthlyExport = { month: string; trucks: ExportTruck[] }
@@ -54,7 +55,8 @@ export async function loadTruckMonthlyExport(organizationId: string, selectedTru
   // Process one authorized truck at a time; never carry raw month-sized row arrays.
   for (const truck of trucks.sort((a, b) => a.plate.localeCompare(b.plate) || a.id.localeCompare(b.id))) {
     const days = new Map<string, DayAccumulator>()
-    const workers = new Map<string, { id: string; name: string; dates: Set<string>; shares: Prisma.Decimal }>()
+    const workers = new Map<string, { id: string; name: string; dates: Set<string>; shares: Prisma.Decimal; pay: Prisma.Decimal }>()
+    const companies = new Map<string, { name: string; dates: Set<string>; shares: Prisma.Decimal }>()
     let income = new Prisma.Decimal(0)
     let expense = new Prisma.Decimal(0)
     const mileage: { total: Prisma.Decimal | null } = { total: null }
@@ -80,16 +82,22 @@ export async function loadTruckMonthlyExport(organizationId: string, selectedTru
     })
     await fold(after => prisma.workerDayTruckSegment.findMany({
       where: { ...scope, workDate: { gte: civilStart, lt: civilEnd }, operation: { organizationId, dailyPayDay: { organizationId, worker: { organizationId } } }, ...(after ? { id: { gt: after } } : {}) },
-      select: { id: true, workDate: true, share: true, operation: { select: { companyName: true, dailyPayDay: { select: { worker: { select: { id: true, name: true } } } } } } },
+      select: { id: true, workDate: true, share: true, operation: { select: { companyName: true, dailyPayDay: { select: { rateSnapshot: true, worker: { select: { id: true, name: true } } } } } } },
       orderBy: { id: 'asc' }, take: batchSize,
     }), row => {
       const date = civilDate(row.workDate)
       const worker = row.operation.dailyPayDay.worker
       day(date).workers.push({ id: worker.id, name: worker.name, company: row.operation.companyName, share: row.share })
-      const summary = workers.get(worker.id) ?? { ...worker, dates: new Set<string>(), shares: new Prisma.Decimal(0) }
+      const summary = workers.get(worker.id) ?? { ...worker, dates: new Set<string>(), shares: new Prisma.Decimal(0), pay: new Prisma.Decimal(0) }
       summary.dates.add(date)
       summary.shares = summary.shares.plus(row.share)
+      summary.pay = summary.pay.plus(new Prisma.Decimal(row.operation.dailyPayDay.rateSnapshot).times(row.share).dividedBy(100))
       workers.set(worker.id, summary)
+      const name = row.operation.companyName
+      const company = companies.get(name) ?? { name, dates: new Set<string>(), shares: new Prisma.Decimal(0) }
+      company.dates.add(date)
+      company.shares = company.shares.plus(row.share)
+      companies.set(name, company)
     })
     // TruckMileage is a civil @db.Date and repositories sum km as distances, not odometer readings.
     await fold(after => prisma.truckMileage.findMany({
@@ -106,7 +114,8 @@ export async function loadTruckMonthlyExport(organizationId: string, selectedTru
         workers: value.workers.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)),
         km: value.km?.toString() ?? null, income: value.income?.toFixed(2) ?? null, expense: value.expense?.toFixed(2) ?? null,
       })),
-      workers: [...workers.values()].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)).map(worker => ({ id: worker.id, name: worker.name, dates: worker.dates.size, equivalentDays: worker.shares.dividedBy(100).toString() })),
+      companies: [...companies.values()].sort((a, b) => a.name.localeCompare(b.name)).map(company => ({ name: company.name, dates: company.dates.size, equivalentDays: company.shares.dividedBy(100).toString() })),
+      workers: [...workers.values()].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)).map(worker => ({ id: worker.id, name: worker.name, dates: worker.dates.size, equivalentDays: worker.shares.dividedBy(100).toString(), totalPay: worker.pay.toFixed(2) })),
       totals: { km: mileage.total?.toString() ?? null, income: income.toFixed(2), expense: expense.toFixed(2), net: income.minus(expense).toFixed(2) },
     })
   }

@@ -7,7 +7,7 @@ import { loadTruckMonthlyExport, ExportTooLargeError } from '@/lib/truck-monthly
 
 const date = new Date('2026-03-01T00:00:00Z')
 function segment(id: string, workerId = 'w1', truckId = 'a', share = 50) {
-  return { id, truckId, workDate: date, share, kilometers: 9999, operation: { companyName: 'Synthetic Company', dailyPayDay: { worker: { id: workerId, name: 'Synthetic Worker' } } } }
+  return { id, truckId, workDate: date, share, kilometers: 9999, operation: { companyName: 'Synthetic Company', dailyPayDay: { rateSnapshot: '100.00', worker: { id: workerId, name: 'Synthetic Worker' } } } }
 }
 beforeEach(() => {
   vi.resetAllMocks()
@@ -33,8 +33,8 @@ it('counts worker IDs and distinct dates per truck, including same names and sha
   db.workerDayTruckSegment.findMany.mockImplementation(async ({ where }) => [segment('s1'), segment('s2', 'w2'), segment('s3', 'w1', 'b'), segment('s4', 'w1', 'a', 25)].filter(row => row.truckId === where.truckId))
   const report = await loadTruckMonthlyExport('org', 'all', '2026-03')
   expect(report.trucks[0].workers).toEqual([
-    { id: 'w1', name: 'Synthetic Worker', dates: 1, equivalentDays: '0.75' },
-    { id: 'w2', name: 'Synthetic Worker', dates: 1, equivalentDays: '0.5' },
+    { id: 'w1', name: 'Synthetic Worker', dates: 1, equivalentDays: '0.75', totalPay: '75.00' },
+    { id: 'w2', name: 'Synthetic Worker', dates: 1, equivalentDays: '0.5', totalPay: '50.00' },
   ])
   expect(report.trucks[1].workers[0]).toMatchObject({ dates: 1, equivalentDays: '0.5' })
 })
@@ -95,5 +95,22 @@ it('loads complete segments and mileage beyond a batch and retains civil date ke
 it('shows exactly one date and half an equivalent day for each truck on a shared day', async () => {
   db.workerDayTruckSegment.findMany.mockImplementation(async ({ where }) => [segment('sa', 'w', 'a'), segment('sb', 'w', 'b')].filter(row => row.truckId === where.truckId))
   const report = await loadTruckMonthlyExport('org', 'all', '2026-03')
-  for (const truck of report.trucks) expect(truck.workers).toEqual([{ id: 'w', name: 'Synthetic Worker', dates: 1, equivalentDays: '0.5' }])
+  for (const truck of report.trucks) expect(truck.workers).toEqual([{ id: 'w', name: 'Synthetic Worker', dates: 1, equivalentDays: '0.5', totalPay: '50.00' }])
+})
+
+it('summarizes 18 CBL dates and 4 PALIBEX dates per truck from recorded assignments', async () => {
+  const rows = Array.from({ length: 22 }, (_, i) => ({
+    ...segment(`s${i}`, 'w1', 'a', i === 0 ? 50 : 100),
+    workDate: new Date(`2026-03-${String(i + 1).padStart(2, '0')}`),
+    operation: { companyName: i < 18 ? 'CBL' : 'PALIBEX', dailyPayDay: { rateSnapshot: i === 0 ? '80.50' : '100.00', worker: { id: 'w1', name: 'Synthetic Worker' } } },
+  }))
+  db.workerDayTruckSegment.findMany.mockImplementation(async ({ where }) => where.truckId === 'a' ? rows : [])
+  const report = await loadTruckMonthlyExport('org', 'all', '2026-03')
+  expect(report.trucks[0].companies).toEqual([
+    { name: 'CBL', dates: 18, equivalentDays: '17.5' },
+    { name: 'PALIBEX', dates: 4, equivalentDays: '4' },
+  ])
+  expect(report.trucks[0].workers[0]).toMatchObject({ dates: 22, equivalentDays: '21.5', totalPay: '2140.25' })
+  expect(report.trucks[1].companies).toEqual([])
+  expect(report.trucks[1].workers).toEqual([])
 })

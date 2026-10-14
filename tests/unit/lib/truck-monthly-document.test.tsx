@@ -28,7 +28,8 @@ const report: TruckMonthlyExport = {
   month: '2026-03',
   trucks: [{ id: 'a', plate: 'SYNTHETIC',
     days: Array.from({ length: 31 }, (_, index) => ({ date: `2026-03-${String(index + 1).padStart(2, '0')}`, km: index === 0 ? null : '0', income: null, expense: '0.00', workers: Array.from({ length: 8 }, (_, i) => ({ id: `w${i}`, name: `Synthetic Worker ${i} with a long wrapping name`, company: 'Synthetic Company with a long wrapping descriptive label', share: 50 })) })),
-    workers: [{ id: 'w0', name: 'Synthetic Worker', dates: 31, equivalentDays: '15.5' }],
+    companies: [{ name: 'CBL', dates: 18, equivalentDays: '17.5' }, { name: 'PALIBEX', dates: 4, equivalentDays: '4' }],
+    workers: [{ id: 'w0', name: 'Synthetic Worker', dates: 31, equivalentDays: '15.5', totalPay: '1550.00' }],
     totals: { km: '0', income: '0.00', expense: '0.00', net: '0.00' },
   }],
 }
@@ -46,6 +47,16 @@ it('keeps every date and assignment in a flowing document with repeated labels a
   expect(text).toContain('landscape')
   expect(text).toContain('"fixed":true')
   expect(text).toContain('"wrap":false')
+})
+it('shows company dates and equivalents in the monthly summary and pay beside worker equivalents', () => {
+  const pages = collectPages(TruckMonthlyDocument({ report }))
+  const summary = treeText(pages[1])
+  expect(summary).toContain('Días trabajados por empresa')
+  expect(summary).toMatch(/CBL\s+18\s+17\.5/)
+  expect(summary).toMatch(/PALIBEX\s+4\s+4/)
+  const workerPage = treeText(pages[2])
+  expect(fixedText(pages[2]).join(' ')).toMatch(/Días equivalentes\s+Pago total/)
+  expect(workerPage).toContain('1550.00 EUR')
 })
 it('allocates separate per-truck worker-summary pages', () => {
   const secondTruck = { ...report.trucks[0], id: 'b', plate: 'SYNTHETIC-B' }
@@ -66,7 +77,7 @@ it('preserves precise amounts, balance signs, missing records and every long wor
     { km: null, income: '0.00', expense: '0.00', net: '0.00', status: 'Sin diferencia' },
   ]
   const trucks = cases.map((totals, index) => ({ ...report.trucks[0], id: `truck-${index}`, plate: `PLATE-${index}`, days: [], totals,
-    workers: Array.from({ length: 70 }, (_, i) => ({ id: `worker-${i}`, name: `Worker ${i} with a very long synthetic wrapping family name`, dates: i, equivalentDays: `${i}.5000` })),
+    workers: Array.from({ length: 70 }, (_, i) => ({ id: `worker-${i}`, name: `Worker ${i} with a very long synthetic wrapping family name`, dates: i, equivalentDays: `${i}.5000`, totalPay: `${i}.25` })),
   }))
   const text = JSON.stringify(TruckMonthlyDocument({ report: { ...report, trucks } }))
   for (const truck of trucks) {
@@ -87,7 +98,7 @@ it('preserves precise amounts, balance signs, missing records and every long wor
   expect(JSON.stringify(TruckMonthlyDocument({ report: { ...report, trucks: [{ ...trucks[0], workers: [] }] } }))).toContain('Sin jornadas registradas')
 })
 it('actually renders a multi-truck worker summary flowing over multiple pages', async () => {
-  const truck = { ...report.trucks[0], days: [], workers: Array.from({ length: 90 }, (_, i) => ({ id: `w${i}`, name: `Synthetic Worker ${i} with a long wrapping name and additional family names`, dates: 31, equivalentDays: '15.5000' })) }
+  const truck = { ...report.trucks[0], days: [], workers: Array.from({ length: 90 }, (_, i) => ({ id: `w${i}`, name: `Synthetic Worker ${i} with a long wrapping name and additional family names`, dates: 31, equivalentDays: '15.5000', totalPay: '1550.00' })) }
   const buffer = await renderToBuffer(<TruckMonthlyDocument report={{ ...report, trucks: [truck, { ...truck, id: 'b', plate: 'SECOND' }] }} />)
   expect(buffer.subarray(0, 5).toString()).toBe('%PDF-')
   expect((buffer.toString('latin1').match(/\/Type \/Page\b/g) ?? []).length).toBeGreaterThan(4)

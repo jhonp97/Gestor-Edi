@@ -22,8 +22,11 @@ const styles = StyleSheet.create({
   balanceLabel: { fontSize: 16, marginBottom: 6 },
   workerLabels: { flexDirection: 'row', paddingVertical: 10, backgroundColor: '#182d43', color: '#ffffff', fontSize: 11, fontFamily: 'Helvetica-Bold' },
   workerRow: { flexDirection: 'row', paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: '#c5cdd6', fontSize: 11 },
-  workerName: { width: '58%', paddingHorizontal: 6 },
-  workerDays: { width: '17%', paddingHorizontal: 6 },
+  workerName: { width: '46%', paddingHorizontal: 6 },
+  workerDays: { width: '18%', paddingHorizontal: 6 },
+  companySummary: { marginTop: 16 },
+  sectionTitle: { fontSize: 14, fontFamily: 'Helvetica-Bold', marginBottom: 8 },
+  companyName: { width: '64%', paddingHorizontal: 6 },
   footer: { position: 'absolute', bottom: 18, left: 28, right: 28, textAlign: 'center', fontSize: 8 },
 })
 const missing = 'Sin registro'
@@ -85,18 +88,30 @@ export function TruckMonthlyDocument({ report }: { report: TruckMonthlyExport })
           <Text>{balanceStatus(truck.totals.net)}</Text>
         </View>
       </View>
+      <View style={styles.companySummary}>
+        <View wrap={false}>
+          <Text style={styles.sectionTitle}>Días trabajados por empresa</Text>
+          <View style={styles.workerLabels}>
+            <Text style={styles.companyName}>Empresa</Text><Text style={styles.workerDays}>Días trabajados</Text><Text style={styles.workerDays}>Días equivalentes</Text>
+          </View>
+        </View>
+        {truck.companies.length === 0 && <Text>Sin jornadas registradas.</Text>}
+        {truck.companies.map(company => <View key={company.name} wrap={false} style={styles.workerRow}>
+          <Text style={styles.companyName}>{company.name}</Text><Text style={styles.workerDays}>{company.dates}</Text><Text style={styles.workerDays}>{company.equivalentDays}</Text>
+        </View>)}
+      </View>
       <Text fixed style={styles.footer} render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />
     </Page>
     <Page size="A4" orientation="landscape" style={styles.workerPage} wrap>
       <View fixed style={styles.workerPageHeader}>
         <Text style={styles.title}>Días trabajados por trabajador · {report.month} · Camión {truck.plate}</Text>
         <View style={styles.workerLabels} wrap={false}>
-          <Text style={styles.workerName}>Trabajador</Text><Text style={styles.workerDays}>Días trabajados</Text><Text style={styles.workerDays}>Días equivalentes</Text>
+          <Text style={styles.workerName}>Trabajador</Text><Text style={styles.workerDays}>Días trabajados</Text><Text style={styles.workerDays}>Días equivalentes</Text><Text style={styles.workerDays}>Pago total</Text>
         </View>
       </View>
       {truck.workers.length === 0 && <Text>Sin jornadas registradas.</Text>}
       {truck.workers.map((worker, index) => <View key={worker.id} wrap={false} style={[styles.workerRow, { backgroundColor: index % 2 === 0 ? '#eef2f6' : '#ffffff' }]}>
-        <Text style={styles.workerName}>{worker.name}</Text><Text style={styles.workerDays}>{worker.dates}</Text><Text style={styles.workerDays}>{worker.equivalentDays}</Text>
+        <Text style={styles.workerName}>{worker.name}</Text><Text style={styles.workerDays}>{worker.dates}</Text><Text style={styles.workerDays}>{worker.equivalentDays}</Text><Text style={styles.workerDays}>{money(worker.totalPay)}</Text>
       </View>)}
       <Text fixed style={styles.footer} render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />
     </Page>
