@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local agent worktrees and generated test reports are not application sources.
+    ".pi/**",
+    "coverage/**",
     // Prisma seeds
     "prisma/seed-*.js",
   ]),

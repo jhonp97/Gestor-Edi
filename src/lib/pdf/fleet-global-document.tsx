@@ -31,23 +31,39 @@ function Table({ title, headers, rows, empty }: { title: string; headers: string
 
 export function FleetGlobalDocument({ report }: { report: FleetGlobalReport }) {
   const { totals } = report
+  const header = <View fixed style={styles.header}><View><Text style={styles.title}>Resumen global de flota</Text><Text style={styles.subtitle}>{report.periodLabel} · {report.trucks.length} camiones seleccionados</Text></View><Text style={styles.subtitle}>ACTIVIDAD REGISTRADA · SIN SALARIOS</Text></View>
+  const footer = <View fixed style={styles.footer}><Text>Gestor EDI · Resumen consolidado · {report.periodLabel}</Text><Text render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} /></View>
   return <Document title={`Resumen global de flota · ${report.periodLabel}`} author="Gestor EDI">
     <Page size="A4" orientation="landscape" style={styles.page} wrap>
-      <View fixed style={styles.header}><View><Text style={styles.title}>Resumen global de flota</Text><Text style={styles.subtitle}>{report.periodLabel} · {report.trucks.length} camiones seleccionados</Text></View><Text style={styles.subtitle}>ACTIVIDAD REGISTRADA · SIN SALARIOS</Text></View>
+      {header}
       <Text>Selección: {report.trucks.map(truck => truck.plate).join(' · ') || 'Sin camiones seleccionados'}</Text>
       <View style={styles.cards} wrap={false}>{[
         [String(totals.truckDays), 'Días-camión operativos'], [String(totals.calendarDays), 'Fechas con actividad'], [String(totals.workerDays), 'Días únicos de trabajadores'], [totals.equivalentDays, 'Días equivalentes'], [euro(totals.fuelExpense), 'Combustible registrado'],
       ].map(([value, label]) => <View key={label} style={styles.card}><Text style={styles.value}>{value}</Text><Text>{label}</Text></View>)}</View>
       {totals.truckDays === 0 && <Text style={styles.note}>Sin actividad registrada en la selección y período. Esto no acredita inactividad real.</Text>}
-      <Table title="01 / Camiones" headers={['Matrícula', 'Días operativos', 'Días equivalentes', 'Combustible (€)']} rows={report.trucks.map(truck => [truck.plate, String(truck.operationalDays), truck.equivalentDays, euro(truck.fuelExpense)])} empty="Sin camiones seleccionados." />
+      <Table title="01 / Camiones" headers={['Matrícula', 'Días operativos', 'Días equivalentes', 'Kilómetros', 'Combustible (€)']} rows={report.trucks.map(truck => [truck.plate, String(truck.operationalDays), truck.equivalentDays, Number(truck.kilometers).toLocaleString('es-ES', { maximumFractionDigits: 2 }), euro(truck.fuelExpense)])} empty="Sin camiones seleccionados." />
       <Table title="02 / Trabajadores" headers={['Trabajador', 'Días únicos', 'Días equivalentes']} rows={report.workers.map(worker => [worker.name, String(worker.days), worker.equivalentDays])} empty="Sin actividad de trabajadores registrada." />
       <Table title="03 / Empresas · agrupación de jornadas" headers={['Empresa', 'Días-camión', 'Días-trabajador', 'Días equivalentes']} rows={report.companies.map(company => [company.name, String(company.truckDays), String(company.workerDays), company.equivalentDays])} empty="Sin jornadas registradas por empresa." />
+      {footer}
+    </Page>
+    <Page size="A4" orientation="landscape" style={styles.page} wrap>
+      {header}
+      <Table title="04 / Jornadas por camión con más de 200 km" headers={['Fecha', 'Matrícula', 'Empresa', 'Km recorridos']} rows={report.mileageDays.map(day => [
+        day.date.split('-').reverse().join('/'), day.plate, day.companyName ?? 'Sin empresa asociada',
+        day.kilometers.toLocaleString('es-ES', { maximumFractionDigits: 2 }),
+      ])} empty="Sin jornadas con más de 200 km en la selección y período." />
+      <Table title="Totales por empresa · más de 200 km" headers={['Empresa', 'Días-camión']} rows={report.mileageCompanies.map(company => [company.companyName ?? 'Sin empresa asociada', String(company.truckDays)])} empty="Sin días-camión que totalizar." />
+      <View wrap={false} style={styles.note}>
+        <Text>Total: {report.mileageDays.length} días-camión con más de 200 km. Exactamente 200 km no se incluye.</Text>
+        <Text>Un día-camión es una matrícula en una fecha. Dos camiones en la misma fecha cuentan como dos días-camión.</Text>
+        <Text>La empresa corresponde a la jornada vinculada al kilometraje. Los registros sin vínculo se muestran como «Sin empresa asociada» y tienen su propio subtotal.</Text>
+      </View>
       <View wrap={false} style={styles.note}>
         <Text>Día operativo: camión y fecha únicos. Fechas con actividad: fechas distintas de toda la selección. Día de trabajador: persona y fecha únicas, sin duplicar entre camiones.</Text>
         <Text>Días equivalentes: suma de porcentajes de jornada / 100. Los días únicos por empresa pueden solaparse; no deben sumarse para obtener personas-fecha globales.</Text>
         <Text>Combustible: dinero gastado registrado de los camiones y período seleccionados, no litros ni gasto atribuible a empresas. 0 € registrado no demuestra ausencia de consumo. Sin salarios.</Text>
       </View>
-      <View fixed style={styles.footer}><Text>Gestor EDI · Resumen consolidado · {report.periodLabel}</Text><Text render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} /></View>
+      {footer}
     </Page>
   </Document>
 }
