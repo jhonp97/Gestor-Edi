@@ -46,10 +46,13 @@ export async function loadFleetGlobalReport(organizationId: string, truckIds: st
       after = previous
     }
   }
-  const byTruck = new Map(trucks.map(truck => [truck.id, { ...truck, ...activity(), fuel: zero() }]))
+  const byTruck = new Map(trucks.map(truck => [truck.id, { ...truck, ...activity(), fuel: zero(), kilometers: zero() }]))
   const workers = new Map<string, Activity & { id: string; name: string }>()
   const companies = new Map<string, { name: string; truckDates: Set<string>; workerDates: Set<string>; shares: Prisma.Decimal }>()
   const calendar = new Set<string>()
+  const segmentCompanies = new Map<string, string>()
+  const mileageDays: FleetGlobalReport['mileageDays'] = []
+  const mileageCounts = new Map<string | null, number>()
   let shares = zero()
   let fuel = zero()
   const scope = { organizationId, truckId: { in: ids }, truck: { organizationId } }
@@ -63,6 +66,7 @@ export async function loadFleetGlobalReport(organizationId: string, truckIds: st
     const person = row.operation.dailyPayDay.worker
     const worker = workers.get(person.id) ?? { ...person, ...activity() }
     const name = row.operation.companyName
+    segmentCompanies.set(row.id, name)
     const company = companies.get(name) ?? { name, truckDates: new Set<string>(), workerDates: new Set<string>(), shares: zero() }
     calendar.add(date)
     truck.dates.add(date)
@@ -88,11 +92,27 @@ export async function loadFleetGlobalReport(organizationId: string, truckIds: st
     truck.fuel = truck.fuel.plus(amount)
     fuel = fuel.plus(amount)
   })
-  const truckRows = [...byTruck.values()].sort((a, b) => compare(a.plate, b.plate) || compare(a.id, b.id)).map(truck => ({ id: truck.id, plate: truck.plate, operationalDays: truck.dates.size, equivalentDays: equivalent(truck.shares), fuelExpense: truck.fuel.toFixed(2) }))
+  await fold(after => prisma.truckMileage.findMany({
+    where: { ...scope, date: { gte: civilStart, lt: civilEnd }, ...(after ? { id: { gt: after } } : {}) },
+    select: { id: true, truckId: true, date: true, km: true, sourceWorkerDaySegmentId: true },
+    orderBy: { id: 'asc' }, take: 200,
+  }), row => {
+    const truck = byTruck.get(row.truckId)!
+    truck.kilometers = truck.kilometers.plus(String(row.km))
+    if (!(row.km > 200)) return
+    // Resolve companies only from the already scoped and authorized operational rows.
+    const companyName = row.sourceWorkerDaySegmentId ? segmentCompanies.get(row.sourceWorkerDaySegmentId) ?? null : null
+    mileageDays.push({ truckId: row.truckId, plate: byTruck.get(row.truckId)!.plate, date: row.date.toISOString().slice(0, 10), kilometers: row.km, companyName })
+    mileageCounts.set(companyName, (mileageCounts.get(companyName) ?? 0) + 1)
+  })
+  mileageDays.sort((a, b) => compare(a.date, b.date) || compare(a.plate, b.plate) || compare(a.truckId, b.truckId))
+  const mileageCompanies = [...mileageCounts].map(([companyName, truckDays]) => ({ companyName, truckDays }))
+    .sort((a, b) => a.companyName === null ? 1 : b.companyName === null ? -1 : compare(a.companyName, b.companyName))
+  const truckRows = [...byTruck.values()].sort((a, b) => compare(a.plate, b.plate) || compare(a.id, b.id)).map(truck => ({ id: truck.id, plate: truck.plate, operationalDays: truck.dates.size, equivalentDays: equivalent(truck.shares), kilometers: truck.kilometers.toString(), fuelExpense: truck.fuel.toFixed(2) }))
   const workerRows = [...workers.values()].sort((a, b) => compare(a.name, b.name) || compare(a.id, b.id)).map(worker => ({ id: worker.id, name: worker.name, days: worker.dates.size, equivalentDays: equivalent(worker.shares) }))
   const labels = { month: 'Mes', quarter: 'Trimestre', 'half-year': 'Semestre', year: 'Año' }
   return { month, period, periodLabel: `${labels[period]}: ${civilStart.toISOString().slice(0, 10)} – ${new Date(civilEnd.getTime() - 86400000).toISOString().slice(0, 10)}`,
-    trucks: truckRows, workers: workerRows,
+    trucks: truckRows, workers: workerRows, mileageDays, mileageCompanies,
     companies: [...companies.values()].sort((a, b) => compare(a.name, b.name)).map(company => ({ name: company.name, truckDays: company.truckDates.size, workerDays: company.workerDates.size, equivalentDays: equivalent(company.shares) })),
     totals: { truckDays: truckRows.reduce((sum, truck) => sum + truck.operationalDays, 0), calendarDays: calendar.size, workerDays: workerRows.reduce((sum, worker) => sum + worker.days, 0), equivalentDays: equivalent(shares), fuelExpense: fuel.toFixed(2) },
   }
